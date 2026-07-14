@@ -1,0 +1,656 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="dark" />
+  <title>Investition – Analyse- & Trading-Dashboard</title>
+  <style>
+    :root {
+      --bg: #071019;
+      --panel: #0d1824;
+      --panel-2: #101f2e;
+      --panel-3: #142638;
+      --border: #24384a;
+      --text: #e7eef6;
+      --muted: #8fa3b7;
+      --accent: #50d2c2;
+      --accent-2: #63a9ff;
+      --good: #4ad295;
+      --warn: #f5bd4f;
+      --bad: #ff6b7a;
+      --neutral: #7f93a7;
+      --shadow: 0 18px 50px rgba(0, 0, 0, .22);
+      --radius: 16px;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { min-height: 100%; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 10% -10%, rgba(80,210,194,.13), transparent 28rem),
+        radial-gradient(circle at 95% 5%, rgba(99,169,255,.10), transparent 30rem),
+        var(--bg);
+      color: var(--text);
+      font: 14px/1.45 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
+    a { color: inherit; }
+
+    .app-shell { min-height: 100vh; }
+    .topbar {
+      position: sticky; top: 0; z-index: 20;
+      border-bottom: 1px solid var(--border);
+      background: rgba(7, 16, 25, .91);
+      backdrop-filter: blur(16px);
+    }
+    .brand-row {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 20px; padding: 15px 24px 12px;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand-mark {
+      width: 38px; height: 38px; border-radius: 12px;
+      display: grid; place-items: center; font-weight: 900; letter-spacing: -.04em;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      color: #031019; box-shadow: 0 8px 24px rgba(80,210,194,.18);
+    }
+    .brand h1 { font-size: 17px; margin: 0; letter-spacing: -.02em; }
+    .brand p { margin: 2px 0 0; color: var(--muted); font-size: 12px; }
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+    .btn {
+      border: 1px solid var(--border); border-radius: 10px; padding: 9px 12px;
+      color: var(--text); background: var(--panel); transition: .18s ease;
+    }
+    .btn:hover { border-color: #3b566e; transform: translateY(-1px); }
+    .btn.primary { background: var(--accent); color: #031019; border-color: transparent; font-weight: 800; }
+    .btn.danger { color: #ff9aa5; }
+    .btn.ghost { background: transparent; }
+    .btn.small { padding: 7px 9px; font-size: 12px; }
+    .ticker-wrap { min-height: 46px; border-top: 1px solid rgba(255,255,255,.025); }
+
+    .page { max-width: 1680px; margin: 0 auto; padding: 20px 24px 40px; }
+    .notice {
+      display: flex; align-items: flex-start; gap: 10px; margin-bottom: 16px;
+      padding: 11px 13px; border: 1px solid #2b4053; border-radius: 12px;
+      color: #b8c8d7; background: rgba(16,31,46,.72); font-size: 12px;
+    }
+    .notice strong { color: var(--text); }
+
+    .kpi-grid { display: grid; grid-template-columns: repeat(5, minmax(150px, 1fr)); gap: 12px; margin-bottom: 16px; }
+    .card {
+      background: linear-gradient(180deg, rgba(16,31,46,.94), rgba(13,24,36,.94));
+      border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow);
+    }
+    .kpi { padding: 15px 16px; min-height: 92px; }
+    .kpi .label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+    .kpi .value { margin-top: 8px; font-size: 24px; font-weight: 850; letter-spacing: -.04em; }
+    .kpi .sub { margin-top: 2px; color: var(--muted); font-size: 12px; }
+
+    .main-grid { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(330px, .72fr); gap: 16px; }
+    .chart-card { overflow: hidden; min-height: 585px; }
+    .card-head {
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+      padding: 15px 16px; border-bottom: 1px solid var(--border);
+    }
+    .card-head h2 { margin: 0; font-size: 15px; }
+    .card-head p { margin: 3px 0 0; color: var(--muted); font-size: 12px; }
+    .symbol-select { min-width: 220px; }
+    .field-control, select, input, textarea {
+      width: 100%; color: var(--text); background: #0a1520;
+      border: 1px solid var(--border); border-radius: 9px; padding: 9px 10px; outline: none;
+    }
+    select:focus, input:focus, textarea:focus { border-color: var(--accent-2); box-shadow: 0 0 0 3px rgba(99,169,255,.12); }
+    .chart-host { height: 500px; background: #071019; }
+    .chart-placeholder { display: grid; place-items: center; height: 100%; color: var(--muted); }
+
+    .setup-card { min-height: 585px; padding-bottom: 12px; }
+    .setup-body { padding: 14px 16px; }
+    .setup-title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+    .setup-name { font-size: 20px; font-weight: 850; letter-spacing: -.035em; }
+    .setup-meta { margin-top: 4px; color: var(--muted); font-size: 12px; }
+    .chip {
+      display: inline-flex; align-items: center; gap: 6px; padding: 5px 8px;
+      border: 1px solid var(--border); border-radius: 999px; font-size: 11px; font-weight: 750;
+      background: #0a1520; white-space: nowrap;
+    }
+    .chip.good { color: var(--good); border-color: rgba(74,210,149,.35); background: rgba(74,210,149,.08); }
+    .chip.bad { color: var(--bad); border-color: rgba(255,107,122,.35); background: rgba(255,107,122,.08); }
+    .chip.warn { color: var(--warn); border-color: rgba(245,189,79,.35); background: rgba(245,189,79,.08); }
+    .chip.neutral { color: #aab9c6; }
+
+    .setup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin: 14px 0; }
+    .metric { border: 1px solid var(--border); border-radius: 11px; padding: 10px 11px; background: rgba(6,15,23,.45); }
+    .metric .m-label { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .08em; }
+    .metric .m-value { margin-top: 5px; font-size: 15px; font-weight: 800; }
+    .metric .m-sub { color: var(--muted); font-size: 11px; margin-top: 2px; }
+
+    .ladder-wrap { margin-top: 12px; padding: 12px; border: 1px solid var(--border); border-radius: 12px; background: rgba(6,15,23,.46); }
+    .ladder-head { display: flex; justify-content: space-between; color: var(--muted); font-size: 11px; margin-bottom: 10px; }
+    .ladder { position: relative; height: 216px; margin: 0 8px 0 80px; }
+    .ladder-axis { position: absolute; left: 36px; top: 5px; bottom: 5px; width: 2px; background: #2b4153; }
+    .ladder-tick { position: absolute; left: 0; right: 0; height: 0; border-top: 1px dashed rgba(143,163,183,.23); }
+    .ladder-item { position: absolute; left: 0; right: 0; transform: translateY(-50%); display: flex; align-items: center; }
+    .ladder-label { width: 72px; transform: translateX(-80px); text-align: right; font-size: 10px; color: var(--muted); }
+    .ladder-dot { width: 10px; height: 10px; border-radius: 50%; margin-left: -4px; border: 2px solid #09131d; z-index: 2; }
+    .ladder-line { height: 2px; flex: 1; opacity: .7; }
+    .ladder-value { min-width: 76px; text-align: right; font-size: 11px; font-weight: 800; padding-left: 7px; }
+    .ladder-empty { display: grid; place-items: center; height: 185px; color: var(--muted); text-align: center; font-size: 12px; }
+
+    .notes { margin-top: 12px; color: #c4d1dd; font-size: 12px; white-space: pre-wrap; }
+    .notes.muted { color: var(--muted); }
+    .setup-actions { display: flex; gap: 8px; margin-top: 13px; }
+
+    .table-card { margin-top: 16px; overflow: hidden; }
+    .toolbar { display: grid; grid-template-columns: minmax(220px, 1.3fr) repeat(3, minmax(130px,.45fr)); gap: 9px; padding: 12px 14px; border-bottom: 1px solid var(--border); }
+    .table-scroll { overflow: auto; }
+    table { width: 100%; border-collapse: collapse; min-width: 1180px; }
+    th, td { padding: 12px 13px; border-bottom: 1px solid rgba(36,56,74,.8); text-align: left; vertical-align: middle; }
+    th { position: sticky; top: 0; z-index: 2; background: #0e1c29; color: var(--muted); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
+    tbody tr { transition: .15s ease; }
+    tbody tr:hover, tbody tr.selected { background: rgba(80,210,194,.055); }
+    tbody tr { cursor: pointer; }
+    td strong { display: block; }
+    .cell-sub { color: var(--muted); font-size: 11px; margin-top: 2px; }
+    .num { font-variant-numeric: tabular-nums; }
+    .empty-table { padding: 40px; text-align: center; color: var(--muted); }
+
+    .modal-backdrop {
+      position: fixed; inset: 0; z-index: 50; display: none; place-items: center;
+      padding: 20px; background: rgba(2,8,13,.78); backdrop-filter: blur(10px);
+    }
+    .modal-backdrop.open { display: grid; }
+    .modal { width: min(980px, 100%); max-height: 92vh; overflow: auto; background: #0d1824; border: 1px solid #30475b; border-radius: 18px; box-shadow: 0 30px 80px rgba(0,0,0,.45); }
+    .modal-head { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 15px 17px; background: rgba(13,24,36,.97); border-bottom: 1px solid var(--border); }
+    .modal-head h3 { margin: 0; }
+    .modal-body { padding: 17px; }
+    .form-section { margin-bottom: 18px; }
+    .form-section h4 { margin: 0 0 10px; color: #c9d7e4; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
+    .form-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .field.span-2 { grid-column: span 2; }
+    .field.span-4 { grid-column: span 4; }
+    label { display: block; margin-bottom: 5px; color: var(--muted); font-size: 11px; }
+    textarea { min-height: 90px; resize: vertical; }
+    .modal-foot { position: sticky; bottom: 0; display: flex; justify-content: space-between; gap: 10px; padding: 13px 17px; background: rgba(13,24,36,.98); border-top: 1px solid var(--border); }
+    .modal-foot-right { display: flex; gap: 8px; }
+    .hidden { display: none !important; }
+    .file-input { display: none; }
+
+    @media (max-width: 1180px) {
+      .kpi-grid { grid-template-columns: repeat(3, 1fr); }
+      .main-grid { grid-template-columns: 1fr; }
+      .setup-card { min-height: auto; }
+      .chart-card { min-height: 520px; }
+      .chart-host { height: 450px; }
+    }
+    @media (max-width: 760px) {
+      .brand-row { align-items: flex-start; padding: 12px 14px; }
+      .brand p { display: none; }
+      .page { padding: 14px; }
+      .actions .label-text { display: none; }
+      .kpi-grid { grid-template-columns: 1fr 1fr; }
+      .toolbar { grid-template-columns: 1fr 1fr; }
+      .toolbar > :first-child { grid-column: 1 / -1; }
+      .card-head { align-items: flex-start; flex-direction: column; }
+      .symbol-select { width: 100%; }
+      .form-grid { grid-template-columns: 1fr 1fr; }
+      .field.span-4 { grid-column: span 2; }
+      .field.span-2 { grid-column: span 2; }
+    }
+    @media (max-width: 480px) {
+      .kpi-grid { grid-template-columns: 1fr; }
+      .brand h1 { font-size: 14px; }
+      .actions { gap: 5px; }
+      .btn { padding: 8px 9px; }
+      .setup-grid { grid-template-columns: 1fr; }
+      .form-grid { grid-template-columns: 1fr; }
+      .field.span-2, .field.span-4 { grid-column: span 1; }
+    }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <header class="topbar">
+    <div class="brand-row">
+      <div class="brand">
+        <div class="brand-mark">I</div>
+        <div>
+          <h1>Investition · Analyse- & Trading-Dashboard</h1>
+          <p>Aktien, Long-/Short-Knock-outs, Limits, Stops und Zielzonen</p>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn ghost" id="exportBtn">⇩ <span class="label-text">Export</span></button>
+        <button class="btn ghost" id="importBtn">⇧ <span class="label-text">Import</span></button>
+        <button class="btn primary" id="newBtn">＋ <span class="label-text">Trade-Plan</span></button>
+        <input class="file-input" id="importFile" type="file" accept="application/json" />
+      </div>
+    </div>
+    <div class="ticker-wrap" id="tickerHost"></div>
+  </header>
+
+  <main class="page">
+    <div class="notice">
+      <div>ⓘ</div>
+      <div><strong>Live-Marktansicht:</strong> Ticker und Chart werden von TradingView bereitgestellt. Individuelle Analysewerte bleiben ausschließlich in deinem Browser gespeichert. Je nach Börse können Kurse verzögert sein.</div>
+    </div>
+
+    <section class="kpi-grid">
+      <div class="card kpi"><div class="label">Aktive Setups</div><div class="value" id="kpiActive">0</div><div class="sub" id="kpiActiveSub">keine aktiven Positionen</div></div>
+      <div class="card kpi"><div class="label">Long / Short</div><div class="value" id="kpiDirection">0 / 0</div><div class="sub">über alle gefilterten Pläne</div></div>
+      <div class="card kpi"><div class="label">Ø Chance/Risiko</div><div class="value" id="kpiRR">—</div><div class="sub">Entry-Mitte → Ziel 1 / Stop</div></div>
+      <div class="card kpi"><div class="label">Risikobudget aktiv</div><div class="value" id="kpiRisk">—</div><div class="sub">Summe geplanter Maximalrisiken</div></div>
+      <div class="card kpi"><div class="label">Nächste Überprüfung</div><div class="value" id="kpiReview">—</div><div class="sub" id="kpiReviewSub">kein Termin hinterlegt</div></div>
+    </section>
+
+    <section class="main-grid">
+      <article class="card chart-card">
+        <div class="card-head">
+          <div>
+            <h2>Live-Chart</h2>
+            <p id="chartCaption">Instrument auswählen, um Chart und Setup gemeinsam zu prüfen.</p>
+          </div>
+          <select id="symbolSelect" class="symbol-select" aria-label="Instrument auswählen"></select>
+        </div>
+        <div class="chart-host" id="chartHost"><div class="chart-placeholder">Chart wird geladen …</div></div>
+      </article>
+
+      <aside class="card setup-card">
+        <div class="card-head">
+          <div><h2>Analyse-Setup</h2><p>Entry, Stop, Targets und KO-Parameter</p></div>
+          <span class="chip neutral" id="setupStatusChip">Kein Plan</span>
+        </div>
+        <div class="setup-body" id="setupPanel"></div>
+      </aside>
+    </section>
+
+    <section class="card table-card">
+      <div class="card-head">
+        <div><h2>Analyse- und Orderbuch</h2><p>Ein zentraler Datensatz je Setup; Klick auf eine Zeile öffnet Chart und Kursleiter.</p></div>
+        <div class="chip neutral" id="rowCountChip">0 Pläne</div>
+      </div>
+      <div class="toolbar">
+        <input id="searchInput" type="search" placeholder="Unternehmen, Symbol, WKN, These …" />
+        <select id="typeFilter"><option value="">Alle Instrumente</option><option>Aktie</option><option>Knock-out</option></select>
+        <select id="directionFilter"><option value="">Alle Richtungen</option><option>Long</option><option>Short</option><option>Neutral</option></select>
+        <select id="statusFilter"><option value="">Alle Status</option><option>Analyse übertragen</option><option>Beobachten</option><option>Limit aktiv</option><option>Position offen</option><option>Teilverkauf</option><option>Geschlossen</option><option>Verworfen</option></select>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Instrument</th><th>Typ / Richtung</th><th>Status</th><th>Entry-Zone</th><th>Limit</th><th>Stop</th><th>Ziel 1 / Ziel 2</th><th>KO / Hebel</th><th>CRV</th><th>Review</th>
+            </tr>
+          </thead>
+          <tbody id="tradeRows"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div class="modal-backdrop" id="modalBackdrop" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="modalTitle">Trade-Plan</h3>
+      <button class="btn small ghost" id="closeModalBtn">✕</button>
+    </div>
+    <form id="tradeForm">
+      <div class="modal-body">
+        <input type="hidden" name="id" />
+        <div class="form-section">
+          <h4>Instrument & Analyse</h4>
+          <div class="form-grid">
+            <div class="field span-2"><label>Unternehmen / Basiswert</label><input name="name" required placeholder="z. B. SK hynix" /></div>
+            <div class="field"><label>TradingView-Symbol</label><input name="symbol" required placeholder="z. B. KRX:000660" /></div>
+            <div class="field"><label>Währung</label><input name="currency" placeholder="EUR / KRW / CNY" /></div>
+            <div class="field"><label>Instrument</label><select name="type"><option>Aktie</option><option>Knock-out</option></select></div>
+            <div class="field"><label>Richtung</label><select name="direction"><option>Neutral</option><option>Long</option><option>Short</option></select></div>
+            <div class="field"><label>Horizont</label><select name="horizon"><option>Kurzfristig</option><option>1–3 Monate</option><option>3–6 Monate</option><option>6–12 Monate</option><option>Langfristig</option></select></div>
+            <div class="field"><label>Status</label><select name="status"><option>Analyse übertragen</option><option>Beobachten</option><option>Limit aktiv</option><option>Position offen</option><option>Teilverkauf</option><option>Geschlossen</option><option>Verworfen</option></select></div>
+            <div class="field"><label>Analysedatum</label><input name="analysisDate" type="date" /></div>
+            <div class="field"><label>Nächste Überprüfung</label><input name="reviewDate" type="date" /></div>
+            <div class="field span-2"><label>Quelle / Chat-Referenz</label><input name="source" placeholder="z. B. SK Hynix Analyse 2026" /></div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <h4>Kursmarken & Orderplanung</h4>
+          <div class="form-grid">
+            <div class="field"><label>Referenzkurs (manuell)</label><input name="currentPrice" inputmode="decimal" placeholder="0,00" /></div>
+            <div class="field"><label>Entry von</label><input name="entryLow" inputmode="decimal" placeholder="0,00" /></div>
+            <div class="field"><label>Entry bis</label><input name="entryHigh" inputmode="decimal" placeholder="0,00" /></div>
+            <div class="field"><label>Kauf-/Verkaufslimit</label><input name="limitPrice" inputmode="decimal" placeholder="0,00" /></div>
+            <div class="field"><label>Stop / Invalidation</label><input name="stop" inputmode="decimal" placeholder="0,00" /></div>
+            <div class="field"><label>Ziel 1</label><input name="target1" inputmode="decimal" placeholder="0,00" /></div>
+            <div class="field"><label>Ziel 2</label><input name="target2" inputmode="decimal" placeholder="0,00" /></div>
+            <div class="field"><label>Ziel 3</label><input name="target3" inputmode="decimal" placeholder="0,00" /></div>
+            <div class="field"><label>Risikobudget</label><input name="riskBudget" inputmode="decimal" placeholder="z. B. 500" /></div>
+            <div class="field"><label>Geplante Stückzahl</label><input name="quantity" inputmode="decimal" placeholder="z. B. 25" /></div>
+            <div class="field"><label>Positionswert</label><input name="positionValue" inputmode="decimal" placeholder="optional" /></div>
+            <div class="field"><label>Order-ID / Broker-Notiz</label><input name="orderRef" placeholder="optional" /></div>
+          </div>
+        </div>
+
+        <div class="form-section" id="koSection">
+          <h4>Knock-out-Parameter</h4>
+          <div class="form-grid">
+            <div class="field"><label>WKN</label><input name="wkn" placeholder="optional" /></div>
+            <div class="field"><label>ISIN</label><input name="isin" placeholder="optional" /></div>
+            <div class="field"><label>Emittent</label><input name="issuer" placeholder="optional" /></div>
+            <div class="field"><label>Laufzeit</label><input name="expiry" type="date" /></div>
+            <div class="field"><label>KO-Schwelle</label><input name="koBarrier" inputmode="decimal" placeholder="0,00" /></div>
+            <div class="field"><label>Basispreis / Strike</label><input name="strike" inputmode="decimal" placeholder="0,00" /></div>
+            <div class="field"><label>Hebel</label><input name="leverage" inputmode="decimal" placeholder="z. B. 4,8" /></div>
+            <div class="field"><label>Bezugsverhältnis</label><input name="ratio" inputmode="decimal" placeholder="z. B. 0,1" /></div>
+            <div class="field"><label>KO-Produktkurs</label><input name="productPrice" inputmode="decimal" placeholder="0,00" /></div>
+            <div class="field"><label>Abstand zur KO-Schwelle %</label><input name="koDistance" inputmode="decimal" placeholder="optional" /></div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <h4>Investment Case</h4>
+          <div class="form-grid">
+            <div class="field span-4"><label>These, Trigger, Risiken und Bedingungen für den Trade</label><textarea name="notes" placeholder="Kernaussage der Analyse, Katalysatoren, technische Trigger, fundamentale Risiken, Invalidation …"></textarea></div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn danger hidden" id="deleteBtn">Löschen</button>
+        <div class="modal-foot-right">
+          <button type="button" class="btn" id="cancelBtn">Abbrechen</button>
+          <button type="submit" class="btn primary">Speichern</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+(() => {
+  const STORAGE_KEY = 'investition-dashboard-v1';
+  const today = new Date().toISOString().slice(0,10);
+  const seed = [
+    {
+      id: 'seed-sk-hynix', name: 'SK hynix', symbol: 'KRX:000660', currency: 'KRW', type: 'Aktie', direction: 'Neutral', horizon: 'Kurzfristig', status: 'Analyse übertragen',
+      analysisDate: '2026-07-14', reviewDate: '', source: 'SK Hynix Analyse 2026', notes: 'Analysewerte aus dem bestehenden Chat hier eintragen. Keine Zielmarken wurden automatisch erfunden.'
+    },
+    {
+      id: 'seed-volkswagen', name: 'Volkswagen Vz.', symbol: 'XETR:VOW3', currency: 'EUR', type: 'Aktie', direction: 'Neutral', horizon: '3–6 Monate', status: 'Analyse übertragen',
+      analysisDate: '2026-07-14', reviewDate: '', source: 'Volkswagen Aktie Analyse', notes: 'Entry-, Stop- und Zielzonen aus der Analyse übertragen.'
+    },
+    {
+      id: 'seed-akzo', name: 'Akzo Nobel', symbol: 'EURONEXT:AKZA', currency: 'EUR', type: 'Aktie', direction: 'Neutral', horizon: '3–6 Monate', status: 'Analyse übertragen',
+      analysisDate: '2026-07-13', reviewDate: '', source: 'Aktienanalyse Akzo Nobel', notes: 'Entry-, Stop- und Zielzonen aus der Analyse übertragen.'
+    },
+    {
+      id: 'seed-catl', name: 'CATL', symbol: 'SZSE:300750', currency: 'CNY', type: 'Aktie', direction: 'Neutral', horizon: '3–6 Monate', status: 'Analyse übertragen',
+      analysisDate: '2026-07-13', reviewDate: '', source: 'CATL Analyse', notes: 'Entry-, Stop- und Zielzonen aus der Analyse übertragen.'
+    }
+  ];
+
+  const $ = (q, el=document) => el.querySelector(q);
+  const $$ = (q, el=document) => [...el.querySelectorAll(q)];
+  const els = {
+    tickerHost: $('#tickerHost'), chartHost: $('#chartHost'), chartCaption: $('#chartCaption'), symbolSelect: $('#symbolSelect'), setupPanel: $('#setupPanel'), setupStatusChip: $('#setupStatusChip'),
+    tradeRows: $('#tradeRows'), rowCountChip: $('#rowCountChip'), searchInput: $('#searchInput'), typeFilter: $('#typeFilter'), directionFilter: $('#directionFilter'), statusFilter: $('#statusFilter'),
+    modal: $('#modalBackdrop'), form: $('#tradeForm'), modalTitle: $('#modalTitle'), deleteBtn: $('#deleteBtn'), importFile: $('#importFile'), koSection: $('#koSection')
+  };
+
+  let trades = load();
+  let selectedId = trades[0]?.id || null;
+
+  function load() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch (e) { console.warn('Lokale Daten konnten nicht gelesen werden.', e); }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(seed));
+    return seed;
+  }
+  function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(trades)); }
+  function uid() { return crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random(); }
+  function num(v) {
+    if (v === null || v === undefined || v === '') return null;
+    let s = String(v).trim().replace(/\s/g, '');
+    const dots = (s.match(/\./g) || []).length;
+    const commas = (s.match(/,/g) || []).length;
+    if (dots && commas) {
+      if (s.lastIndexOf(',') > s.lastIndexOf('.')) s = s.replace(/\./g, '').replace(',', '.');
+      else s = s.replace(/,/g, '');
+    } else if (commas) {
+      if (commas > 1) { const last = s.lastIndexOf(','); s = s.slice(0,last).replace(/,/g,'') + '.' + s.slice(last+1); }
+      else s = s.replace(',', '.');
+    } else if (dots > 1) {
+      const last = s.lastIndexOf('.');
+      const groups = s.split('.');
+      s = groups.slice(1).every(g => g.length === 3) ? groups.join('') : s.slice(0,last).replace(/\./g,'') + '.' + s.slice(last+1);
+    }
+    const n = Number(s);
+    return Number.isFinite(n) ? n : null;
+  }
+  function displayNum(v, currency='', max=2) {
+    const n = num(v); if (n === null) return '—';
+    return new Intl.NumberFormat('de-DE', { maximumFractionDigits: max }).format(n) + (currency ? ' ' + currency : '');
+  }
+  function displayDate(v) {
+    if (!v) return '—';
+    const d = new Date(v + 'T12:00:00');
+    return Number.isNaN(d.getTime()) ? v : new Intl.DateTimeFormat('de-DE').format(d);
+  }
+  function escapeHtml(s='') { return String(s).replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
+  function midpoint(t) {
+    const a = num(t.entryLow), b = num(t.entryHigh), l = num(t.limitPrice);
+    if (a !== null && b !== null) return (a+b)/2;
+    return a ?? b ?? l;
+  }
+  function rr(t) {
+    const e = midpoint(t), s = num(t.stop), target = num(t.target1);
+    if ([e,s,target].some(x => x === null)) return null;
+    const risk = Math.abs(e-s), reward = Math.abs(target-e);
+    return risk > 0 ? reward/risk : null;
+  }
+  function chipClass(value) {
+    if (['Long','Position offen','Teilverkauf'].includes(value)) return 'good';
+    if (['Short','Verworfen'].includes(value)) return 'bad';
+    if (['Limit aktiv','Beobachten','Analyse übertragen'].includes(value)) return 'warn';
+    return 'neutral';
+  }
+  function filteredTrades() {
+    const q = els.searchInput.value.trim().toLowerCase();
+    return trades.filter(t => {
+      const hay = [t.name,t.symbol,t.wkn,t.isin,t.notes,t.source,t.issuer].join(' ').toLowerCase();
+      return (!q || hay.includes(q)) && (!els.typeFilter.value || t.type === els.typeFilter.value) && (!els.directionFilter.value || t.direction === els.directionFilter.value) && (!els.statusFilter.value || t.status === els.statusFilter.value);
+    });
+  }
+
+  function initTicker() {
+    els.tickerHost.innerHTML = `
+      <div class="tradingview-widget-container">
+        <div class="tradingview-widget-container__widget"></div>
+      </div>`;
+    const s = document.createElement('script');
+    s.src = 'https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js';
+    s.async = true;
+    s.textContent = JSON.stringify({
+      symbols: [
+        {proName:'KRX:000660', title:'SK hynix'}, {proName:'XETR:VOW3', title:'Volkswagen Vz.'}, {proName:'EURONEXT:AKZA', title:'Akzo Nobel'}, {proName:'SZSE:300750', title:'CATL'},
+        {proName:'FOREXCOM:SPXUSD', title:'S&P 500'}, {proName:'FOREXCOM:NSXUSD', title:'Nasdaq 100'}, {proName:'TVC:SOX', title:'Semiconductor Index'}, {proName:'FX:EURUSD', title:'EUR/USD'}
+      ], showSymbolLogo:true, isTransparent:true, displayMode:'adaptive', colorTheme:'dark', locale:'de'
+    });
+    $('.tradingview-widget-container', els.tickerHost).appendChild(s);
+  }
+
+  function renderSymbolSelect() {
+    const unique = [];
+    const seen = new Set();
+    trades.forEach(t => { if (t.symbol && !seen.has(t.symbol)) { seen.add(t.symbol); unique.push(t); } });
+    els.symbolSelect.innerHTML = unique.length ? unique.map(t => `<option value="${escapeHtml(t.id)}">${escapeHtml(t.name)} · ${escapeHtml(t.symbol)}</option>`).join('') : '<option>Keine Instrumente</option>';
+    if (selectedId && trades.some(t => t.id === selectedId)) els.symbolSelect.value = selectedId;
+  }
+
+  function renderChart() {
+    const t = trades.find(x => x.id === selectedId) || trades[0];
+    if (!t?.symbol) {
+      els.chartHost.innerHTML = '<div class="chart-placeholder">Noch kein TradingView-Symbol hinterlegt.</div>';
+      return;
+    }
+    els.chartCaption.textContent = `${t.name} · ${t.symbol} · ${t.horizon || 'Horizont offen'}`;
+    els.chartHost.innerHTML = '<div class="tradingview-widget-container" style="height:100%;width:100%"><div class="tradingview-widget-container__widget" style="height:100%;width:100%"></div></div>';
+    const s = document.createElement('script');
+    s.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
+    s.async = true;
+    s.textContent = JSON.stringify({
+      autosize:true, symbol:t.symbol, interval:'D', timezone:'Europe/Berlin', theme:'dark', style:'1', locale:'de',
+      allow_symbol_change:true, calendar:false, details:true, hide_side_toolbar:false, hide_top_toolbar:false, hide_legend:false, hide_volume:false,
+      backgroundColor:'rgba(7,16,25,1)', gridColor:'rgba(36,56,74,.38)', withdateranges:true, save_image:false, support_host:'https://www.tradingview.com'
+    });
+    $('.tradingview-widget-container', els.chartHost).appendChild(s);
+  }
+
+  function ladder(t) {
+    const raw = [
+      ['Ziel 3', num(t.target3), '#4ad295'], ['Ziel 2', num(t.target2), '#4ad295'], ['Ziel 1', num(t.target1), '#4ad295'],
+      ['Referenz', num(t.currentPrice), '#63a9ff'], ['Limit', num(t.limitPrice), '#f5bd4f'],
+      ['Entry oben', num(t.entryHigh), '#50d2c2'], ['Entry unten', num(t.entryLow), '#50d2c2'],
+      ['Stop', num(t.stop), '#ff6b7a'], ['KO', num(t.koBarrier), '#ff6b7a']
+    ].filter(x => x[1] !== null);
+    if (raw.length < 2) return '<div class="ladder-empty">Mindestens zwei Kursmarken eintragen,<br>damit die Kursleiter skaliert werden kann.</div>';
+    const vals = raw.map(x => x[1]);
+    let min = Math.min(...vals), max = Math.max(...vals); const pad = Math.max((max-min)*.12, Math.abs(max)*.015 || 1); min -= pad; max += pad;
+    const items = raw.map(([label,value,color]) => {
+      const y = 100 - ((value-min)/(max-min)*100);
+      return `<div class="ladder-item" style="top:${y}%"><div class="ladder-label">${escapeHtml(label)}</div><div class="ladder-dot" style="background:${color}"></div><div class="ladder-line" style="background:${color}"></div><div class="ladder-value" style="color:${color}">${displayNum(value,t.currency)}</div></div>`;
+    }).join('');
+    return `<div class="ladder"><div class="ladder-axis"></div><div class="ladder-tick" style="top:25%"></div><div class="ladder-tick" style="top:50%"></div><div class="ladder-tick" style="top:75%"></div>${items}</div>`;
+  }
+
+  function renderSetup() {
+    const t = trades.find(x => x.id === selectedId);
+    if (!t) {
+      els.setupStatusChip.className = 'chip neutral'; els.setupStatusChip.textContent = 'Kein Plan';
+      els.setupPanel.innerHTML = '<div class="ladder-empty">Lege einen Trade-Plan an oder importiere vorhandene Daten.</div>';
+      return;
+    }
+    els.setupStatusChip.className = `chip ${chipClass(t.status)}`; els.setupStatusChip.textContent = t.status || 'Offen';
+    const entryText = [t.entryLow,t.entryHigh].filter(Boolean).length ? `${displayNum(t.entryLow,t.currency)} – ${displayNum(t.entryHigh,t.currency)}` : displayNum(t.limitPrice,t.currency);
+    const r = rr(t);
+    const koMeta = t.type === 'Knock-out' ? `${t.wkn || t.isin || 'Kennung offen'}${t.leverage ? ' · Hebel '+displayNum(t.leverage,'',1) : ''}` : 'Direktinvestment';
+    els.setupPanel.innerHTML = `
+      <div class="setup-title-row">
+        <div><div class="setup-name">${escapeHtml(t.name)}</div><div class="setup-meta">${escapeHtml(t.symbol)} · ${escapeHtml(t.type)} · ${escapeHtml(t.direction)} · ${escapeHtml(t.horizon || '')}</div></div>
+        <span class="chip ${chipClass(t.direction)}">${escapeHtml(t.direction || 'Neutral')}</span>
+      </div>
+      <div class="setup-grid">
+        <div class="metric"><div class="m-label">Entry / Limit</div><div class="m-value">${entryText}</div><div class="m-sub">geplante Ausführung</div></div>
+        <div class="metric"><div class="m-label">Stop / Invalidation</div><div class="m-value">${displayNum(t.stop,t.currency)}</div><div class="m-sub">maximale These-Grenze</div></div>
+        <div class="metric"><div class="m-label">Ziele</div><div class="m-value">${displayNum(t.target1,t.currency)} / ${displayNum(t.target2,t.currency)}</div><div class="m-sub">Teilgewinn / Hauptziel</div></div>
+        <div class="metric"><div class="m-label">Chance/Risiko</div><div class="m-value">${r === null ? '—' : r.toFixed(2)}</div><div class="m-sub">auf Ziel 1 gerechnet</div></div>
+        <div class="metric"><div class="m-label">Produkt</div><div class="m-value">${escapeHtml(koMeta)}</div><div class="m-sub">${t.type === 'Knock-out' ? 'KO '+displayNum(t.koBarrier,t.currency) : 'Aktie'}</div></div>
+        <div class="metric"><div class="m-label">Risikobudget</div><div class="m-value">${displayNum(t.riskBudget,t.currency)}</div><div class="m-sub">Stückzahl ${displayNum(t.quantity,'',2)}</div></div>
+      </div>
+      <div class="ladder-wrap"><div class="ladder-head"><span>Kursleiter</span><span>nicht automatisch mit Chart synchronisiert</span></div>${ladder(t)}</div>
+      <div class="notes ${t.notes ? '' : 'muted'}">${escapeHtml(t.notes || 'Noch keine Investment-These hinterlegt.')}</div>
+      <div class="setup-actions"><button class="btn small primary" data-action="edit">Bearbeiten</button><button class="btn small" data-action="duplicate">Duplizieren</button></div>`;
+    $('[data-action="edit"]', els.setupPanel).onclick = () => openModal(t);
+    $('[data-action="duplicate"]', els.setupPanel).onclick = () => duplicateTrade(t);
+  }
+
+  function renderTable() {
+    const rows = filteredTrades();
+    els.rowCountChip.textContent = `${rows.length} ${rows.length === 1 ? 'Plan' : 'Pläne'}`;
+    if (!rows.length) { els.tradeRows.innerHTML = '<tr><td colspan="10" class="empty-table">Keine passenden Trade-Pläne gefunden.</td></tr>'; return; }
+    els.tradeRows.innerHTML = rows.map(t => {
+      const r = rr(t); const selected = t.id === selectedId ? 'selected' : '';
+      const entry = (t.entryLow || t.entryHigh) ? `${displayNum(t.entryLow,t.currency)} – ${displayNum(t.entryHigh,t.currency)}` : '—';
+      const ko = t.type === 'Knock-out' ? `${displayNum(t.koBarrier,t.currency)}${t.leverage ? '<div class="cell-sub">Hebel '+displayNum(t.leverage,'',1)+'</div>' : ''}` : '—';
+      return `<tr class="${selected}" data-id="${escapeHtml(t.id)}">
+        <td><strong>${escapeHtml(t.name)}</strong><div class="cell-sub">${escapeHtml(t.symbol)}${t.wkn ? ' · '+escapeHtml(t.wkn) : ''}</div></td>
+        <td><span class="chip ${chipClass(t.direction)}">${escapeHtml(t.direction)}</span><div class="cell-sub">${escapeHtml(t.type)}</div></td>
+        <td><span class="chip ${chipClass(t.status)}">${escapeHtml(t.status)}</span></td>
+        <td class="num">${entry}</td><td class="num">${displayNum(t.limitPrice,t.currency)}</td><td class="num">${displayNum(t.stop,t.currency)}</td>
+        <td class="num">${displayNum(t.target1,t.currency)} / ${displayNum(t.target2,t.currency)}</td><td class="num">${ko}</td>
+        <td class="num">${r === null ? '—' : r.toFixed(2)}</td><td>${displayDate(t.reviewDate)}<div class="cell-sub">Analyse ${displayDate(t.analysisDate)}</div></td>
+      </tr>`;
+    }).join('');
+    $$('tbody tr[data-id]', els.tradeRows).forEach(row => row.onclick = () => selectTrade(row.dataset.id));
+  }
+
+  function renderKpis() {
+    const list = filteredTrades();
+    const active = list.filter(t => ['Limit aktiv','Position offen','Teilverkauf'].includes(t.status));
+    const longs = list.filter(t => t.direction === 'Long').length, shorts = list.filter(t => t.direction === 'Short').length;
+    const rrs = list.map(rr).filter(x => x !== null);
+    const risk = active.reduce((sum,t) => sum + (num(t.riskBudget) || 0), 0);
+    const currencies = [...new Set(active.filter(t=>num(t.riskBudget)!==null).map(t=>t.currency).filter(Boolean))];
+    const upcoming = list.filter(t => t.reviewDate).sort((a,b) => a.reviewDate.localeCompare(b.reviewDate))[0];
+    $('#kpiActive').textContent = active.length;
+    $('#kpiActiveSub').textContent = active.length ? `${active.filter(t=>t.status==='Position offen').length} Positionen offen` : 'keine aktiven Positionen';
+    $('#kpiDirection').textContent = `${longs} / ${shorts}`;
+    $('#kpiRR').textContent = rrs.length ? (rrs.reduce((a,b)=>a+b,0)/rrs.length).toFixed(2) : '—';
+    $('#kpiRisk').textContent = risk ? displayNum(risk, currencies.length===1 ? currencies[0] : '') : '—';
+    $('#kpiReview').textContent = upcoming ? displayDate(upcoming.reviewDate) : '—';
+    $('#kpiReviewSub').textContent = upcoming ? upcoming.name : 'kein Termin hinterlegt';
+  }
+
+  function renderAll() { renderSymbolSelect(); renderChart(); renderSetup(); renderTable(); renderKpis(); }
+  function selectTrade(id) { selectedId = id; renderAll(); window.scrollTo({top:0, behavior:'smooth'}); }
+
+  function openModal(t=null) {
+    els.form.reset();
+    const data = t || { id:'', type:'Aktie', direction:'Neutral', horizon:'Kurzfristig', status:'Analyse übertragen', analysisDate:today };
+    Object.entries(data).forEach(([k,v]) => { const f = els.form.elements[k]; if (f && v !== undefined && v !== null) f.value = v; });
+    els.modalTitle.textContent = t ? `Trade-Plan bearbeiten · ${t.name}` : 'Neuen Trade-Plan anlegen';
+    els.deleteBtn.classList.toggle('hidden', !t);
+    toggleKo(); els.modal.classList.add('open');
+  }
+  function closeModal() { els.modal.classList.remove('open'); }
+  function toggleKo() { els.koSection.classList.toggle('hidden', els.form.elements.type.value !== 'Knock-out'); }
+  function duplicateTrade(t) { const c = {...t, id:uid(), name:t.name+' · Kopie', status:'Beobachten'}; trades.unshift(c); selectedId=c.id; save(); renderAll(); }
+  function deleteSelected() {
+    const id = els.form.elements.id.value; if (!id) return;
+    if (!confirm('Diesen Trade-Plan wirklich löschen?')) return;
+    trades = trades.filter(t => t.id !== id); selectedId = trades[0]?.id || null; save(); closeModal(); renderAll();
+  }
+
+  els.form.addEventListener('submit', e => {
+    e.preventDefault(); const fd = new FormData(els.form); const data = Object.fromEntries(fd.entries());
+    data.id = data.id || uid();
+    const idx = trades.findIndex(t => t.id === data.id);
+    if (idx >= 0) trades[idx] = data; else trades.unshift(data);
+    selectedId = data.id; save(); closeModal(); renderAll();
+  });
+  els.form.elements.type.addEventListener('change', toggleKo);
+  $('#newBtn').onclick = () => openModal();
+  $('#closeModalBtn').onclick = closeModal; $('#cancelBtn').onclick = closeModal; els.deleteBtn.onclick = deleteSelected;
+  els.modal.addEventListener('click', e => { if (e.target === els.modal) closeModal(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+  els.symbolSelect.addEventListener('change', () => { selectedId = els.symbolSelect.value; renderAll(); });
+  [els.searchInput,els.typeFilter,els.directionFilter,els.statusFilter].forEach(el => el.addEventListener('input', () => { renderTable(); renderKpis(); }));
+
+  $('#exportBtn').onclick = () => {
+    const blob = new Blob([JSON.stringify({version:1, exportedAt:new Date().toISOString(), trades}, null, 2)], {type:'application/json'});
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `investition-dashboard-${today}.json`; a.click(); URL.revokeObjectURL(a.href);
+  };
+  $('#importBtn').onclick = () => els.importFile.click();
+  els.importFile.addEventListener('change', async () => {
+    const file = els.importFile.files[0]; if (!file) return;
+    try {
+      const parsed = JSON.parse(await file.text()); const incoming = Array.isArray(parsed) ? parsed : parsed.trades;
+      if (!Array.isArray(incoming)) throw new Error('Kein gültiger Trade-Datensatz.');
+      trades = incoming.map(t => ({...t, id:t.id || uid()})); selectedId = trades[0]?.id || null; save(); renderAll();
+    } catch(e) { alert('Import fehlgeschlagen: '+e.message); }
+    els.importFile.value = '';
+  });
+
+  initTicker(); renderAll();
+})();
+</script>
+</body>
+</html>
