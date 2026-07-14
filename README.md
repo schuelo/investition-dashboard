@@ -1,31 +1,42 @@
-# Investition Dashboard – GitHub Pages
+# Investition Dashboard – korrigierte GitHub-Pages-Version
 
-## Dateien für das Repository
+## Dateien direkt in die oberste Ebene des Repositorys hochladen
 
-- `index.html` – vollständiges Dashboard mit Supabase-Cloud und Telegram-Verknüpfung
-- `.nojekyll` – verhindert eine unnötige Jekyll-Verarbeitung
-- `startdaten.json` – optionale Sicherung der Startdatensätze zum Import
+- `index.html`
+- `app.js`
+- `supabase.js`
+- `service-worker.js`
+- `reset.html`
+- `startdaten.json`
+- `.nojekyll`
+
+Die Supabase-Browserbibliothek liegt nun lokal als `supabase.js` im Repository. Dadurch blockiert ein Ausfall oder Content-Blocker für jsDelivr nicht mehr das gesamte Dashboard.
 
 ## Upload
 
-Lade alle drei Dateien direkt in die oberste Ebene des Repositorys `investition-dashboard` hoch. Die bisherige `index.html` muss ersetzt werden.
+1. Repository `schuelo/investition-dashboard` öffnen.
+2. `Add file` → `Upload files`.
+3. Alle oben genannten Dateien hochladen und vorhandene Dateien ersetzen.
+4. `Commit changes`.
+5. Unter `Settings` → `Pages` prüfen: Branch `main`, Ordner `/(root)`.
 
-GitHub Pages:
-- Source: Deploy from a branch
-- Branch: main
-- Folder: /(root)
+## Einmaliger Cache-Reset auf dem iPhone
 
-URL:
-https://schuelo.github.io/investition-dashboard/
+Nach dem Upload zuerst öffnen:
+
+`https://schuelo.github.io/investition-dashboard/reset.html`
+
+Dann `Jetzt zurücksetzen` drücken. Danach wird das Dashboard mit der aktuellen Version geöffnet.
+
+Die Reset-Seite löscht keine Trade-Pläne aus `localStorage`; sie entfernt nur alte Service Worker und Cache-Dateien.
 
 ## Sicherheit
 
-Der Supabase Publishable Key darf im Browsercode stehen, wenn Row Level Security aktiv ist. Nicht nach GitHub gehören:
+Nicht in GitHub speichern:
+
 - Telegram Bot Token
 - EODHD API Token
 - CRON Secret
 - Supabase Secret-/Service-Role-Key
 
-## Startdaten
-
-Die HTML-Datei enthält Platzhalter für K+S, SK hynix, Volkswagen Vz., Akzo Nobel und CATL. Konkrete Entry-, Stop- und Zielmarken sind absichtlich nicht erfunden. Nach der Anmeldung können die lokalen Startdatensätze über „Lokale Pläne in Cloud übernehmen“ in Supabase gespeichert werden.
+Der Supabase Publishable Key ist für Browseranwendungen bestimmt; Row Level Security muss aktiv bleiben.

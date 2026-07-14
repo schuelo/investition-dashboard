@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Dashboard zurücksetzen</title>
+  <style>
+    body{margin:0;background:#07111f;color:#eef4ff;font:16px/1.5 system-ui,-apple-system,sans-serif;display:grid;place-items:center;min-height:100vh;padding:24px}
+    main{max-width:560px;background:#101d2f;border:1px solid #29405f;border-radius:18px;padding:26px;box-shadow:0 18px 50px #0006}
+    h1{font-size:24px;margin-top:0}p{color:#b8c7dc}button,a{display:inline-block;border:0;border-radius:10px;padding:12px 16px;font-weight:700;text-decoration:none;cursor:pointer}button{background:#45d2a0;color:#052017}a{background:#203653;color:#fff;margin-left:8px}.ok{color:#60e2ad}.bad{color:#ff8c8c}
+  </style>
+</head>
+<body>
+<main>
+  <h1>Dashboard-Cache zurücksetzen</h1>
+  <p>Diese Seite löscht nur Service-Worker-Caches und Registrierungen. Deine lokal gespeicherten Trade-Pläne im Browser werden nicht gelöscht.</p>
+  <p id="status">Bereit.</p>
+  <button id="resetBtn">Jetzt zurücksetzen</button>
+  <a href="./?v=9">Dashboard öffnen</a>
+</main>
+<script>
+async function resetDashboard(){
+  const status=document.getElementById('status');
+  try{
+    status.textContent='Cache wird zurückgesetzt …';
+    if('serviceWorker' in navigator){
+      const regs=await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r=>r.unregister()));
+    }
+    if('caches' in window){
+      const names=await caches.keys();
+      await Promise.all(names.map(n=>caches.delete(n)));
+    }
+    status.className='ok';
+    status.textContent='Erledigt. Das Dashboard wird neu geöffnet.';
+    setTimeout(()=>location.replace('./?v=9&reset=1'),700);
+  }catch(e){
+    status.className='bad';
+    status.textContent='Fehler: '+(e.message||String(e));
+  }
+}
+document.getElementById('resetBtn').addEventListener('click',resetDashboard);
+</script>
+</body>
+</html>
