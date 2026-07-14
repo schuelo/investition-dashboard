@@ -1,0 +1,77 @@
+{
+  "version": 2,
+  "description": "Startdatensätze für das Investition-Dashboard. Konkrete Entry-/Stop-/Zielmarken sind absichtlich leer.",
+  "trades": [
+    {
+      "name": "K+S",
+      "symbol": "XETR:SDF",
+      "marketSymbol": "SDF.XETRA",
+      "currency": "EUR",
+      "type": "Aktie",
+      "direction": "Neutral",
+      "horizon": "6–12 Monate",
+      "status": "Analyse übertragen",
+      "analysisDate": "2026-07-14",
+      "source": "K+S Aktienanalyse Juli 2026",
+      "monitoringEnabled": true,
+      "alertKoDistancePct": "10",
+      "notes": "Entry-, Stop- und Zielzonen aus der K+S-Analyse eintragen."
+    },
+    {
+      "name": "SK hynix",
+      "symbol": "KRX:000660",
+      "marketSymbol": "000660.KO",
+      "currency": "KRW",
+      "type": "Aktie",
+      "direction": "Neutral",
+      "horizon": "Kurzfristig",
+      "status": "Analyse übertragen",
+      "analysisDate": "2026-07-14",
+      "source": "SK Hynix Analyse 2026",
+      "monitoringEnabled": true,
+      "alertKoDistancePct": "10"
+    },
+    {
+      "name": "Volkswagen Vz.",
+      "symbol": "XETR:VOW3",
+      "marketSymbol": "VOW3.XETRA",
+      "currency": "EUR",
+      "type": "Aktie",
+      "direction": "Neutral",
+      "horizon": "3–6 Monate",
+      "status": "Analyse übertragen",
+      "analysisDate": "2026-07-14",
+      "source": "Volkswagen Aktie Analyse",
+      "monitoringEnabled": true,
+      "alertKoDistancePct": "10"
+    },
+    {
+      "name": "Akzo Nobel",
+      "symbol": "EURONEXT:AKZA",
+      "marketSymbol": "AKZA.AS",
+      "currency": "EUR",
+      "type": "Aktie",
+      "direction": "Neutral",
+      "horizon": "3–6 Monate",
+      "status": "Analyse übertragen",
+      "analysisDate": "2026-07-13",
+      "source": "Aktienanalyse Akzo Nobel",
+      "monitoringEnabled": true,
+      "alertKoDistancePct": "10"
+    },
+    {
+      "name": "CATL",
+      "symbol": "SZSE:300750",
+      "marketSymbol": "300750.SHE",
+      "currency": "CNY",
+      "type": "Aktie",
+      "direction": "Neutral",
+      "horizon": "3–6 Monate",
+      "status": "Analyse übertragen",
+      "analysisDate": "2026-07-13",
+      "source": "CATL Analyse",
+      "monitoringEnabled": true,
+      "alertKoDistancePct": "10"
+    }
+  ]
+}

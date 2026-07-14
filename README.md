@@ -1,24 +1,31 @@
-# Investition – Live Web Dashboard
+# Investition Dashboard – GitHub Pages
 
-## Start
+## Dateien für das Repository
 
-1. `index.html` im Browser öffnen.
-2. Für zuverlässigeres Laden der Live-Widgets optional einen lokalen Webserver starten:
-   - Windows: `start-dashboard.bat`
-   - macOS/Linux: `./start-dashboard.sh`
-3. Danach `http://localhost:8080` öffnen.
+- `index.html` – vollständiges Dashboard mit Supabase-Cloud und Telegram-Verknüpfung
+- `.nojekyll` – verhindert eine unnötige Jekyll-Verarbeitung
+- `startdaten.json` – optionale Sicherung der Startdatensätze zum Import
 
-## Funktionen
+## Upload
 
-- Live-Ticker und interaktive Charts über TradingView
-- Trade-Pläne für Aktien sowie Long-/Short-Knock-outs
-- Entry-Zonen, Limits, Stop/Invalidation, drei Kursziele
-- KO-Schwelle, Basispreis, Hebel, Bezugsverhältnis, WKN/ISIN
-- Status- und Filterlogik
-- Kursleiter zur visuellen Darstellung der Analysemarken
-- Lokale Speicherung im Browser (`localStorage`)
-- JSON-Export und -Import zur Datensicherung
+Lade alle drei Dateien direkt in die oberste Ebene des Repositorys `investition-dashboard` hoch. Die bisherige `index.html` muss ersetzt werden.
 
-## Wichtiger Hinweis
+GitHub Pages:
+- Source: Deploy from a branch
+- Branch: main
+- Folder: /(root)
 
-Die individuellen Analysemarken sind manuell gepflegte Planungsdaten. Die kostenlose TradingView-Einbettung liefert Marktansichten; je nach Börse können Kursdaten verzögert sein. Das Dashboard führt keine Orders aus und ist nicht mit einem Broker verbunden.
+URL:
+https://schuelo.github.io/investition-dashboard/
+
+## Sicherheit
+
+Der Supabase Publishable Key darf im Browsercode stehen, wenn Row Level Security aktiv ist. Nicht nach GitHub gehören:
+- Telegram Bot Token
+- EODHD API Token
+- CRON Secret
+- Supabase Secret-/Service-Role-Key
+
+## Startdaten
+
+Die HTML-Datei enthält Platzhalter für K+S, SK hynix, Volkswagen Vz., Akzo Nobel und CATL. Konkrete Entry-, Stop- und Zielmarken sind absichtlich nicht erfunden. Nach der Anmeldung können die lokalen Startdatensätze über „Lokale Pläne in Cloud übernehmen“ in Supabase gespeichert werden.

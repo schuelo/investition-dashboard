@@ -456,10 +456,11 @@
   const APP_URL = 'https://schuelo.github.io/investition-dashboard/';
   const today = new Date().toISOString().slice(0,10);
   const seed = [
-    { id: crypto.randomUUID(), name:'SK hynix', symbol:'KRX:000660', marketSymbol:'000660:KRX', currency:'KRW', type:'Aktie', direction:'Neutral', horizon:'Kurzfristig', status:'Analyse übertragen', analysisDate:'2026-07-14', source:'SK Hynix Analyse 2026', monitoringEnabled:true, alertKoDistancePct:'10', notes:'Analysewerte aus dem bestehenden Chat hier eintragen. Keine Zielmarken wurden automatisch erfunden.' },
-    { id: crypto.randomUUID(), name:'Volkswagen Vz.', symbol:'XETR:VOW3', marketSymbol:'VOW3:XETR', currency:'EUR', type:'Aktie', direction:'Neutral', horizon:'3–6 Monate', status:'Analyse übertragen', analysisDate:'2026-07-14', source:'Volkswagen Aktie Analyse', monitoringEnabled:true, alertKoDistancePct:'10', notes:'Entry-, Stop- und Zielzonen aus der Analyse übertragen.' },
-    { id: crypto.randomUUID(), name:'Akzo Nobel', symbol:'EURONEXT:AKZA', marketSymbol:'AKZA:XAMS', currency:'EUR', type:'Aktie', direction:'Neutral', horizon:'3–6 Monate', status:'Analyse übertragen', analysisDate:'2026-07-13', source:'Aktienanalyse Akzo Nobel', monitoringEnabled:true, alertKoDistancePct:'10', notes:'Entry-, Stop- und Zielzonen aus der Analyse übertragen.' },
-    { id: crypto.randomUUID(), name:'CATL', symbol:'SZSE:300750', marketSymbol:'300750:SZSE', currency:'CNY', type:'Aktie', direction:'Neutral', horizon:'3–6 Monate', status:'Analyse übertragen', analysisDate:'2026-07-13', source:'CATL Analyse', monitoringEnabled:true, alertKoDistancePct:'10', notes:'Entry-, Stop- und Zielzonen aus der Analyse übertragen.' }
+    { id: crypto.randomUUID(), name:'K+S', symbol:'XETR:SDF', marketSymbol:'SDF.XETRA', currency:'EUR', type:'Aktie', direction:'Neutral', horizon:'6–12 Monate', status:'Analyse übertragen', analysisDate:'2026-07-14', source:'K+S Aktienanalyse Juli 2026', monitoringEnabled:true, alertKoDistancePct:'10', notes:'Entry-, Stop- und Zielzonen aus der K+S-Analyse eintragen. Die Marken werden nicht automatisch erfunden.' },
+    { id: crypto.randomUUID(), name:'SK hynix', symbol:'KRX:000660', marketSymbol:'000660.KO', currency:'KRW', type:'Aktie', direction:'Neutral', horizon:'Kurzfristig', status:'Analyse übertragen', analysisDate:'2026-07-14', source:'SK Hynix Analyse 2026', monitoringEnabled:true, alertKoDistancePct:'10', notes:'Analysewerte aus dem bestehenden Chat hier eintragen. Keine Zielmarken wurden automatisch erfunden.' },
+    { id: crypto.randomUUID(), name:'Volkswagen Vz.', symbol:'XETR:VOW3', marketSymbol:'VOW3.XETRA', currency:'EUR', type:'Aktie', direction:'Neutral', horizon:'3–6 Monate', status:'Analyse übertragen', analysisDate:'2026-07-14', source:'Volkswagen Aktie Analyse', monitoringEnabled:true, alertKoDistancePct:'10', notes:'Entry-, Stop- und Zielzonen aus der Analyse übertragen.' },
+    { id: crypto.randomUUID(), name:'Akzo Nobel', symbol:'EURONEXT:AKZA', marketSymbol:'AKZA.AS', currency:'EUR', type:'Aktie', direction:'Neutral', horizon:'3–6 Monate', status:'Analyse übertragen', analysisDate:'2026-07-13', source:'Aktienanalyse Akzo Nobel', monitoringEnabled:true, alertKoDistancePct:'10', notes:'Entry-, Stop- und Zielzonen aus der Analyse übertragen.' },
+    { id: crypto.randomUUID(), name:'CATL', symbol:'SZSE:300750', marketSymbol:'300750.SHE', currency:'CNY', type:'Aktie', direction:'Neutral', horizon:'3–6 Monate', status:'Analyse übertragen', analysisDate:'2026-07-13', source:'CATL Analyse', monitoringEnabled:true, alertKoDistancePct:'10', notes:'Entry-, Stop- und Zielzonen aus der Analyse übertragen.' }
   ];
 
   const $ = (q, el=document) => el.querySelector(q);
@@ -529,7 +530,7 @@
   function fromRow(r){return normalizeTrade({id:r.id,name:r.name,symbol:r.symbol,marketSymbol:r.market_symbol||'',currency:r.currency||'',type:r.instrument_type,direction:r.direction,horizon:r.horizon||'',status:r.status||'',analysisDate:r.analysis_date||'',reviewDate:r.review_date||'',source:r.source||'',notes:r.notes||'',currentPrice:r.last_price??r.reference_price??'',currentPriceAt:r.last_price_at||'',entryLow:r.entry_low??'',entryHigh:r.entry_high??'',limitPrice:r.limit_price??'',stop:r.stop_price??'',target1:r.target1??'',target2:r.target2??'',target3:r.target3??'',riskBudget:r.risk_budget??'',quantity:r.quantity??'',positionValue:r.position_value??'',orderRef:r.order_ref||'',wkn:r.wkn||'',isin:r.isin||'',issuer:r.issuer||'',expiry:r.expiry||'',koBarrier:r.ko_barrier??'',strike:r.strike_price??'',leverage:r.leverage??'',ratio:r.ratio??'',productPrice:r.product_price??'',koDistance:r.ko_distance_pct??'',monitoringEnabled:r.monitoring_enabled,alertEntry:r.alert_entry,alertLimit:r.alert_limit,alertStop:r.alert_stop,alertTarget1:r.alert_target1,alertTarget2:r.alert_target2,alertTarget3:r.alert_target3,alertKo:r.alert_ko,alertKoDistancePct:r.alert_ko_distance_pct??10});}
   async function upsertCloud(t,resetState=false){if(!session)return;setCloudState('syncing','Synchronisiert …');const {error}=await sb.from('trade_plans').upsert(toRow(t));if(error){setCloudState('error','Cloud-Fehler');showCloudMessage(error.message,false);return;}if(resetState)await sb.from('alert_state').delete().eq('trade_id',t.id);setCloudState('online','Cloud');}
   async function uploadAllLocal(){if(!session)return;setBusy(true);const rows=trades.map(toRow);const {error}=await sb.from('trade_plans').upsert(rows);setBusy(false);if(error)return showCloudMessage('Upload fehlgeschlagen: '+error.message,false);showCloudMessage(`${rows.length} Pläne wurden in die Cloud übernommen.`,true);await loadCloud();}
-  async function loadCloud(){if(!session)return;setCloudState('syncing','Lädt …');const {data,error}=await sb.from('trade_plans').select('*').order('updated_at',{ascending:false});if(error){setCloudState('error','Cloud-Fehler');showCloudMessage(error.message,false);return;}if(data?.length){trades=data.map(fromRow);selectedId=trades.some(t=>t.id===selectedId)?selectedId:trades[0]?.id||null;saveLocal();renderAll();}setCloudState('online','Cloud');await loadNotificationSettings();await loadSignals();}
+  async function loadCloud(){if(!session)return;setCloudState('syncing','Lädt …');const {data,error}=await sb.from('trade_plans').select('*').order('updated_at',{ascending:false});if(error){setCloudState('error','Cloud-Fehler');showCloudMessage(error.message,false);return;}if(data?.length){trades=data.map(fromRow);selectedId=trades.some(t=>t.id===selectedId)?selectedId:trades[0]?.id||null;saveLocal();renderAll();}else{showCloudMessage('Die Cloud ist noch leer. Deine lokalen Pläne bleiben sichtbar; über „Lokale Pläne in Cloud übernehmen“ kannst du sie hochladen.');}setCloudState('online','Cloud');await loadNotificationSettings();await loadSignals();}
   async function loadNotificationSettings(){if(!session)return;const {data}=await sb.from('notification_settings').select('*').maybeSingle();telegramLinkCode=data?.telegram_link_code||'';els.telegramCode.textContent=telegramLinkCode||'Noch kein Code';els.telegramStatus.textContent=data?.telegram_chat_id?`Verbunden · Chat-ID endet auf ${String(data.telegram_chat_id).slice(-4)}`:'Telegram noch nicht verbunden.';}
   async function loadSignals(){if(!session)return;const {data,error}=await sb.from('alert_events').select('event_type,price,level_value,message,created_at,trade_plans(name)').order('created_at',{ascending:false}).limit(20);if(error||!data?.length){els.signalList.innerHTML='<p>Noch keine Signale.</p>';return;}els.signalList.innerHTML=data.map(e=>`<div class="signal-item"><strong>${escapeHtml(e.trade_plans?.name||'Instrument')} · ${escapeHtml(e.event_type)}</strong><span>${displayDateTime(e.created_at)} · Kurs ${displayNum(e.price)}${e.level_value!==null?' · Marke '+displayNum(e.level_value):''}</span></div>`).join('');}
   function subscribeRealtime(){if(realtimeChannel)sb.removeChannel(realtimeChannel);if(!session)return;realtimeChannel=sb.channel('trade-plans-cloud').on('postgres_changes',{event:'*',schema:'public',table:'trade_plans',filter:`user_id=eq.${session.user.id}`},()=>loadCloud()).subscribe();}
@@ -541,107 +542,27 @@
   async function initCloud(){if(!sb){setCloudState('error','Cloud nicht geladen');return;}const {data}=await sb.auth.getSession();session=data.session;refreshAuthUi();if(session){subscribeRealtime();await loadCloud();}sb.auth.onAuthStateChange((_event,newSession)=>{session=newSession;refreshAuthUi();setTimeout(()=>{if(session){subscribeRealtime();loadCloud();}else if(realtimeChannel){sb.removeChannel(realtimeChannel);realtimeChannel=null;}},0);});}
   async function sendLoginLink(){const email=$('#loginEmail').value.trim();if(!email)return showCloudMessage('Bitte eine E-Mail-Adresse eingeben.',false);setBusy(true);const {error}=await sb.auth.signInWithOtp({email,options:{emailRedirectTo:APP_URL}});setBusy(false);showCloudMessage(error?'Anmeldelink konnte nicht gesendet werden: '+error.message:'Anmeldelink wurde gesendet. Öffne ihn auf dem gewünschten Gerät.',!error);}
   async function generateTelegramCode(){if(!session)return;telegramLinkCode='INV-'+Math.random().toString(36).slice(2,8).toUpperCase();const {error}=await sb.from('notification_settings').upsert({user_id:session.user.id,telegram_link_code:telegramLinkCode,telegram_enabled:true},{onConflict:'user_id'});if(error)return showCloudMessage('Code konnte nicht gespeichert werden: '+error.message,false);els.telegramCode.textContent=telegramLinkCode;showCloudMessage(`Sende jetzt /start ${telegramLinkCode} an deinen Telegram-Bot.`,true);}
-  async function connectTelegram() {
-
-  if (!telegramLinkCode) {
-
-    return showCloudMessage(
-
-      'Zuerst einen Einmalcode erzeugen.',
-
-      false
-
-    );
-
-  }
-
-  setBusy(true);
-
-  const { data, error } = await sb.functions.invoke(
-
-    'connect-telegram',
-
-    {
-
-      body: {
-
-        code: telegramLinkCode
-
-      }
-
-    }
-
-  );
-
-  setBusy(false);
-
-  if (error) {
-
-    let details = error.message || String(error);
-
-    try {
-
-      if (error.context instanceof Response) {
-
-        const response = error.context.clone();
-
-        const payload = await response.json();
-
-        details =
-
-          payload?.error ||
-
-          payload?.message ||
-
-          JSON.stringify(payload);
-
-      }
-
-    } catch {
-
-      try {
-
-        if (error.context instanceof Response) {
-
-          details =
-
-            await error.context.clone().text() ||
-
-            details;
-
+  async function connectTelegram(){
+    if(!telegramLinkCode)return showCloudMessage('Zuerst einen Einmalcode erzeugen.',false);
+    setBusy(true);
+    const {data,error}=await sb.functions.invoke('connect-telegram',{body:{code:telegramLinkCode}});
+    setBusy(false);
+    if(error){
+      let details=error.message||String(error);
+      try{
+        if(error.context instanceof Response){
+          const payload=await error.context.clone().json();
+          details=payload?.error||payload?.message||JSON.stringify(payload);
         }
-
-      } catch {
-
-        // Allgemeine Fehlermeldung beibehalten
-
+      }catch(_e){
+        try{if(error.context instanceof Response)details=await error.context.clone().text()||details;}catch(_ignored){}
       }
-
+      console.error('connect-telegram:',error);
+      return showCloudMessage('Verbindung fehlgeschlagen: '+details,false);
     }
-
-    showCloudMessage(
-
-      'Verbindung fehlgeschlagen: ' + details,
-
-      false
-
-    );
-
-    console.error('connect-telegram:', error);
-
-    return;
-
+    showCloudMessage(data?.message||'Telegram verbunden.',true);
+    await loadNotificationSettings();
   }
-
-  showCloudMessage(
-
-    data?.message || 'Telegram verbunden.',
-
-    true
-
-  );
-
- 
 
   $('#newBtn').onclick=()=>openModal();$('#closeModalBtn').onclick=closeModal;$('#cancelBtn').onclick=closeModal;els.deleteBtn.onclick=deleteSelected;els.modal.addEventListener('click',e=>{if(e.target===els.modal)closeModal();});document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();els.cloudModal.classList.remove('open');}});els.symbolSelect.addEventListener('change',()=>{selectedId=els.symbolSelect.value;renderAll();});[els.searchInput,els.typeFilter,els.directionFilter,els.statusFilter].forEach(el=>el.addEventListener('input',()=>{renderTable();renderKpis();}));
   $('#exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify({version:2,exportedAt:new Date().toISOString(),trades},null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`investition-dashboard-${today}.json`;a.click();URL.revokeObjectURL(a.href);};
