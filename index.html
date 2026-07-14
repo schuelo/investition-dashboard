@@ -541,7 +541,107 @@
   async function initCloud(){if(!sb){setCloudState('error','Cloud nicht geladen');return;}const {data}=await sb.auth.getSession();session=data.session;refreshAuthUi();if(session){subscribeRealtime();await loadCloud();}sb.auth.onAuthStateChange((_event,newSession)=>{session=newSession;refreshAuthUi();setTimeout(()=>{if(session){subscribeRealtime();loadCloud();}else if(realtimeChannel){sb.removeChannel(realtimeChannel);realtimeChannel=null;}},0);});}
   async function sendLoginLink(){const email=$('#loginEmail').value.trim();if(!email)return showCloudMessage('Bitte eine E-Mail-Adresse eingeben.',false);setBusy(true);const {error}=await sb.auth.signInWithOtp({email,options:{emailRedirectTo:APP_URL}});setBusy(false);showCloudMessage(error?'Anmeldelink konnte nicht gesendet werden: '+error.message:'Anmeldelink wurde gesendet. Öffne ihn auf dem gewünschten Gerät.',!error);}
   async function generateTelegramCode(){if(!session)return;telegramLinkCode='INV-'+Math.random().toString(36).slice(2,8).toUpperCase();const {error}=await sb.from('notification_settings').upsert({user_id:session.user.id,telegram_link_code:telegramLinkCode,telegram_enabled:true},{onConflict:'user_id'});if(error)return showCloudMessage('Code konnte nicht gespeichert werden: '+error.message,false);els.telegramCode.textContent=telegramLinkCode;showCloudMessage(`Sende jetzt /start ${telegramLinkCode} an deinen Telegram-Bot.`,true);}
-  async function connectTelegram(){if(!telegramLinkCode)return showCloudMessage('Zuerst einen Einmalcode erzeugen.',false);setBusy(true);const {data,error}=await sb.functions.invoke('connect-telegram',{body:{code:telegramLinkCode}});setBusy(false);if(error)return showCloudMessage('Verbindung fehlgeschlagen: '+(error.message||error),false);showCloudMessage(data?.message||'Telegram verbunden.',true);await loadNotificationSettings();}
+  async function connectTelegram() {
+
+  if (!telegramLinkCode) {
+
+    return showCloudMessage(
+
+      'Zuerst einen Einmalcode erzeugen.',
+
+      false
+
+    );
+
+  }
+
+  setBusy(true);
+
+  const { data, error } = await sb.functions.invoke(
+
+    'connect-telegram',
+
+    {
+
+      body: {
+
+        code: telegramLinkCode
+
+      }
+
+    }
+
+  );
+
+  setBusy(false);
+
+  if (error) {
+
+    let details = error.message || String(error);
+
+    try {
+
+      if (error.context instanceof Response) {
+
+        const response = error.context.clone();
+
+        const payload = await response.json();
+
+        details =
+
+          payload?.error ||
+
+          payload?.message ||
+
+          JSON.stringify(payload);
+
+      }
+
+    } catch {
+
+      try {
+
+        if (error.context instanceof Response) {
+
+          details =
+
+            await error.context.clone().text() ||
+
+            details;
+
+        }
+
+      } catch {
+
+        // Allgemeine Fehlermeldung beibehalten
+
+      }
+
+    }
+
+    showCloudMessage(
+
+      'Verbindung fehlgeschlagen: ' + details,
+
+      false
+
+    );
+
+    console.error('connect-telegram:', error);
+
+    return;
+
+  }
+
+  showCloudMessage(
+
+    data?.message || 'Telegram verbunden.',
+
+    true
+
+  );
+
+ 
 
   $('#newBtn').onclick=()=>openModal();$('#closeModalBtn').onclick=closeModal;$('#cancelBtn').onclick=closeModal;els.deleteBtn.onclick=deleteSelected;els.modal.addEventListener('click',e=>{if(e.target===els.modal)closeModal();});document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();els.cloudModal.classList.remove('open');}});els.symbolSelect.addEventListener('change',()=>{selectedId=els.symbolSelect.value;renderAll();});[els.searchInput,els.typeFilter,els.directionFilter,els.statusFilter].forEach(el=>el.addEventListener('input',()=>{renderTable();renderKpis();}));
   $('#exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify({version:2,exportedAt:new Date().toISOString(),trades},null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`investition-dashboard-${today}.json`;a.click();URL.revokeObjectURL(a.href);};
