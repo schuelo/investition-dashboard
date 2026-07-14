@@ -471,7 +471,7 @@
     cloudModal:$('#cloudModal'), cloudBtn:$('#cloudBtn'), cloudDot:$('#cloudDot'), cloudLabel:$('#cloudLabel'), cloudMessage:$('#cloudMessage'), loggedOutBox:$('#loggedOutBox'), loggedInBox:$('#loggedInBox'),
     telegramBox:$('#telegramBox'), signalsBox:$('#signalsBox'), telegramCode:$('#telegramCode'), telegramStatus:$('#telegramStatus'), signalList:$('#signalList'), userEmail:$('#userEmail')
   };
-  const sb = window.supabase?.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, { auth:{ persistSession:true, autoRefreshToken:true, detectSessionInUrl:true, flowType:'pkce' } });
+  const sb = window.supabase?.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, { auth:{ persistSession:true, autoRefreshToken:true, detectSessionInUrl:true, flowType:'implicit' } });
   let trades = loadLocal();
   let selectedId = trades[0]?.id || null;
   let session = null;
