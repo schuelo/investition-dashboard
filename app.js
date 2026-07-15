@@ -48,6 +48,13 @@
       { id: uuid(), name: "Akzo Nobel", symbol: "EURONEXT:AKZA", marketSymbol: "AKZA.AS", currency: "EUR", type: "Aktie", direction: "Neutral", horizon: "3\u20136 Monate", status: "Analyse \xFCbertragen", analysisDate: "2026-07-13", source: "Aktienanalyse Akzo Nobel", monitoringEnabled: true, alertKoDistancePct: "10", notes: "Entry-, Stop- und Zielzonen aus der Analyse \xFCbertragen." },
       { id: uuid(), name: "CATL", symbol: "SZSE:300750", marketSymbol: "300750.SHE", currency: "CNY", type: "Aktie", direction: "Neutral", horizon: "3\u20136 Monate", status: "Analyse \xFCbertragen", analysisDate: "2026-07-13", source: "CATL Analyse", monitoringEnabled: true, alertKoDistancePct: "10", notes: "Entry-, Stop- und Zielzonen aus der Analyse \xFCbertragen." }
     ];
+    const symbolPresets = {
+      ks: { name: "K+S", symbol: "XETR:SDF", marketSymbol: "SDF.XETRA", currency: "EUR" },
+      vw: { name: "Volkswagen Vz.", symbol: "XETR:VOW3", marketSymbol: "VOW3.XETRA", currency: "EUR" },
+      skhynix: { name: "SK hynix", symbol: "KRX:000660", marketSymbol: "000660.KO", currency: "KRW" },
+      akzo: { name: "Akzo Nobel", symbol: "EURONEXT:AKZA", marketSymbol: "AKZA.AS", currency: "EUR" },
+      catl: { name: "CATL", symbol: "SZSE:300750", marketSymbol: "300750.SHE", currency: "CNY" }
+    };
     const $ = (q, el = document) => el.querySelector(q);
     const $$ = (q, el = document) => [...el.querySelectorAll(q)];
     const els = {
@@ -81,7 +88,10 @@
       telegramCode: $("#telegramCode"),
       telegramStatus: $("#telegramStatus"),
       signalList: $("#signalList"),
-      userEmail: $("#userEmail")
+      userEmail: $("#userEmail"),
+      symbolPreset: $("#symbolPreset"),
+      chartSymbolPreview: $("#chartSymbolPreview"),
+      marketSymbolPreview: $("#marketSymbolPreview")
     };
     const sb = (_a = window.supabase) == null ? void 0 : _a.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: "implicit" } });
     let trades = loadLocal();
@@ -204,6 +214,7 @@
       const s = document.createElement("script");
       s.src = "https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js";
       s.async = true;
+      s.onerror = () => { els.tickerHost.innerHTML = '<div class="chart-placeholder">TradingView-Ticker konnte nicht geladen werden. Dashboard und Alarme funktionieren weiterhin.</div>'; };
       s.textContent = JSON.stringify({ symbols: [{ proName: "KRX:000660", title: "SK hynix" }, { proName: "XETR:VOW3", title: "Volkswagen Vz." }, { proName: "XETR:SDF", title: "K+S" }, { proName: "EURONEXT:AKZA", title: "Akzo Nobel" }, { proName: "SZSE:300750", title: "CATL" }, { proName: "FOREXCOM:SPXUSD", title: "S&P 500" }, { proName: "FOREXCOM:NSXUSD", title: "Nasdaq 100" }, { proName: "TVC:SOX", title: "Semiconductor Index" }, { proName: "FX:EURUSD", title: "EUR/USD" }], showSymbolLogo: true, isTransparent: true, displayMode: "adaptive", colorTheme: "dark", locale: "de" });
       $(".tradingview-widget-container", els.tickerHost).appendChild(s);
     }
@@ -229,6 +240,7 @@
       const s = document.createElement("script");
       s.src = "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
       s.async = true;
+      s.onerror = () => { els.chartHost.innerHTML = '<div class="chart-placeholder">TradingView-Chart konnte nicht geladen werden. Prüfe Internet- oder Inhaltsblocker.</div>'; };
       s.textContent = JSON.stringify({ autosize: true, symbol: t.symbol, interval: "D", timezone: "Europe/Berlin", theme: "dark", style: "1", locale: "de", allow_symbol_change: true, calendar: false, details: true, hide_side_toolbar: false, hide_top_toolbar: false, hide_legend: false, hide_volume: false, backgroundColor: "rgba(7,16,25,1)", gridColor: "rgba(36,56,74,.38)", withdateranges: true, save_image: false, support_host: "https://www.tradingview.com" });
       $(".tradingview-widget-container", els.chartHost).appendChild(s);
     }
@@ -265,7 +277,7 @@
       const entryText = [t.entryLow, t.entryHigh].filter(Boolean).length ? `${displayNum(t.entryLow, t.currency)} \u2013 ${displayNum(t.entryHigh, t.currency)}` : displayNum(t.limitPrice, t.currency);
       const r = rr(t);
       const koMeta = t.type === "Knock-out" ? `${t.wkn || t.isin || "Kennung offen"}${t.leverage ? " \xB7 Hebel " + displayNum(t.leverage, "", 1) : ""}` : "Direktinvestment";
-      els.setupPanel.innerHTML = `<div class="setup-title-row"><div><div class="setup-name">${escapeHtml(t.name)}</div><div class="setup-meta">${escapeHtml(t.symbol)} \xB7 ${escapeHtml(t.type)} \xB7 ${escapeHtml(t.direction)} \xB7 ${escapeHtml(t.horizon || "")}</div></div><span class="chip ${chipClass(t.direction)}">${escapeHtml(t.direction || "Neutral")}</span></div><div class="setup-grid"><div class="metric"><div class="m-label">Entry / Limit</div><div class="m-value">${entryText}</div><div class="m-sub">geplante Ausf\xFChrung</div></div><div class="metric"><div class="m-label">Stop / Invalidation</div><div class="m-value">${displayNum(t.stop, t.currency)}</div><div class="m-sub">maximale These-Grenze</div></div><div class="metric"><div class="m-label">Ziele</div><div class="m-value">${displayNum(t.target1, t.currency)} / ${displayNum(t.target2, t.currency)}</div><div class="m-sub">Teilgewinn / Hauptziel</div></div><div class="metric"><div class="m-label">Chance/Risiko</div><div class="m-value">${r === null ? "\u2014" : r.toFixed(2)}</div><div class="m-sub">auf Ziel 1 gerechnet</div></div><div class="metric"><div class="m-label">Produkt</div><div class="m-value">${escapeHtml(koMeta)}</div><div class="m-sub">${t.type === "Knock-out" ? "KO " + displayNum(t.koBarrier, t.currency) : "Aktie"}</div></div><div class="metric"><div class="m-label">Alarme</div><div class="m-value">${escapeHtml(alertSummary(t))}</div><div class="m-sub">Kursdaten: ${escapeHtml(t.marketSymbol || "nicht gesetzt")}</div></div></div><div class="ladder-wrap"><div class="ladder-head"><span>Kursleiter</span><span>${t.currentPrice ? "letzter Kurs " + displayDateTime(t.currentPriceAt) : "noch kein Serverkurs"}</span></div>${ladder(t)}</div><div class="notes ${t.notes ? "" : "muted"}">${escapeHtml(t.notes || "Noch keine Investment-These hinterlegt.")}</div><div class="setup-actions"><button class="btn small primary" data-action="edit">Bearbeiten</button><button class="btn small" data-action="duplicate">Duplizieren</button></div>`;
+      els.setupPanel.innerHTML = `<div class="setup-title-row"><div><div class="setup-name">${escapeHtml(t.name)}</div><div class="setup-meta">Chart: ${escapeHtml(t.symbol || "nicht gesetzt")} \xB7 Alarm: ${escapeHtml(t.marketSymbol || "nicht gesetzt")}</div><div class="setup-meta">${escapeHtml(t.type)} \xB7 ${escapeHtml(t.direction)} \xB7 ${escapeHtml(t.horizon || "")}</div></div><span class="chip ${chipClass(t.direction)}">${escapeHtml(t.direction || "Neutral")}</span></div><div class="setup-grid"><div class="metric"><div class="m-label">Entry / Limit</div><div class="m-value">${entryText}</div><div class="m-sub">geplante Ausf\xFChrung</div></div><div class="metric"><div class="m-label">Stop / Invalidation</div><div class="m-value">${displayNum(t.stop, t.currency)}</div><div class="m-sub">maximale These-Grenze</div></div><div class="metric"><div class="m-label">Ziele</div><div class="m-value">${displayNum(t.target1, t.currency)} / ${displayNum(t.target2, t.currency)}</div><div class="m-sub">Teilgewinn / Hauptziel</div></div><div class="metric"><div class="m-label">Chance/Risiko</div><div class="m-value">${r === null ? "\u2014" : r.toFixed(2)}</div><div class="m-sub">auf Ziel 1 gerechnet</div></div><div class="metric"><div class="m-label">Produkt</div><div class="m-value">${escapeHtml(koMeta)}</div><div class="m-sub">${t.type === "Knock-out" ? "KO " + displayNum(t.koBarrier, t.currency) : "Aktie"}</div></div><div class="metric"><div class="m-label">Alarme</div><div class="m-value">${escapeHtml(alertSummary(t))}</div><div class="m-sub">EODHD: ${escapeHtml(t.marketSymbol || "nicht gesetzt")}</div></div></div><div class="ladder-wrap"><div class="ladder-head"><span>Kursleiter</span><span>${t.currentPrice ? "letzter Kurs " + displayDateTime(t.currentPriceAt) : "noch kein Serverkurs"}</span></div>${ladder(t)}</div><div class="notes ${t.notes ? "" : "muted"}">${escapeHtml(t.notes || "Noch keine Investment-These hinterlegt.")}</div><div class="setup-actions"><button class="btn small primary" data-action="edit">Bearbeiten</button><button class="btn small" data-action="duplicate">Duplizieren</button></div>`;
       $('[data-action="edit"]', els.setupPanel).onclick = () => openModal(t);
       $('[data-action="duplicate"]', els.setupPanel).onclick = () => duplicateTrade(t);
     }
@@ -278,7 +290,7 @@
       }
       els.tradeRows.innerHTML = rows.map((t) => {
         const r = rr(t), selected = t.id === selectedId ? "selected" : "", entry = t.entryLow || t.entryHigh ? `${displayNum(t.entryLow, t.currency)} \u2013 ${displayNum(t.entryHigh, t.currency)}` : "\u2014", ko = t.type === "Knock-out" ? `${displayNum(t.koBarrier, t.currency)}${t.leverage ? '<div class="cell-sub">Hebel ' + displayNum(t.leverage, "", 1) + "</div>" : ""}` : "\u2014";
-        return `<tr class="${selected}" data-id="${escapeHtml(t.id)}"><td><strong>${escapeHtml(t.name)}</strong><div class="cell-sub">${escapeHtml(t.symbol)}${t.wkn ? " \xB7 " + escapeHtml(t.wkn) : ""}</div></td><td><span class="chip ${chipClass(t.direction)}">${escapeHtml(t.direction)}</span><div class="cell-sub">${escapeHtml(t.type)}</div></td><td><span class="chip ${chipClass(t.status)}">${escapeHtml(t.status)}</span><div class="cell-sub">${escapeHtml(alertSummary(t))}</div></td><td class="num">${entry}</td><td class="num">${displayNum(t.limitPrice, t.currency)}</td><td class="num">${displayNum(t.stop, t.currency)}</td><td class="num">${displayNum(t.target1, t.currency)} / ${displayNum(t.target2, t.currency)}</td><td class="num">${ko}</td><td class="num">${r === null ? "\u2014" : r.toFixed(2)}</td><td>${displayDate(t.reviewDate)}<div class="cell-sub">Analyse ${displayDate(t.analysisDate)}</div></td></tr>`;
+        return `<tr class="${selected}" data-id="${escapeHtml(t.id)}"><td><strong>${escapeHtml(t.name)}</strong><div class="cell-sub">Chart: ${escapeHtml(t.symbol || "nicht gesetzt")}</div><div class="cell-sub">Alarm: ${escapeHtml(t.marketSymbol || "nicht gesetzt")}${t.wkn ? " \xB7 " + escapeHtml(t.wkn) : ""}</div></td><td><span class="chip ${chipClass(t.direction)}">${escapeHtml(t.direction)}</span><div class="cell-sub">${escapeHtml(t.type)}</div></td><td><span class="chip ${chipClass(t.status)}">${escapeHtml(t.status)}</span><div class="cell-sub">${escapeHtml(alertSummary(t))}</div></td><td class="num">${entry}</td><td class="num">${displayNum(t.limitPrice, t.currency)}</td><td class="num">${displayNum(t.stop, t.currency)}</td><td class="num">${displayNum(t.target1, t.currency)} / ${displayNum(t.target2, t.currency)}</td><td class="num">${ko}</td><td class="num">${r === null ? "\u2014" : r.toFixed(2)}</td><td>${displayDate(t.reviewDate)}<div class="cell-sub">Analyse ${displayDate(t.analysisDate)}</div></td></tr>`;
       }).join("");
       $$("tbody tr[data-id]", els.tradeRows).forEach((row) => row.onclick = () => selectTrade(row.dataset.id));
     }
@@ -304,6 +316,61 @@
       renderAll();
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
+    function normalizeSymbolInput(value) {
+      return String(value || "").trim().toUpperCase().replace(/\s+/g, "");
+    }
+    function alertsRequested() {
+      return ["alertEntry", "alertLimit", "alertStop", "alertTarget1", "alertTarget2", "alertTarget3", "alertKo"].some((name) => els.form.elements[name].checked);
+    }
+    function updateSymbolPreview() {
+      const chart = normalizeSymbolInput(els.form.elements.symbol.value);
+      const market = normalizeSymbolInput(els.form.elements.marketSymbol.value);
+      els.chartSymbolPreview.textContent = chart || "Noch kein TradingView-Symbol";
+      els.marketSymbolPreview.textContent = market || "Noch kein EODHD-Symbol";
+      validateSymbolFields(false);
+    }
+    function validateSymbolFields(showMessage = true) {
+      const chartInput = els.form.elements.symbol;
+      const marketInput = els.form.elements.marketSymbol;
+      const chart = normalizeSymbolInput(chartInput.value);
+      const market = normalizeSymbolInput(marketInput.value);
+      const needsMarket = els.form.elements.monitoringEnabled.checked || alertsRequested();
+      chartInput.setCustomValidity("");
+      marketInput.setCustomValidity("");
+      chartInput.classList.remove("symbol-valid", "symbol-invalid");
+      marketInput.classList.remove("symbol-valid", "symbol-invalid");
+      if (!chart || !/^[A-Z0-9._-]+:[A-Z0-9._-]+$/.test(chart)) {
+        chartInput.setCustomValidity("TradingView benötigt das Format BÖRSE:TICKER, z. B. XETR:SDF.");
+        if (chart || showMessage) chartInput.classList.add("symbol-invalid");
+      } else {
+        chartInput.classList.add("symbol-valid");
+      }
+      if (needsMarket && !market) {
+        marketInput.setCustomValidity("Für Überwachung und Telegram-Alarme ist ein EODHD-Symbol erforderlich, z. B. SDF.XETRA.");
+        if (showMessage) marketInput.classList.add("symbol-invalid");
+      } else if (market && !/^[A-Z0-9._-]+\.[A-Z0-9._-]+$/.test(market)) {
+        marketInput.setCustomValidity("EODHD benötigt das Format TICKER.BÖRSENCODE, z. B. SDF.XETRA. Verwende einen Punkt, keinen Doppelpunkt.");
+        marketInput.classList.add("symbol-invalid");
+      } else if (market) {
+        marketInput.classList.add("symbol-valid");
+      }
+      const valid = chartInput.checkValidity() && marketInput.checkValidity();
+      if (!valid && showMessage) {
+        const first = !chartInput.checkValidity() ? chartInput : marketInput;
+        first.reportValidity();
+        first.focus();
+      }
+      return valid;
+    }
+    function applySymbolPreset() {
+      const preset = symbolPresets[els.symbolPreset.value];
+      if (!preset) return;
+      for (const key of ["name", "symbol", "marketSymbol", "currency"]) {
+        const field = els.form.elements[key];
+        if (field) field.value = preset[key];
+      }
+      updateSymbolPreview();
+    }
     function openModal(t = null) {
       els.form.reset();
       const data = t || { id: "", type: "Aktie", direction: "Neutral", horizon: "Kurzfristig", status: "Analyse \xFCbertragen", analysisDate: today, monitoringEnabled: true, alertKoDistancePct: "10" };
@@ -315,7 +382,9 @@
       });
       els.modalTitle.textContent = t ? `Trade-Plan bearbeiten \xB7 ${t.name}` : "Neuen Trade-Plan anlegen";
       els.deleteBtn.classList.toggle("hidden", !t);
+      els.symbolPreset.value = "";
       toggleKo();
+      updateSymbolPreview();
       els.modal.classList.add("open");
     }
     function closeModal() {
@@ -351,14 +420,14 @@
       const fd = new FormData(els.form), data = Object.fromEntries(fd.entries());
       for (const n of ["monitoringEnabled", "alertEntry", "alertLimit", "alertStop", "alertTarget1", "alertTarget2", "alertTarget3", "alertKo"]) data[n] = els.form.elements[n].checked;
       data.id = data.id || uid();
-      if (!data.marketSymbol && data.symbol && data.symbol.includes(":")) {
-        const [a, b] = data.symbol.split(":");
-        data.marketSymbol = `${b}:${a}`;
-      }
+      data.symbol = normalizeSymbolInput(data.symbol);
+      data.marketSymbol = normalizeSymbolInput(data.marketSymbol);
+      data.currency = normalizeSymbolInput(data.currency);
       return normalizeTrade(data);
     }
     els.form.addEventListener("submit", async (e) => {
       e.preventDefault();
+      if (!validateSymbolFields(true)) return;
       const data = collectForm(), idx = trades.findIndex((t) => t.id === data.id);
       if (idx >= 0) trades[idx] = data;
       else trades.unshift(data);
@@ -369,6 +438,13 @@
       if (session) await upsertCloud(data, true);
     });
     els.form.elements.type.addEventListener("change", toggleKo);
+    els.symbolPreset.addEventListener("change", applySymbolPreset);
+    els.form.elements.symbol.addEventListener("input", updateSymbolPreview);
+    els.form.elements.marketSymbol.addEventListener("input", updateSymbolPreview);
+    els.form.elements.monitoringEnabled.addEventListener("change", updateSymbolPreview);
+    for (const name of ["alertEntry", "alertLimit", "alertStop", "alertTarget1", "alertTarget2", "alertTarget3", "alertKo"]) {
+      els.form.elements[name].addEventListener("change", updateSymbolPreview);
+    }
     function toRow(t) {
       var _a2;
       return { id: t.id, user_id: session.user.id, name: t.name, symbol: t.symbol, market_symbol: t.marketSymbol || null, currency: t.currency || null, instrument_type: t.type || "Aktie", direction: t.direction || "Neutral", horizon: t.horizon || null, status: t.status || null, analysis_date: t.analysisDate || null, review_date: t.reviewDate || null, source: t.source || null, notes: t.notes || null, reference_price: num(t.currentPrice), entry_low: num(t.entryLow), entry_high: num(t.entryHigh), limit_price: num(t.limitPrice), stop_price: num(t.stop), target1: num(t.target1), target2: num(t.target2), target3: num(t.target3), risk_budget: num(t.riskBudget), quantity: num(t.quantity), position_value: num(t.positionValue), order_ref: t.orderRef || null, wkn: t.wkn || null, isin: t.isin || null, issuer: t.issuer || null, expiry: t.expiry || null, ko_barrier: num(t.koBarrier), strike_price: num(t.strike), leverage: num(t.leverage), ratio: num(t.ratio), product_price: num(t.productPrice), ko_distance_pct: num(t.koDistance), monitoring_enabled: bool(t.monitoringEnabled, true), alert_entry: bool(t.alertEntry), alert_limit: bool(t.alertLimit), alert_stop: bool(t.alertStop), alert_target1: bool(t.alertTarget1), alert_target2: bool(t.alertTarget2), alert_target3: bool(t.alertTarget3), alert_ko: bool(t.alertKo), alert_ko_distance_pct: (_a2 = num(t.alertKoDistancePct)) != null ? _a2 : 10 };
@@ -595,7 +671,7 @@
     initCloud();
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", function() {
-        navigator.serviceWorker.register("./service-worker.js?v=9").catch(function(err) {
+        navigator.serviceWorker.register("./service-worker.js?v=11").catch(function(err) {
           console.warn("Service Worker konnte nicht registriert werden.", err);
         });
       });

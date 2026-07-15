@@ -1,9 +1,9 @@
-const CACHE_NAME = 'investition-dashboard-v9';
+const CACHE_NAME = 'investition-dashboard-v11';
 const CORE = [
   './',
   './index.html',
-  './app.js?v=9',
-  './supabase.js?v=9',
+  './app.js?v=11',
+  './supabase.js?v=11',
   './startdaten.json'
 ];
 

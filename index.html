@@ -210,6 +210,37 @@
       .field.span-2, .field.span-4 { grid-column: span 1; }
     }
 
+    .symbol-help-panel {
+      grid-column: 1 / -1; display:grid; grid-template-columns:1fr 1fr; gap:10px;
+      padding:12px; border:1px solid rgba(99,169,255,.28); border-radius:12px;
+      background:rgba(99,169,255,.055);
+    }
+    .symbol-source-card {
+      padding:11px; border:1px solid var(--border); border-radius:10px; background:#08131e;
+    }
+    .symbol-source-head { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:7px; }
+    .source-badge {
+      display:inline-flex; align-items:center; padding:4px 7px; border-radius:999px;
+      font-size:10px; font-weight:800; letter-spacing:.04em; text-transform:uppercase;
+    }
+    .source-badge.chart { color:#7ab9ff; background:rgba(99,169,255,.12); border:1px solid rgba(99,169,255,.28); }
+    .source-badge.alert { color:#59dbc8; background:rgba(80,210,194,.10); border:1px solid rgba(80,210,194,.28); }
+    .field-help { margin-top:5px; color:var(--muted); font-size:10px; line-height:1.45; }
+    .field-help strong { color:#c6d5e2; }
+    .symbol-warning {
+      grid-column:1 / -1; padding:9px 10px; border-radius:9px; color:#d9c589;
+      background:rgba(245,189,79,.07); border:1px solid rgba(245,189,79,.22); font-size:11px; line-height:1.45;
+    }
+    .symbol-preview {
+      grid-column:1 / -1; display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:1px;
+    }
+    .symbol-preview-item { padding:9px 10px; border:1px dashed #3b556b; border-radius:9px; background:#07111a; }
+    .symbol-preview-item span { display:block; color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:.07em; }
+    .symbol-preview-item code { display:block; margin-top:5px; color:#d8e6f2; font-size:12px; overflow-wrap:anywhere; }
+    input.symbol-valid { border-color:rgba(74,210,149,.7); }
+    input.symbol-invalid { border-color:rgba(255,107,122,.85); box-shadow:0 0 0 3px rgba(255,107,122,.10); }
+    @media (max-width:760px) { .symbol-help-panel, .symbol-preview { grid-template-columns:1fr; } }
+
     .cloud-indicator { display:inline-flex; align-items:center; gap:7px; }
     .status-dot { width:8px; height:8px; border-radius:50%; background:var(--neutral); box-shadow:0 0 0 3px rgba(127,147,167,.12); }
     .status-dot.online { background:var(--good); box-shadow:0 0 0 3px rgba(74,210,149,.12); }
@@ -243,8 +274,31 @@
 <script>
 window.__dashboardBooted=false;
 window.addEventListener('error',function(e){
+  var message=String(e.message||'');
+  var filename=String(e.filename||'');
+  var anonymousExternal=!filename&&(message==='Script error.'||message==='Script error');
+  var externalFile=false;
+  try{externalFile=filename&&new URL(filename,location.href).origin!==location.origin;}catch(_e){}
+
+  // Safari verbirgt Fehler aus TradingView und anderen Fremdskripten als
+  // "Script error.". Diese Meldungen dürfen das Dashboard nicht als defekt markieren.
+  if(anonymousExternal||externalFile){
+    console.warn('Externer Widget-Fehler ignoriert:',message||filename);
+    return;
+  }
+
   var box=document.getElementById('appError');
-  if(box){box.hidden=false;box.textContent='Dashboard-Fehler: '+(e.message||'JavaScript konnte nicht geladen werden.');}
+  if(box){
+    box.hidden=false;
+    box.textContent='Dashboard-Fehler: '+(message||'JavaScript konnte nicht geladen werden.');
+  }
+});
+window.addEventListener('unhandledrejection',function(e){
+  var reason=e.reason;
+  var message=reason&&reason.message?reason.message:String(reason||'Unbekannter asynchroner Fehler');
+  console.error('Nicht behandelter Dashboard-Fehler:',reason);
+  var box=document.getElementById('appError');
+  if(box){box.hidden=false;box.textContent='Dashboard-Fehler: '+message;}
 });
 setTimeout(function(){
   if(!window.__dashboardBooted){
@@ -346,9 +400,40 @@ setTimeout(function(){
         <div class="form-section">
           <h4>Instrument & Analyse</h4>
           <div class="form-grid">
-            <div class="field span-2"><label>Unternehmen / Basiswert</label><input name="name" required placeholder="z. B. SK hynix" /></div>
-            <div class="field"><label>TradingView-Symbol</label><input name="symbol" required placeholder="z. B. XETR:SDF" /></div>
-            <div class="field"><label>Kursdaten-Symbol</label><input name="marketSymbol" placeholder="z. B. SDF:XETR" /></div>
+            <div class="field span-2"><label>Unternehmen / Basiswert</label><input name="name" required placeholder="z. B. K+S AG" /></div>
+            <div class="field span-2">
+              <label>Symbolpaar-Vorlage (optional)</label>
+              <select id="symbolPreset">
+                <option value="">Manuell eingeben</option>
+                <option value="ks">K+S · Xetra</option>
+                <option value="vw">Volkswagen Vz. · Xetra</option>
+                <option value="skhynix">SK hynix · Korea</option>
+                <option value="akzo">Akzo Nobel · Amsterdam</option>
+                <option value="catl">CATL · Shenzhen</option>
+              </select>
+              <div class="field-help">Eine Vorlage füllt beide Anbieterkennungen korrekt aus.</div>
+            </div>
+
+            <div class="symbol-help-panel">
+              <div class="symbol-source-card">
+                <div class="symbol-source-head"><strong>Chart-Anzeige</strong><span class="source-badge chart">TradingView</span></div>
+                <label>TradingView-Chart-Symbol · Format <strong>BÖRSE:TICKER</strong></label>
+                <input name="symbol" required autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="K+S: XETR:SDF" />
+                <div class="field-help">Nur für Live-Chart und Ticker. Beispiel: <strong>XETR:SDF</strong>.</div>
+              </div>
+              <div class="symbol-source-card">
+                <div class="symbol-source-head"><strong>Kurs & Telegram-Alarme</strong><span class="source-badge alert">EODHD</span></div>
+                <label>EODHD-Kurs-Symbol · Format <strong>TICKER.BÖRSENCODE</strong></label>
+                <input name="marketSymbol" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="K+S: SDF.XETRA" />
+                <div class="field-help">Für serverseitige Kursprüfung und Benachrichtigungen. Beispiel: <strong>SDF.XETRA</strong>.</div>
+              </div>
+              <div class="symbol-warning"><strong>Nicht einfach Zeichenfolge umdrehen:</strong> TradingView und EODHD verwenden teilweise unterschiedliche Börsencodes, z. B. <code>XETR</code> gegenüber <code>XETRA</code>.</div>
+              <div class="symbol-preview" id="symbolUsagePreview">
+                <div class="symbol-preview-item"><span>Chart lädt</span><code id="chartSymbolPreview">—</code></div>
+                <div class="symbol-preview-item"><span>Alarm prüft</span><code id="marketSymbolPreview">—</code></div>
+              </div>
+            </div>
+
             <div class="field"><label>Währung</label><input name="currency" placeholder="EUR / KRW / CNY" /></div>
             <div class="field"><label>Instrument</label><select name="type"><option>Aktie</option><option>Knock-out</option></select></div>
             <div class="field"><label>Richtung</label><select name="direction"><option>Neutral</option><option>Long</option><option>Short</option></select></div>
@@ -460,8 +545,8 @@ setTimeout(function(){
   </div>
 </div>
 
-<script defer src="./supabase.js?v=9"></script>
-<script defer src="./app.js?v=9"></script>
+<script defer src="./supabase.js?v=11"></script>
+<script defer src="./app.js?v=11"></script>
 
 </body>
 </html>

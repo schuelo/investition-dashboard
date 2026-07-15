@@ -40,3 +40,14 @@ Nicht in GitHub speichern:
 - Supabase Secret-/Service-Role-Key
 
 Der Supabase Publishable Key ist für Browseranwendungen bestimmt; Row Level Security muss aktiv bleiben.
+
+
+## Version 11
+
+- TradingView- und EODHD-Symbole sind in der Eingabemaske klar getrennt.
+- Formatprüfung: TradingView `BÖRSE:TICKER`, EODHD `TICKER.BÖRSENCODE`.
+- Vorlagen für K+S, Volkswagen, SK hynix, Akzo Nobel und CATL füllen beide Kennungen aus.
+- EODHD-Symbol wird bei aktiver Überwachung oder aktiven Alarmen zwingend verlangt.
+- Falsche automatische Umkehrung von TradingView-Symbolen wurde entfernt.
+- Safari-Meldung `Script error.` aus externen TradingView-Widgets wird weiterhin ignoriert.
+- Service-Worker-Cache auf Version 11 erhöht.
