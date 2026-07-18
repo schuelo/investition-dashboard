@@ -42,7 +42,6 @@
     const APP_URL = "https://schuelo.github.io/investition-dashboard/";
     const CHART_MODE_KEY = "investition-chart-mode-v1";
     const CHART_RANGE_KEY = "investition-chart-range-v1";
-    const CHART_INTERVAL_KEY = "investition-chart-interval-v1";
     const LOGIN_EMAIL_KEY = "investition-dashboard-login-email";
     const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
     const seed = [
@@ -68,9 +67,7 @@
       chartStatus: $("#chartStatus"),
       chartMode: $("#chartMode"),
       chartRange: $("#chartRange"),
-      chartInterval: $("#chartInterval"),
       chartRangeButtons: $("#chartRangeButtons"),
-      chartIntervalButtons: $("#chartIntervalButtons"),
       chartRefreshBtn: $("#chartRefreshBtn"),
       symbolSelect: $("#symbolSelect"),
       setupPanel: $("#setupPanel"),
@@ -253,7 +250,7 @@
       if (!els.chartStatus) return;
       els.chartStatus.innerHTML = `<span>${escapeHtml(message)}</span>${detail ? `<span>${escapeHtml(detail)}</span>` : ""}`;
     }
-    function syncTimeframeButtons(mode, range, interval) {
+    function syncTimeframeButtons(mode, range) {
       if (els.chartRangeButtons) {
         els.chartRangeButtons.classList.toggle("hidden", mode !== "overview");
         $$('[data-chart-range]', els.chartRangeButtons).forEach((button) => {
@@ -261,23 +258,14 @@
           button.setAttribute("aria-pressed", button.dataset.chartRange === range ? "true" : "false");
         });
       }
-      if (els.chartIntervalButtons) {
-        els.chartIntervalButtons.classList.toggle("hidden", mode !== "advanced");
-        $$('[data-chart-interval]', els.chartIntervalButtons).forEach((button) => {
-          button.classList.toggle("active", button.dataset.chartInterval === interval);
-          button.setAttribute("aria-pressed", button.dataset.chartInterval === interval ? "true" : "false");
-        });
-      }
     }
     function chartPrefs() {
       const mode = els.chartMode.value || storageGet(CHART_MODE_KEY) || "overview";
       const range = els.chartRange.value || storageGet(CHART_RANGE_KEY) || "12M";
-      const interval = els.chartInterval.value || storageGet(CHART_INTERVAL_KEY) || "D";
       els.chartMode.value = mode;
       els.chartRange.value = range;
-      els.chartInterval.value = interval;
-      syncTimeframeButtons(mode, range, interval);
-      return { mode, range, interval };
+      syncTimeframeButtons(mode, range);
+      return { mode, range };
     }
     function renderChart(force = false) {
       const t = trades.find((x) => x.id === selectedId) || trades[0];
@@ -287,11 +275,11 @@
         return;
       }
       const prefs = chartPrefs();
-      const key = `${t.symbol}|${prefs.mode}|${prefs.range}|${prefs.interval}`;
+      const key = `${t.symbol}|${prefs.mode}|${prefs.range}`;
       if (!force && key === currentChartKey && els.chartHost.querySelector("iframe")) return;
       currentChartKey = key;
       lastChartReloadAt = Date.now();
-      els.chartCaption.textContent = `${t.name} · ${t.symbol} · ${prefs.mode === "overview" ? "Zeitraum " + prefs.range : "Intervall " + prefs.interval}`;
+      els.chartCaption.textContent = `${t.name} · ${t.symbol} · ${prefs.mode === "overview" ? "Zeitraum " + prefs.range : "Analysechart · Tagesintervall"}`;
       els.chartHost.innerHTML = '<div class="tradingview-widget-container" style="height:100%;width:100%"><div class="tradingview-widget-container__widget" style="height:100%;width:100%"></div></div>';
       const s = document.createElement("script");
       s.async = true;
@@ -329,7 +317,7 @@
         s.textContent = JSON.stringify({
           autosize: true,
           symbol: t.symbol,
-          interval: prefs.interval,
+          interval: "D",
           timezone: "exchange",
           theme: "dark",
           style: "1",
@@ -916,7 +904,6 @@
     });
     els.chartMode.value = storageGet(CHART_MODE_KEY) || "overview";
     els.chartRange.value = storageGet(CHART_RANGE_KEY) || "12M";
-    els.chartInterval.value = storageGet(CHART_INTERVAL_KEY) || "D";
     els.chartMode.addEventListener("change", () => {
       storageSet(CHART_MODE_KEY, els.chartMode.value);
       currentChartKey = "";
@@ -927,26 +914,11 @@
       currentChartKey = "";
       renderChart(true);
     });
-    els.chartInterval.addEventListener("change", () => {
-      storageSet(CHART_INTERVAL_KEY, els.chartInterval.value);
-      currentChartKey = "";
-      renderChart(true);
-    });
     if (els.chartRangeButtons) {
       $$('[data-chart-range]', els.chartRangeButtons).forEach((button) => {
         button.addEventListener("click", () => {
           els.chartRange.value = button.dataset.chartRange || "12M";
           storageSet(CHART_RANGE_KEY, els.chartRange.value);
-          currentChartKey = "";
-          renderChart(true);
-        });
-      });
-    }
-    if (els.chartIntervalButtons) {
-      $$('[data-chart-interval]', els.chartIntervalButtons).forEach((button) => {
-        button.addEventListener("click", () => {
-          els.chartInterval.value = button.dataset.chartInterval || "D";
-          storageSet(CHART_INTERVAL_KEY, els.chartInterval.value);
           currentChartKey = "";
           renderChart(true);
         });
@@ -1010,7 +982,7 @@
     });
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", function() {
-        navigator.serviceWorker.register("./service-worker.js?v=17").catch(function(err) {
+        navigator.serviceWorker.register("./service-worker.js?v=17.1").catch(function(err) {
           console.warn("Service Worker konnte nicht registriert werden.", err);
         });
       });

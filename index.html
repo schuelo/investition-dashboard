@@ -494,11 +494,6 @@ setTimeout(function(){
               <option value="3M">3 Monate</option><option value="6M">6 Monate</option><option value="12M" selected>1 Jahr</option>
               <option value="60M">5 Jahre</option><option value="ALL">Maximal</option>
             </select>
-            <select id="chartInterval" class="hidden-select" aria-label="Kerzenintervall">
-              <option value="1">1 Min.</option><option value="5">5 Min.</option><option value="15">15 Min.</option>
-              <option value="60">1 Std.</option><option value="240">4 Std.</option><option value="D" selected>1 Tag</option>
-              <option value="W">1 Woche</option><option value="M">1 Monat</option>
-            </select>
             <div class="timeframe-bar" id="chartRangeButtons" aria-label="Zeitraum auswählen">
               <button type="button" class="timeframe-btn" data-chart-range="1D">1T</button>
               <button type="button" class="timeframe-btn" data-chart-range="5D">5T</button>
@@ -508,16 +503,6 @@ setTimeout(function(){
               <button type="button" class="timeframe-btn" data-chart-range="12M">1J</button>
               <button type="button" class="timeframe-btn" data-chart-range="60M">5J</button>
               <button type="button" class="timeframe-btn" data-chart-range="ALL">Max</button>
-            </div>
-            <div class="timeframe-bar hidden" id="chartIntervalButtons" aria-label="Kerzenintervall auswählen">
-              <button type="button" class="timeframe-btn" data-chart-interval="1">1m</button>
-              <button type="button" class="timeframe-btn" data-chart-interval="5">5m</button>
-              <button type="button" class="timeframe-btn" data-chart-interval="15">15m</button>
-              <button type="button" class="timeframe-btn" data-chart-interval="60">1h</button>
-              <button type="button" class="timeframe-btn" data-chart-interval="240">4h</button>
-              <button type="button" class="timeframe-btn" data-chart-interval="D">1T</button>
-              <button type="button" class="timeframe-btn" data-chart-interval="W">1W</button>
-              <button type="button" class="timeframe-btn" data-chart-interval="M">1M</button>
             </div>
             <button class="btn small" id="chartRefreshBtn" type="button">↻ Aktualisieren</button>
           </div>
@@ -797,9 +782,9 @@ setTimeout(function(){
   </div>
 </div>
 
-<script defer src="./supabase.js?v=17"></script>
-<script defer src="./app.js?v=17"></script>
-<script defer src="./news.js?v=17"></script>
+<script defer src="./supabase.js?v=17.1"></script>
+<script defer src="./app.js?v=17.1"></script>
+<script defer src="./news.js?v=17.1"></script>
 
 </body>
 </html>
