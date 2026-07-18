@@ -16,7 +16,7 @@
   <p>Diese Seite löscht nur Service-Worker-Caches und Registrierungen. Deine lokal gespeicherten Trade-Pläne im Browser werden nicht gelöscht.</p>
   <p id="status">Bereit.</p>
   <button id="resetBtn">Jetzt zurücksetzen</button>
-  <a href="./?v=15">Dashboard öffnen</a>
+  <a href="./?v=16">Dashboard öffnen</a>
 </main>
 <script>
 async function resetDashboard(){
@@ -33,7 +33,7 @@ async function resetDashboard(){
     }
     status.className='ok';
     status.textContent='Erledigt. Das Dashboard wird neu geöffnet.';
-    setTimeout(()=>location.replace('./?v=15&reset=1'),700);
+    setTimeout(()=>location.replace('./?v=16&reset=1'),700);
   }catch(e){
     status.className='bad';
     status.textContent='Fehler: '+(e.message||String(e));

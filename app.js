@@ -69,6 +69,8 @@
       chartMode: $("#chartMode"),
       chartRange: $("#chartRange"),
       chartInterval: $("#chartInterval"),
+      chartRangeButtons: $("#chartRangeButtons"),
+      chartIntervalButtons: $("#chartIntervalButtons"),
       chartRefreshBtn: $("#chartRefreshBtn"),
       symbolSelect: $("#symbolSelect"),
       setupPanel: $("#setupPanel"),
@@ -251,6 +253,22 @@
       if (!els.chartStatus) return;
       els.chartStatus.innerHTML = `<span>${escapeHtml(message)}</span>${detail ? `<span>${escapeHtml(detail)}</span>` : ""}`;
     }
+    function syncTimeframeButtons(mode, range, interval) {
+      if (els.chartRangeButtons) {
+        els.chartRangeButtons.classList.toggle("hidden", mode !== "overview");
+        $$('[data-chart-range]', els.chartRangeButtons).forEach((button) => {
+          button.classList.toggle("active", button.dataset.chartRange === range);
+          button.setAttribute("aria-pressed", button.dataset.chartRange === range ? "true" : "false");
+        });
+      }
+      if (els.chartIntervalButtons) {
+        els.chartIntervalButtons.classList.toggle("hidden", mode !== "advanced");
+        $$('[data-chart-interval]', els.chartIntervalButtons).forEach((button) => {
+          button.classList.toggle("active", button.dataset.chartInterval === interval);
+          button.setAttribute("aria-pressed", button.dataset.chartInterval === interval ? "true" : "false");
+        });
+      }
+    }
     function chartPrefs() {
       const mode = els.chartMode.value || storageGet(CHART_MODE_KEY) || "overview";
       const range = els.chartRange.value || storageGet(CHART_RANGE_KEY) || "12M";
@@ -258,8 +276,7 @@
       els.chartMode.value = mode;
       els.chartRange.value = range;
       els.chartInterval.value = interval;
-      els.chartRange.classList.toggle("hidden", mode !== "overview");
-      els.chartInterval.classList.toggle("hidden", mode !== "advanced");
+      syncTimeframeButtons(mode, range, interval);
       return { mode, range, interval };
     }
     function renderChart(force = false) {
@@ -283,21 +300,29 @@
         setChartStatus("TradingView konnte nicht geladen werden.", "Dashboard-Alarme arbeiten davon unabhängig.");
       };
       if (prefs.mode === "overview") {
-        s.src = "https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js";
+        s.src = "https://s3.tradingview.com/external-embedding/embed-widget-symbol-overview.js";
         s.textContent = JSON.stringify({
-          symbol: t.symbol,
+          symbols: [[t.name, `${t.symbol}|${prefs.range}`]],
+          chartOnly: false,
           width: "100%",
           height: "100%",
           locale: "de",
-          dateRange: prefs.range,
           colorTheme: "dark",
-          trendLineColor: "rgba(99,169,255,1)",
-          underLineColor: "rgba(99,169,255,.28)",
-          underLineBottomColor: "rgba(99,169,255,0)",
-          isTransparent: true,
           autosize: true,
-          largeChartUrl: "",
-          noTimeScale: false
+          showVolume: true,
+          showMA: false,
+          hideDateRanges: false,
+          hideMarketStatus: false,
+          hideSymbolLogo: false,
+          scalePosition: "right",
+          scaleMode: "Normal",
+          fontFamily: "-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
+          fontSize: "10",
+          noTimeScale: false,
+          valuesTracking: "1",
+          changeMode: "price-and-percent",
+          chartType: "area",
+          dateRanges: ["1d|1", "5d|5", "1m|30", "3m|60", "6m|120", "12m|1D", "60m|1W", "all|1M"]
         });
       } else {
         s.src = "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
@@ -325,7 +350,7 @@
       }
       $(".tradingview-widget-container", els.chartHost).appendChild(s);
       const loaded = new Intl.DateTimeFormat("de-DE", { hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(new Date());
-      setChartStatus(`Widget neu geladen: ${loaded}`, "TradingView-Daten können je Handelsplatz verzögert sein.");
+      setChartStatus(`Widget neu geladen: ${loaded}`, "Zeitraum und Kerzenintervall werden über die Schalter oberhalb des Charts gesetzt. TradingView-Daten können je Handelsplatz verzögert sein.");
     }
     function ladder(t) {
       const raw = [["Ziel 3", num(t.target3), "#4ad295"], ["Ziel 2", num(t.target2), "#4ad295"], ["Ziel 1", num(t.target1), "#4ad295"], ["Live/Referenz", num(t.currentPrice), "#63a9ff"], ["Limit", num(t.limitPrice), "#f5bd4f"], ["Entry oben", num(t.entryHigh), "#50d2c2"], ["Entry unten", num(t.entryLow), "#50d2c2"], ["Stop", num(t.stop), "#ff6b7a"], ["KO", num(t.koBarrier), "#ff6b7a"]].filter((x) => x[1] !== null);
@@ -869,6 +894,26 @@
       currentChartKey = "";
       renderChart(true);
     });
+    if (els.chartRangeButtons) {
+      $$('[data-chart-range]', els.chartRangeButtons).forEach((button) => {
+        button.addEventListener("click", () => {
+          els.chartRange.value = button.dataset.chartRange || "12M";
+          storageSet(CHART_RANGE_KEY, els.chartRange.value);
+          currentChartKey = "";
+          renderChart(true);
+        });
+      });
+    }
+    if (els.chartIntervalButtons) {
+      $$('[data-chart-interval]', els.chartIntervalButtons).forEach((button) => {
+        button.addEventListener("click", () => {
+          els.chartInterval.value = button.dataset.chartInterval || "D";
+          storageSet(CHART_INTERVAL_KEY, els.chartInterval.value);
+          currentChartKey = "";
+          renderChart(true);
+        });
+      });
+    }
     els.chartRefreshBtn.addEventListener("click", () => renderChart(true));
     [els.searchInput, els.typeFilter, els.directionFilter, els.statusFilter].forEach((el) => el.addEventListener("input", () => {
       renderTable();
@@ -927,7 +972,7 @@
     });
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", function() {
-        navigator.serviceWorker.register("./service-worker.js?v=15").catch(function(err) {
+        navigator.serviceWorker.register("./service-worker.js?v=16").catch(function(err) {
           console.warn("Service Worker konnte nicht registriert werden.", err);
         });
       });

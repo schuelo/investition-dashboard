@@ -20,7 +20,8 @@
     tradingPage: $('#tradingPage'), newsPage: $('#newsPage'), navTrading: $('#navTradingBtn'), navNews: $('#navNewsBtn'),
     list: $('#newsList'), detail: $('#newsDetail'), detailCard: $('#newsDetailCard'), count: $('#newsCountChip'), lastUpdated: $('#newsLastUpdated'),
     search: $('#newsSearchInput'), topic: $('#newsTopicFilter'), impact: $('#newsImpactFilter'), read: $('#newsReadFilter'),
-    sync: $('#newsSyncBtn'), importBtn: $('#newsImportBtn'), importFile: $('#newsImportFile'), status: $('#newsStatus'), markAll: $('#markAllReadBtn')
+    sync: $('#newsSyncBtn'), importBtn: $('#newsImportBtn'), importFile: $('#newsImportFile'), status: $('#newsStatus'), markAll: $('#markAllReadBtn'),
+    cloudHealth: $('#newsCloudHealth'), tableHealth: $('#newsTableHealth'), functionHealth: $('#newsFunctionHealth'), providerHealth: $('#newsProviderHealth')
   };
   if (!els.newsPage) return;
 
@@ -58,6 +59,12 @@
     return new Intl.DateTimeFormat('de-DE', {dateStyle:'short', timeStyle:'short', timeZone:'Europe/Berlin'}).format(d);
   }
   function setStatus(text, type='') { els.status.textContent = text; els.status.className = `news-status ${type}`; }
+  function setHealth(element, value, type='') {
+    if (!element) return;
+    element.className = `news-health-item ${type}`;
+    const target = $('.value', element);
+    if (target) target.textContent = value;
+  }
   function impactClass(value) { return value === 'hoch' ? 'bad' : value === 'niedrig' ? 'neutral' : 'warn'; }
   function filtered() {
     const query = els.search.value.trim().toLowerCase();
@@ -125,29 +132,54 @@
     if (news) renderList();
   }
   async function loadCloudNews() {
-    if (!sb || !session) { renderList(); return; }
+    if (!sb || !session) {
+      setHealth(els.cloudHealth, 'nicht angemeldet', 'warn');
+      renderList();
+      return;
+    }
+    setHealth(els.cloudHealth, session.user?.email || 'angemeldet', 'good');
     setStatus('News Feed wird aus der Cloud geladen …');
     const {data, error} = await sb.from('market_news').select('*').eq('is_published', true).order('published_at', {ascending:false}).limit(300);
     if (error) {
+      setHealth(els.tableHealth, error.message, 'bad');
       setStatus(`Cloud-News konnten nicht geladen werden: ${error.message}. Führe news-schema.sql in Supabase aus.`, 'bad');
       renderList(); return;
     }
+    setHealth(els.tableHealth, `erreichbar · ${(data || []).length} Zeilen`, (data || []).length ? 'good' : 'warn');
     items = (data || []).map(normalize); saveLocal();
     selectedId = items.some(n => n.id === selectedId) ? selectedId : items[0]?.id || null;
-    els.lastUpdated.textContent = items[0] ? `Neueste Meldung: ${dateTime(items[0].published_at)}` : 'Cloud-Feed ist noch leer';
-    setStatus(`${items.length} Meldungen aus Supabase geladen.`, 'good'); renderList();
+    els.lastUpdated.textContent = items[0] ? `Neueste Meldung: ${dateTime(items[0].published_at)}` : 'Cloud-Tabelle ist erreichbar, enthält aber noch keine Meldungen';
+    setStatus(items.length ? `${items.length} Meldungen aus Supabase geladen.` : 'Die News-Tabelle ist leer. Tippe auf „Feed aktualisieren“.', items.length ? 'good' : '');
+    renderList();
   }
   async function syncNews() {
-    if (!sb || !session) { setStatus('Bitte zuerst über „Cloud-Anmeldung“ anmelden.', 'bad'); return; }
-    els.sync.disabled = true; setStatus('EODHD-News werden synchronisiert …');
-    const {data, error} = await sb.functions.invoke('sync-news', {body:{}});
+    if (!sb || !session) {
+      setHealth(els.cloudHealth, 'nicht angemeldet', 'bad');
+      setStatus('Bitte zuerst über „Cloud-Anmeldung“ anmelden.', 'bad');
+      return;
+    }
+    els.sync.disabled = true;
+    setHealth(els.functionHealth, 'wird aufgerufen …', 'warn');
+    setStatus('News werden serverseitig synchronisiert …');
+    const {data, error} = await sb.functions.invoke('sync-news', {body:{force:true}});
     els.sync.disabled = false;
     if (error) {
       let detail = error.message || String(error);
-      try { if (error.context instanceof Response) { const body = await error.context.clone().json(); detail = body.error || body.message || detail; } } catch {}
-      setStatus(`Synchronisierung fehlgeschlagen: ${detail}`, 'bad'); return;
+      try {
+        if (error.context instanceof Response) {
+          const body = await error.context.clone().json();
+          detail = body.error || body.message || detail;
+        }
+      } catch {}
+      setHealth(els.functionHealth, detail, 'bad');
+      setStatus(`Synchronisierung fehlgeschlagen: ${detail}`, 'bad');
+      return;
     }
-    setStatus(`${data?.inserted ?? 0} neue Meldungen gespeichert, ${data?.received ?? 0} geprüft.`, 'good');
+    const provider = data?.provider || data?.providers?.join?.(', ') || 'unbekannt';
+    setHealth(els.functionHealth, `erfolgreich · ${data?.inserted ?? 0} gespeichert`, 'good');
+    setHealth(els.providerHealth, provider, 'good');
+    const sourceErrors = Array.isArray(data?.source_errors) && data.source_errors.length ? ` · Hinweise: ${data.source_errors.join(' | ')}` : '';
+    setStatus(`${data?.inserted ?? 0} Meldungen gespeichert, ${data?.received ?? data?.unique ?? 0} geprüft${sourceErrors}.`, 'good');
     await loadCloudNews();
   }
   async function importNews(file) {
@@ -173,13 +205,34 @@
     realtimeChannel = sb.channel('market-news-feed').on('postgres_changes', {event:'*', schema:'public', table:'market_news'}, () => loadCloudNews()).subscribe();
   }
   async function initCloud() {
-    if (!sb) { setStatus('Supabase-Bibliothek nicht geladen.', 'bad'); return; }
+    if (!sb) {
+      setHealth(els.cloudHealth, 'Supabase-Bibliothek fehlt', 'bad');
+      setStatus('Supabase-Bibliothek nicht geladen.', 'bad');
+      return;
+    }
     const {data} = await sb.auth.getSession(); session = data.session;
-    if (session) { subscribeRealtime(); await loadCloudNews(); }
-    else { setStatus('Für den Cloud-Newsfeed über „Cloud-Anmeldung“ anmelden. Lokale Imports bleiben verfügbar.'); renderList(); }
+    if (session) {
+      setHealth(els.cloudHealth, session.user?.email || 'angemeldet', 'good');
+      subscribeRealtime();
+      await loadCloudNews();
+    } else {
+      setHealth(els.cloudHealth, 'nicht angemeldet', 'warn');
+      setHealth(els.tableHealth, 'Anmeldung erforderlich', 'warn');
+      setStatus('Für den Cloud-Newsfeed über „Cloud-Anmeldung“ anmelden. Lokale Imports bleiben verfügbar.');
+      renderList();
+    }
     sb.auth.onAuthStateChange((_event, newSession) => {
       session = newSession;
-      setTimeout(() => { if (session) { subscribeRealtime(); loadCloudNews(); } else renderList(); }, 0);
+      setTimeout(() => {
+        if (session) {
+          setHealth(els.cloudHealth, session.user?.email || 'angemeldet', 'good');
+          subscribeRealtime(); loadCloudNews();
+        } else {
+          setHealth(els.cloudHealth, 'nicht angemeldet', 'warn');
+          setHealth(els.tableHealth, 'Anmeldung erforderlich', 'warn');
+          renderList();
+        }
+      }, 0);
     });
   }
 

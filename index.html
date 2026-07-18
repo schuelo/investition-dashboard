@@ -344,7 +344,7 @@
 
   
 
-    /* Version 15: Passwort-Anmeldung, Chart-Steuerung und Alarmzustand */
+    /* Version 16: Passwort-Anmeldung, Chart-Steuerung, News-Diagnose und Alarmzustand */
     .chart-controls { display:flex; align-items:center; justify-content:flex-end; gap:8px; flex-wrap:wrap; min-width:min(100%,620px); }
     .chart-control { width:auto; min-width:120px; padding:8px 9px; }
     .chart-control.range { min-width:105px; }
@@ -364,6 +364,35 @@
       .chart-host { height:430px; }
       .health-grid { grid-template-columns:1fr; }
     }
+
+    /* Version 16: eindeutig antippbare Zeitraum- und Intervall-Schalter */
+    .timeframe-bar {
+      display:flex; align-items:center; gap:6px; flex-wrap:wrap; width:100%;
+      padding:6px; border:1px solid var(--border); border-radius:11px; background:#08131e;
+    }
+    .timeframe-btn {
+      appearance:none; -webkit-appearance:none; border:1px solid #294257; border-radius:8px;
+      background:#0d1c2a; color:#b9c9d8; padding:8px 10px; min-height:38px;
+      font-weight:750; font-size:12px; cursor:pointer; touch-action:manipulation;
+    }
+    .timeframe-btn:active { transform:translateY(1px); }
+    .timeframe-btn.active { background:var(--accent); color:#031019; border-color:transparent; }
+    .timeframe-btn[disabled] { opacity:.45; cursor:not-allowed; }
+    .chart-controls .hidden-select { position:absolute!important; width:1px!important; height:1px!important;
+      overflow:hidden!important; clip:rect(0 0 0 0)!important; white-space:nowrap!important; }
+    .news-health { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; margin-bottom:16px; }
+    .news-health-item { padding:11px 12px; border:1px solid var(--border); border-radius:11px; background:#08131e; }
+    .news-health-item .label { color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:.07em; }
+    .news-health-item .value { margin-top:5px; font-size:12px; font-weight:780; overflow-wrap:anywhere; }
+    .news-health-item.good .value { color:var(--good); }
+    .news-health-item.warn .value { color:var(--warn); }
+    .news-health-item.bad .value { color:var(--bad); }
+    @media (max-width:760px) {
+      .timeframe-bar { overflow-x:auto; flex-wrap:nowrap; -webkit-overflow-scrolling:touch; }
+      .timeframe-btn { flex:0 0 auto; }
+      .news-health { grid-template-columns:1fr 1fr; }
+    }
+    @media (max-width:480px) { .news-health { grid-template-columns:1fr; } }
 
 </style>
 </head>
@@ -458,16 +487,36 @@ setTimeout(function(){
               <option value="overview">Kursverlauf</option>
               <option value="advanced">Analysechart</option>
             </select>
-            <select id="chartRange" class="chart-control range" aria-label="Zeitraum">
+            <select id="chartRange" class="hidden-select" aria-label="Zeitraum">
               <option value="1D">1 Tag</option><option value="5D">5 Tage</option><option value="1M">1 Monat</option>
               <option value="3M">3 Monate</option><option value="6M">6 Monate</option><option value="12M" selected>1 Jahr</option>
               <option value="60M">5 Jahre</option><option value="ALL">Maximal</option>
             </select>
-            <select id="chartInterval" class="chart-control hidden" aria-label="Kerzenintervall">
+            <select id="chartInterval" class="hidden-select" aria-label="Kerzenintervall">
               <option value="1">1 Min.</option><option value="5">5 Min.</option><option value="15">15 Min.</option>
               <option value="60">1 Std.</option><option value="240">4 Std.</option><option value="D" selected>1 Tag</option>
               <option value="W">1 Woche</option><option value="M">1 Monat</option>
             </select>
+            <div class="timeframe-bar" id="chartRangeButtons" aria-label="Zeitraum auswählen">
+              <button type="button" class="timeframe-btn" data-chart-range="1D">1T</button>
+              <button type="button" class="timeframe-btn" data-chart-range="5D">5T</button>
+              <button type="button" class="timeframe-btn" data-chart-range="1M">1M</button>
+              <button type="button" class="timeframe-btn" data-chart-range="3M">3M</button>
+              <button type="button" class="timeframe-btn" data-chart-range="6M">6M</button>
+              <button type="button" class="timeframe-btn" data-chart-range="12M">1J</button>
+              <button type="button" class="timeframe-btn" data-chart-range="60M">5J</button>
+              <button type="button" class="timeframe-btn" data-chart-range="ALL">Max</button>
+            </div>
+            <div class="timeframe-bar hidden" id="chartIntervalButtons" aria-label="Kerzenintervall auswählen">
+              <button type="button" class="timeframe-btn" data-chart-interval="1">1m</button>
+              <button type="button" class="timeframe-btn" data-chart-interval="5">5m</button>
+              <button type="button" class="timeframe-btn" data-chart-interval="15">15m</button>
+              <button type="button" class="timeframe-btn" data-chart-interval="60">1h</button>
+              <button type="button" class="timeframe-btn" data-chart-interval="240">4h</button>
+              <button type="button" class="timeframe-btn" data-chart-interval="D">1T</button>
+              <button type="button" class="timeframe-btn" data-chart-interval="W">1W</button>
+              <button type="button" class="timeframe-btn" data-chart-interval="M">1M</button>
+            </div>
             <button class="btn small" id="chartRefreshBtn" type="button">↻ Aktualisieren</button>
           </div>
         </div>
@@ -519,6 +568,13 @@ setTimeout(function(){
         <button class="btn primary" id="newsSyncBtn">↻ Feed aktualisieren</button>
         <input class="file-input" id="newsImportFile" type="file" accept="application/json" />
       </div>
+    </section>
+
+    <section class="news-health" id="newsHealth">
+      <div class="news-health-item" id="newsCloudHealth"><div class="label">Cloud-Anmeldung</div><div class="value">wird geprüft …</div></div>
+      <div class="news-health-item" id="newsTableHealth"><div class="label">Supabase-Tabelle</div><div class="value">wird geprüft …</div></div>
+      <div class="news-health-item" id="newsFunctionHealth"><div class="label">Sync-Function</div><div class="value">noch nicht aufgerufen</div></div>
+      <div class="news-health-item" id="newsProviderHealth"><div class="label">News-Quelle</div><div class="value">GDELT offen · EODHD optional</div></div>
     </section>
 
     <section class="card" style="margin-bottom:16px">
@@ -739,9 +795,9 @@ setTimeout(function(){
   </div>
 </div>
 
-<script defer src="./supabase.js?v=15"></script>
-<script defer src="./app.js?v=15"></script>
-<script defer src="./news.js?v=15"></script>
+<script defer src="./supabase.js?v=16"></script>
+<script defer src="./app.js?v=16"></script>
+<script defer src="./news.js?v=16"></script>
 
 </body>
 </html>
