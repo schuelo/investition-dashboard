@@ -43,7 +43,7 @@
     const CHART_MODE_KEY = "investition-chart-mode-v1";
     const CHART_RANGE_KEY = "investition-chart-range-v1";
     const CHART_INTERVAL_KEY = "investition-chart-interval-v1";
-    const PENDING_LOGIN_EMAIL_KEY = "investition-dashboard-pending-email";
+    const LOGIN_EMAIL_KEY = "investition-dashboard-login-email";
     const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
     const seed = [
       { id: uuid(), name: "K+S", symbol: "XETR:SDF", marketSymbol: "SDF.XETRA", currency: "EUR", type: "Aktie", direction: "Neutral", horizon: "6\u201312 Monate", status: "Analyse \xFCbertragen", analysisDate: "2026-07-14", source: "K+S Aktienanalyse Juli 2026", monitoringEnabled: true, alertKoDistancePct: "10", notes: "Entry-, Stop- und Zielzonen aus der K+S-Analyse eintragen. Die Marken werden nicht automatisch erfunden." },
@@ -101,8 +101,9 @@
       alarmHealthBox: $("#alarmHealthBox"),
       alarmHealthSummary: $("#alarmHealthSummary"),
       runAlertsBtn: $("#runAlertsBtn"),
-      loginOtpBox: $("#loginOtpBox"),
-      loginOtp: $("#loginOtp"),
+      loginPassword: $("#loginPassword"),
+      newPassword: $("#newPassword"),
+      newPasswordConfirm: $("#newPasswordConfirm"),
       symbolPreset: $("#symbolPreset"),
       chartSymbolPreview: $("#chartSymbolPreview"),
       marketSymbolPreview: $("#marketSymbolPreview")
@@ -667,9 +668,8 @@
       els.signalsBox.classList.toggle("hidden", !logged);
       els.userEmail.textContent = ((_a2 = session == null ? void 0 : session.user) == null ? void 0 : _a2.email) || "\u2014";
       if (!logged) {
-        const pendingEmail = storageGet(PENDING_LOGIN_EMAIL_KEY) || "";
-        if (pendingEmail && !$("#loginEmail").value) $("#loginEmail").value = pendingEmail;
-        els.loginOtpBox.classList.toggle("hidden", !pendingEmail);
+        const savedEmail = storageGet(LOGIN_EMAIL_KEY) || "";
+        if (savedEmail && !$("#loginEmail").value) $("#loginEmail").value = savedEmail;
       }
       setCloudState(logged ? "online" : "", logged ? "Cloud verbunden" : "Cloud-Anmeldung");
     }
@@ -684,6 +684,11 @@
       if (session) {
         subscribeRealtime();
         await loadCloud();
+        if (new URLSearchParams(location.search).get("setup") === "password") {
+          els.cloudModal.classList.add("open");
+          setTimeout(() => els.newPassword?.focus(), 150);
+          showCloudMessage("Du bist über den Einrichtungslink angemeldet. Lege jetzt unten ein Passwort fest.", true);
+        }
       }
       sb.auth.onAuthStateChange((_event, newSession) => {
         session = newSession;
@@ -699,32 +704,79 @@
         }, 0);
       });
     }
-    async function sendLoginCode() {
+    function loginCredentials() {
+      const email = $("#loginEmail").value.trim().toLowerCase();
+      const password = els.loginPassword.value;
+      if (!email) {
+        showCloudMessage("Bitte eine E-Mail-Adresse eingeben.", false);
+        return null;
+      }
+      if (!password || password.length < 8) {
+        showCloudMessage("Das Passwort muss mindestens 8 Zeichen lang sein.", false);
+        return null;
+      }
+      return { email, password };
+    }
+    async function signInPassword() {
+      const credentials = loginCredentials();
+      if (!credentials) return;
+      setBusy(true);
+      const { error } = await sb.auth.signInWithPassword(credentials);
+      setBusy(false);
+      if (error) return showCloudMessage("Anmeldung fehlgeschlagen: " + error.message, false);
+      storageSet(LOGIN_EMAIL_KEY, credentials.email);
+      els.loginPassword.value = "";
+      showCloudMessage("Cloud-Anmeldung erfolgreich.", true);
+    }
+    async function signUpPassword() {
+      const credentials = loginCredentials();
+      if (!credentials) return;
+      setBusy(true);
+      const { data, error } = await sb.auth.signUp(credentials);
+      setBusy(false);
+      if (error) {
+        const hint = /already|registered|exists/i.test(error.message || "")
+          ? " Das Konto existiert bereits. Nutze ‚Anmelden‘ oder den einmaligen Einrichtungslink, um ein Passwort festzulegen."
+          : "";
+        return showCloudMessage("Konto konnte nicht angelegt werden: " + error.message + hint, false);
+      }
+      storageSet(LOGIN_EMAIL_KEY, credentials.email);
+      els.loginPassword.value = "";
+      if (data?.session) {
+        showCloudMessage("Konto erstellt und Cloud verbunden. Du kannst neue Registrierungen in Supabase jetzt wieder deaktivieren.", true);
+      } else {
+        showCloudMessage("Konto erstellt, aber Supabase verlangt noch eine E-Mail-Bestätigung. Deaktiviere in Authentication → Sign In / Providers → Email die Option ‚Confirm email‘.", false);
+      }
+    }
+    async function sendSetupLink() {
       const email = $("#loginEmail").value.trim().toLowerCase();
       if (!email) return showCloudMessage("Bitte eine E-Mail-Adresse eingeben.", false);
       setBusy(true);
-      const { error } = await sb.auth.signInWithOtp({ email, options: { shouldCreateUser: true } });
+      const { error } = await sb.auth.signInWithOtp({
+        email,
+        options: {
+          shouldCreateUser: false,
+          emailRedirectTo: APP_URL + "?setup=password"
+        }
+      });
       setBusy(false);
-      if (error) return showCloudMessage("Code konnte nicht gesendet werden: " + error.message, false);
-      storageSet(PENDING_LOGIN_EMAIL_KEY, email);
-      els.loginOtpBox.classList.remove("hidden");
-      els.loginOtp.value = "";
-      els.loginOtp.focus();
-      showCloudMessage("E-Mail-Code wurde gesendet. Gib den sechsstelligen Code hier ein.", true);
+      if (error) return showCloudMessage("Einrichtungslink konnte nicht gesendet werden: " + error.message, false);
+      storageSet(LOGIN_EMAIL_KEY, email);
+      showCloudMessage("Einmaliger Einrichtungslink wurde gesendet. Öffne ihn in Safari, lege dort ein Passwort fest und melde dich danach in der Home-Screen-App mit E-Mail und Passwort an.", true);
     }
-    async function verifyLoginCode() {
-      const email = ($("#loginEmail").value.trim() || storageGet(PENDING_LOGIN_EMAIL_KEY) || "").toLowerCase();
-      const token = els.loginOtp.value.replace(/\s+/g, "");
-      if (!email) return showCloudMessage("Bitte zuerst die E-Mail-Adresse eingeben.", false);
-      if (!token) return showCloudMessage("Bitte den E-Mail-Code eingeben.", false);
+    async function setAccountPassword() {
+      if (!session) return showCloudMessage("Du musst angemeldet sein, um ein Passwort festzulegen.", false);
+      const password = els.newPassword.value;
+      const confirmation = els.newPasswordConfirm.value;
+      if (!password || password.length < 8) return showCloudMessage("Das neue Passwort muss mindestens 8 Zeichen lang sein.", false);
+      if (password !== confirmation) return showCloudMessage("Die beiden Passwörter stimmen nicht überein.", false);
       setBusy(true);
-      const { error } = await sb.auth.verifyOtp({ email, token, type: "email" });
+      const { error } = await sb.auth.updateUser({ password });
       setBusy(false);
-      if (error) return showCloudMessage("Code konnte nicht bestätigt werden: " + error.message, false);
-      storageSet(PENDING_LOGIN_EMAIL_KEY, "");
-      els.loginOtp.value = "";
-      els.loginOtpBox.classList.add("hidden");
-      showCloudMessage("Cloud-Anmeldung erfolgreich.", true);
+      if (error) return showCloudMessage("Passwort konnte nicht gespeichert werden: " + error.message, false);
+      els.newPassword.value = "";
+      els.newPasswordConfirm.value = "";
+      showCloudMessage("Passwort gespeichert. Du kannst dich jetzt auch in der Home-Screen-App mit E-Mail und Passwort anmelden.", true);
     }
     async function generateTelegramCode() {
       if (!session) return;
@@ -852,9 +904,12 @@
     els.cloudModal.addEventListener("click", (e) => {
       if (e.target === els.cloudModal) els.cloudModal.classList.remove("open");
     });
-    $("#loginBtn").onclick = sendLoginCode;
-    $("#verifyOtpBtn").onclick = verifyLoginCode;
-    els.loginOtp.addEventListener("keydown", (event) => { if (event.key === "Enter") verifyLoginCode(); });
+    $("#loginBtn").onclick = signInPassword;
+    $("#signupBtn").onclick = signUpPassword;
+    $("#setupLinkBtn").onclick = sendSetupLink;
+    $("#setPasswordBtn").onclick = setAccountPassword;
+    els.loginPassword.addEventListener("keydown", (event) => { if (event.key === "Enter") signInPassword(); });
+    els.newPasswordConfirm.addEventListener("keydown", (event) => { if (event.key === "Enter") setAccountPassword(); });
     $("#logoutBtn").onclick = () => sb.auth.signOut();
     $("#uploadLocalBtn").onclick = uploadAllLocal;
     $("#reloadCloudBtn").onclick = loadCloud;
@@ -872,7 +927,7 @@
     });
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", function() {
-        navigator.serviceWorker.register("./service-worker.js?v=14").catch(function(err) {
+        navigator.serviceWorker.register("./service-worker.js?v=15").catch(function(err) {
           console.warn("Service Worker konnte nicht registriert werden.", err);
         });
       });

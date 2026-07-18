@@ -344,7 +344,7 @@
 
   
 
-    /* Version 14: Chart-Steuerung und Alarmzustand */
+    /* Version 15: Passwort-Anmeldung, Chart-Steuerung und Alarmzustand */
     .chart-controls { display:flex; align-items:center; justify-content:flex-end; gap:8px; flex-wrap:wrap; min-width:min(100%,620px); }
     .chart-control { width:auto; min-width:120px; padding:8px 9px; }
     .chart-control.range { min-width:105px; }
@@ -691,16 +691,31 @@ setTimeout(function(){
     <div class="modal-head"><h3 id="cloudModalTitle">Cloud & Benachrichtigungen</h3><button class="btn small ghost" id="closeCloudBtn">✕</button></div>
     <div class="modal-body">
       <div class="cloud-box" id="loggedOutBox">
-        <h4>Cloud-Anmeldung mit E-Mail-Code</h4>
-        <p>Gib deine E-Mail-Adresse ein. Du erhältst einen sechsstelligen Code, den du direkt hier in der Home-Screen-App bestätigst. Dadurch ist kein Wechsel zurück aus Safari erforderlich.</p>
-        <div class="inline-actions"><input type="email" id="loginEmail" autocomplete="email" placeholder="deine E-Mail-Adresse" /><button class="btn primary" id="loginBtn">Code anfordern</button></div>
-        <div class="inline-actions hidden" id="loginOtpBox" style="margin-top:10px"><input type="text" id="loginOtp" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="6-stelliger E-Mail-Code" /><button class="btn primary" id="verifyOtpBtn">Code bestätigen</button></div>
-        <p class="microcopy" style="margin-top:10px">Die Home-Screen-App speichert ihre Cloud-Sitzung getrennt von Safari. Die Anmeldung ist daher einmal direkt in dieser App erforderlich.</p>
+        <h4>Cloud-Anmeldung mit E-Mail und Passwort</h4>
+        <p>Melde dich direkt in der Home-Screen-App an. Für die regelmäßige Anmeldung wird keine E-Mail versendet und kein SMTP-Anbieter benötigt.</p>
+        <div class="inline-actions">
+          <input type="email" id="loginEmail" autocomplete="email" placeholder="deine E-Mail-Adresse" />
+          <input type="password" id="loginPassword" autocomplete="current-password" minlength="8" placeholder="Passwort (mindestens 8 Zeichen)" />
+        </div>
+        <div class="inline-actions" style="margin-top:10px">
+          <button class="btn primary" id="loginBtn">Anmelden</button>
+          <button class="btn" id="signupBtn">Konto anlegen</button>
+          <button class="btn ghost" id="setupLinkBtn">Einmaliger Einrichtungslink</button>
+        </div>
+        <p class="microcopy" style="margin-top:10px">Bei einem bereits vorhandenen Magic-Link-/OTP-Konto nutzt du einmalig den Einrichtungslink in Safari und legst danach unten ein Passwort fest. In Supabase muss „Confirm email“ deaktiviert sein, wenn ein neues Konto ohne Bestätigungs-E-Mail erstellt werden soll.</p>
       </div>
       <div class="cloud-box hidden" id="loggedInBox">
         <h4>Cloud verbunden</h4>
         <p id="userEmail">—</p>
         <div class="inline-actions"><button class="btn primary" id="uploadLocalBtn">Lokale Pläne in Cloud übernehmen</button><button class="btn" id="reloadCloudBtn">Cloud neu laden</button><button class="btn" id="logoutBtn">Abmelden</button></div>
+        <hr style="border:0;border-top:1px solid var(--line);margin:18px 0">
+        <h4>Passwort festlegen oder ändern</h4>
+        <p>Damit kannst du einem bisherigen Magic-Link-/OTP-Konto einmalig ein Passwort geben.</p>
+        <div class="inline-actions">
+          <input type="password" id="newPassword" autocomplete="new-password" minlength="8" placeholder="Neues Passwort" />
+          <input type="password" id="newPasswordConfirm" autocomplete="new-password" minlength="8" placeholder="Passwort wiederholen" />
+          <button class="btn" id="setPasswordBtn">Passwort speichern</button>
+        </div>
       </div>
       <div class="cloud-box hidden" id="alarmHealthBox">
         <h4>Alarmprüfung</h4>
@@ -724,9 +739,9 @@ setTimeout(function(){
   </div>
 </div>
 
-<script defer src="./supabase.js?v=14"></script>
-<script defer src="./app.js?v=14"></script>
-<script defer src="./news.js?v=14"></script>
+<script defer src="./supabase.js?v=15"></script>
+<script defer src="./app.js?v=15"></script>
+<script defer src="./news.js?v=15"></script>
 
 </body>
 </html>

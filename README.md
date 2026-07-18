@@ -1,132 +1,60 @@
-# Investition Dashboard · Version 14
+# Investition Dashboard v15 – E-Mail + Passwort
 
-Version 14 behebt zwei Punkte:
+Diese Version ersetzt Magic Link und OTP als reguläre Anmeldung durch Supabase E-Mail/Passwort.
 
-1. **TradingView auf dem iPhone**: eigener Chart-Modus, eigener Zeitraum-/Intervallschalter, manuelle Aktualisierung und automatisches Neuladen nach Rückkehr in die App.
-2. **Alarmdiagnose**: manuelle Serverprüfung aus dem Dashboard, sichtbarer letzter Prüfzeitpunkt, Kurszeit, Fehlerstatus und eine überarbeitete `check-alerts`-Function.
+## GitHub-Dateien
 
-## Wesentliche Ursache der ausgebliebenen Alarme
+Alle Dateien dieses Ordners direkt in das Hauptverzeichnis des Repositorys `investition-dashboard` hochladen:
 
-Der kostenlose EODHD-Tarif ist für einen laufenden Alarmdienst nicht geeignet:
+- `index.html`
+- `app.js`
+- `supabase.js`
+- `news.js`
+- `service-worker.js`
+- `reset.html`
+- `startdaten.json`
+- `.nojekyll`
 
-- 20 API Calls pro Tag
-- freier Zugriff im Wesentlichen auf End-of-Day-Daten; der Live-/Delayed-Endpunkt für normale globale Aktien erfordert einen passenden Tarif
-- EODHD zählt beim Live-Endpunkt **einen API Call pro Ticker**, auch wenn mehrere Ticker in einem HTTP-Aufruf gebündelt werden
-- globale Aktienkurse des Live-Endpunkts sind typischerweise 15–20 Minuten verzögert
+Danach `https://schuelo.github.io/investition-dashboard/reset.html?v=15` öffnen, den Cache zurücksetzen und anschließend das Dashboard neu öffnen.
 
-Der News-Sync kann das kostenlose Tageskontingent ebenfalls verbrauchen. Für K+S-, Volkswagen-, SK-hynix- oder CATL-Alarme wird daher ein EODHD-Tarif mit Live Data und ausreichendem Tageslimit oder ein anderer Kursanbieter benötigt.
+## Supabase konfigurieren
 
-## Dateien für GitHub Pages
+1. Supabase-Projekt öffnen.
+2. `Authentication` → `Sign In / Providers` → `Email` öffnen.
+3. Email-Provider aktiv lassen.
+4. `Confirm email` deaktivieren.
+5. `Allow new users to sign up` für die erste Kontoerstellung aktivieren.
+6. Änderungen speichern.
 
-Diese Dateien direkt in das Hauptverzeichnis des Repositorys hochladen:
+Nach Erstellung deines einzigen Kontos `Allow new users to sign up` wieder deaktivieren. Bestehende Benutzer können sich weiterhin anmelden.
 
-```text
-index.html
-app.js
-news.js
-supabase.js
-service-worker.js
-reset.html
-startdaten.json
-news-startdaten.json
-marktausblick-import-vorlage.json
-.nojekyll
-```
+## Bereits vorhandenes Magic-Link-/OTP-Konto
 
-Danach öffnen:
+Wenn du im Safari-Dashboard noch angemeldet bist:
 
-```text
-https://schuelo.github.io/investition-dashboard/reset.html
-```
+1. Dashboard in Safari öffnen.
+2. `Cloud verbunden` öffnen.
+3. Unter `Passwort festlegen oder ändern` zweimal ein neues Passwort eingeben.
+4. `Passwort speichern` drücken.
+5. In der Home-Screen-App mit derselben E-Mail und dem neuen Passwort anmelden.
 
-und **Jetzt zurücksetzen** wählen. Anschließend:
+Wenn keine Sitzung mehr aktiv ist:
 
-```text
-https://schuelo.github.io/investition-dashboard/?v=14
-```
+1. E-Mail im Dashboard eingeben.
+2. `Einmaliger Einrichtungslink` drücken.
+3. Link aus der Supabase-E-Mail in Safari öffnen.
+4. Im Cloud-Fenster ein Passwort festlegen.
+5. Danach in der Home-Screen-App regulär mit E-Mail und Passwort anmelden.
 
-## TradingView-Steuerung
+Dafür ist kein eigener SMTP-Anbieter erforderlich; der eingebaute Supabase-Maildienst kann jedoch stark begrenzt sein.
 
-Im Chartbereich stehen jetzt bereit:
+## Neues Konto
 
-- **Kursverlauf**: mobiles TradingView-Mini-Chart mit wählbarem Zeitraum
-- **Analysechart**: TradingView Advanced Chart mit wählbarem Kerzenintervall
-- **Aktualisieren**: initialisiert das Widget neu
+1. E-Mail und ein Passwort mit mindestens acht Zeichen eingeben.
+2. `Konto anlegen` drücken.
+3. Nach erfolgreicher Kontoerstellung lokale Pläne in die Cloud übernehmen.
+4. In Supabase neue Registrierungen wieder deaktivieren.
 
-Der Zeitstempel unter dem Chart zeigt nur, wann das Widget neu geladen wurde. Er ist nicht gleichbedeutend mit dem Börsen-Zeitstempel. TradingView kann je Handelsplatz Echtzeit-, verzögerte oder End-of-Day-Daten anzeigen.
+## Regelmäßige Anmeldung
 
-## Supabase-Anpassungen
-
-### 1. Diagnosefelder anlegen
-
-`alarm-health-schema.sql` im SQL Editor vollständig ausführen.
-
-### 2. check-alerts ersetzen
-
-Unter **Edge Functions → check-alerts** den gesamten Code durch `check-alerts-index.ts` ersetzen.
-
-Danach:
-
-- **Verify JWT deaktivieren**
-- Function deployen
-- Secrets müssen vorhanden sein:
-
-```text
-EODHD_API_TOKEN
-TELEGRAM_BOT_TOKEN
-CRON_SECRET
-```
-
-Die Function akzeptiert zwei sichere Aufrufarten:
-
-- Cronjob mit `x-cron-secret`
-- angemeldeter Dashboard-Benutzer über seine Supabase-Sitzung; dabei werden nur dessen eigene Pläne geprüft
-
-Dadurch funktioniert im Dashboard der Button **Alarme jetzt prüfen**, ohne dass das CRON-Secret im Browser gespeichert wird.
-
-### 3. Manuell im Dashboard testen
-
-1. Cloud-Anmeldung öffnen.
-2. Prüfen, dass Telegram verbunden ist.
-3. Einen Plan mit EODHD-Symbol, Marke und aktivem Alarm speichern.
-4. **Alarme jetzt prüfen** drücken.
-5. Ergebnis und Fehler erscheinen direkt im Cloud-Fenster.
-
-Die erste Prüfung sendet jetzt bereits ein Signal, wenn Entry oder Limit zu diesem Zeitpunkt schon erreicht sind. Stop- und Zielsignale werden bei der Initialprüfung nur für den Status **Position offen** oder **Teilverkauf** ausgelöst.
-
-### 4. Cronjob
-
-`setup-alert-cron-v14.sql` setzt einen 15-Minuten-Takt an Werktagen.
-
-Das ist nur sinnvoll, wenn der EODHD-Tarif das Live-/Delayed-Produkt und genügend API Calls enthält. Bei fünf aktiven Tickern entstehen bis zu 480 EODHD-Calls pro Werktag.
-
-## Diagnose
-
-`alarm-diagnose.sql` zeigt:
-
-- aktive Marken und Symbole
-- Telegram-Verbindung
-- letzte Kurs- und Serverprüfung
-- gespeicherte Fehler
-- Signalhistorie und Telegram-Zustellung
-- Cronjob und letzte Cron-Läufe
-
-## Wichtige Alarmregeln
-
-- Long-Limit: Alarm bei Kurs **kleiner oder gleich Limit**
-- Short-Limit: Alarm bei Kurs **größer oder gleich Limit**
-- Entry: Alarm beim Eintritt in die Zone
-- Stop und Ziele: nur bei **Position offen** oder **Teilverkauf**
-- Änderungen an Marken setzen den Alarmstatus zurück
-- Telegram-Warnungen ersetzen keine Stop-Order beim Broker
-
-## Sicherheit
-
-Nicht in GitHub hochladen:
-
-- `EODHD_API_TOKEN`
-- `TELEGRAM_BOT_TOKEN`
-- `CRON_SECRET`
-- Supabase Secret-/Service-Role-Key
-
-Der Supabase Publishable Key im Browser ist für Clientzugriffe vorgesehen; Tabellenzugriffe bleiben durch Row Level Security geschützt.
+Danach werden keine Magic Links oder OTP-Codes mehr benötigt. Die Anmeldung erfolgt mit `signInWithPassword`; die Sitzung wird innerhalb von Safari beziehungsweise der Home-Screen-App separat gespeichert.
