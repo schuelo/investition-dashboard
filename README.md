@@ -1,53 +1,132 @@
-# Investition Dashboard – korrigierte GitHub-Pages-Version
+# Investition Dashboard · Version 14
 
-## Dateien direkt in die oberste Ebene des Repositorys hochladen
+Version 14 behebt zwei Punkte:
 
-- `index.html`
-- `app.js`
-- `supabase.js`
-- `service-worker.js`
-- `reset.html`
-- `startdaten.json`
-- `.nojekyll`
+1. **TradingView auf dem iPhone**: eigener Chart-Modus, eigener Zeitraum-/Intervallschalter, manuelle Aktualisierung und automatisches Neuladen nach Rückkehr in die App.
+2. **Alarmdiagnose**: manuelle Serverprüfung aus dem Dashboard, sichtbarer letzter Prüfzeitpunkt, Kurszeit, Fehlerstatus und eine überarbeitete `check-alerts`-Function.
 
-Die Supabase-Browserbibliothek liegt nun lokal als `supabase.js` im Repository. Dadurch blockiert ein Ausfall oder Content-Blocker für jsDelivr nicht mehr das gesamte Dashboard.
+## Wesentliche Ursache der ausgebliebenen Alarme
 
-## Upload
+Der kostenlose EODHD-Tarif ist für einen laufenden Alarmdienst nicht geeignet:
 
-1. Repository `schuelo/investition-dashboard` öffnen.
-2. `Add file` → `Upload files`.
-3. Alle oben genannten Dateien hochladen und vorhandene Dateien ersetzen.
-4. `Commit changes`.
-5. Unter `Settings` → `Pages` prüfen: Branch `main`, Ordner `/(root)`.
+- 20 API Calls pro Tag
+- freier Zugriff im Wesentlichen auf End-of-Day-Daten; der Live-/Delayed-Endpunkt für normale globale Aktien erfordert einen passenden Tarif
+- EODHD zählt beim Live-Endpunkt **einen API Call pro Ticker**, auch wenn mehrere Ticker in einem HTTP-Aufruf gebündelt werden
+- globale Aktienkurse des Live-Endpunkts sind typischerweise 15–20 Minuten verzögert
 
-## Einmaliger Cache-Reset auf dem iPhone
+Der News-Sync kann das kostenlose Tageskontingent ebenfalls verbrauchen. Für K+S-, Volkswagen-, SK-hynix- oder CATL-Alarme wird daher ein EODHD-Tarif mit Live Data und ausreichendem Tageslimit oder ein anderer Kursanbieter benötigt.
 
-Nach dem Upload zuerst öffnen:
+## Dateien für GitHub Pages
 
-`https://schuelo.github.io/investition-dashboard/reset.html`
+Diese Dateien direkt in das Hauptverzeichnis des Repositorys hochladen:
 
-Dann `Jetzt zurücksetzen` drücken. Danach wird das Dashboard mit der aktuellen Version geöffnet.
+```text
+index.html
+app.js
+news.js
+supabase.js
+service-worker.js
+reset.html
+startdaten.json
+news-startdaten.json
+marktausblick-import-vorlage.json
+.nojekyll
+```
 
-Die Reset-Seite löscht keine Trade-Pläne aus `localStorage`; sie entfernt nur alte Service Worker und Cache-Dateien.
+Danach öffnen:
+
+```text
+https://schuelo.github.io/investition-dashboard/reset.html
+```
+
+und **Jetzt zurücksetzen** wählen. Anschließend:
+
+```text
+https://schuelo.github.io/investition-dashboard/?v=14
+```
+
+## TradingView-Steuerung
+
+Im Chartbereich stehen jetzt bereit:
+
+- **Kursverlauf**: mobiles TradingView-Mini-Chart mit wählbarem Zeitraum
+- **Analysechart**: TradingView Advanced Chart mit wählbarem Kerzenintervall
+- **Aktualisieren**: initialisiert das Widget neu
+
+Der Zeitstempel unter dem Chart zeigt nur, wann das Widget neu geladen wurde. Er ist nicht gleichbedeutend mit dem Börsen-Zeitstempel. TradingView kann je Handelsplatz Echtzeit-, verzögerte oder End-of-Day-Daten anzeigen.
+
+## Supabase-Anpassungen
+
+### 1. Diagnosefelder anlegen
+
+`alarm-health-schema.sql` im SQL Editor vollständig ausführen.
+
+### 2. check-alerts ersetzen
+
+Unter **Edge Functions → check-alerts** den gesamten Code durch `check-alerts-index.ts` ersetzen.
+
+Danach:
+
+- **Verify JWT deaktivieren**
+- Function deployen
+- Secrets müssen vorhanden sein:
+
+```text
+EODHD_API_TOKEN
+TELEGRAM_BOT_TOKEN
+CRON_SECRET
+```
+
+Die Function akzeptiert zwei sichere Aufrufarten:
+
+- Cronjob mit `x-cron-secret`
+- angemeldeter Dashboard-Benutzer über seine Supabase-Sitzung; dabei werden nur dessen eigene Pläne geprüft
+
+Dadurch funktioniert im Dashboard der Button **Alarme jetzt prüfen**, ohne dass das CRON-Secret im Browser gespeichert wird.
+
+### 3. Manuell im Dashboard testen
+
+1. Cloud-Anmeldung öffnen.
+2. Prüfen, dass Telegram verbunden ist.
+3. Einen Plan mit EODHD-Symbol, Marke und aktivem Alarm speichern.
+4. **Alarme jetzt prüfen** drücken.
+5. Ergebnis und Fehler erscheinen direkt im Cloud-Fenster.
+
+Die erste Prüfung sendet jetzt bereits ein Signal, wenn Entry oder Limit zu diesem Zeitpunkt schon erreicht sind. Stop- und Zielsignale werden bei der Initialprüfung nur für den Status **Position offen** oder **Teilverkauf** ausgelöst.
+
+### 4. Cronjob
+
+`setup-alert-cron-v14.sql` setzt einen 15-Minuten-Takt an Werktagen.
+
+Das ist nur sinnvoll, wenn der EODHD-Tarif das Live-/Delayed-Produkt und genügend API Calls enthält. Bei fünf aktiven Tickern entstehen bis zu 480 EODHD-Calls pro Werktag.
+
+## Diagnose
+
+`alarm-diagnose.sql` zeigt:
+
+- aktive Marken und Symbole
+- Telegram-Verbindung
+- letzte Kurs- und Serverprüfung
+- gespeicherte Fehler
+- Signalhistorie und Telegram-Zustellung
+- Cronjob und letzte Cron-Läufe
+
+## Wichtige Alarmregeln
+
+- Long-Limit: Alarm bei Kurs **kleiner oder gleich Limit**
+- Short-Limit: Alarm bei Kurs **größer oder gleich Limit**
+- Entry: Alarm beim Eintritt in die Zone
+- Stop und Ziele: nur bei **Position offen** oder **Teilverkauf**
+- Änderungen an Marken setzen den Alarmstatus zurück
+- Telegram-Warnungen ersetzen keine Stop-Order beim Broker
 
 ## Sicherheit
 
-Nicht in GitHub speichern:
+Nicht in GitHub hochladen:
 
-- Telegram Bot Token
-- EODHD API Token
-- CRON Secret
+- `EODHD_API_TOKEN`
+- `TELEGRAM_BOT_TOKEN`
+- `CRON_SECRET`
 - Supabase Secret-/Service-Role-Key
 
-Der Supabase Publishable Key ist für Browseranwendungen bestimmt; Row Level Security muss aktiv bleiben.
-
-
-## Version 11
-
-- TradingView- und EODHD-Symbole sind in der Eingabemaske klar getrennt.
-- Formatprüfung: TradingView `BÖRSE:TICKER`, EODHD `TICKER.BÖRSENCODE`.
-- Vorlagen für K+S, Volkswagen, SK hynix, Akzo Nobel und CATL füllen beide Kennungen aus.
-- EODHD-Symbol wird bei aktiver Überwachung oder aktiven Alarmen zwingend verlangt.
-- Falsche automatische Umkehrung von TradingView-Symbolen wurde entfernt.
-- Safari-Meldung `Script error.` aus externen TradingView-Widgets wird weiterhin ignoriert.
-- Service-Worker-Cache auf Version 11 erhöht.
+Der Supabase Publishable Key im Browser ist für Clientzugriffe vorgesehen; Tabellenzugriffe bleiben durch Row Level Security geschützt.

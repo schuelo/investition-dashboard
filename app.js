@@ -40,6 +40,10 @@
     const SUPABASE_URL = "https://pzhfybtoyfttftgcrcxk.supabase.co";
     const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_yGiDH_M0fUZglk40fCk7cQ_kkL1XKzj";
     const APP_URL = "https://schuelo.github.io/investition-dashboard/";
+    const CHART_MODE_KEY = "investition-chart-mode-v1";
+    const CHART_RANGE_KEY = "investition-chart-range-v1";
+    const CHART_INTERVAL_KEY = "investition-chart-interval-v1";
+    const PENDING_LOGIN_EMAIL_KEY = "investition-dashboard-pending-email";
     const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
     const seed = [
       { id: uuid(), name: "K+S", symbol: "XETR:SDF", marketSymbol: "SDF.XETRA", currency: "EUR", type: "Aktie", direction: "Neutral", horizon: "6\u201312 Monate", status: "Analyse \xFCbertragen", analysisDate: "2026-07-14", source: "K+S Aktienanalyse Juli 2026", monitoringEnabled: true, alertKoDistancePct: "10", notes: "Entry-, Stop- und Zielzonen aus der K+S-Analyse eintragen. Die Marken werden nicht automatisch erfunden." },
@@ -61,6 +65,11 @@
       tickerHost: $("#tickerHost"),
       chartHost: $("#chartHost"),
       chartCaption: $("#chartCaption"),
+      chartStatus: $("#chartStatus"),
+      chartMode: $("#chartMode"),
+      chartRange: $("#chartRange"),
+      chartInterval: $("#chartInterval"),
+      chartRefreshBtn: $("#chartRefreshBtn"),
       symbolSelect: $("#symbolSelect"),
       setupPanel: $("#setupPanel"),
       setupStatusChip: $("#setupStatusChip"),
@@ -89,6 +98,11 @@
       telegramStatus: $("#telegramStatus"),
       signalList: $("#signalList"),
       userEmail: $("#userEmail"),
+      alarmHealthBox: $("#alarmHealthBox"),
+      alarmHealthSummary: $("#alarmHealthSummary"),
+      runAlertsBtn: $("#runAlertsBtn"),
+      loginOtpBox: $("#loginOtpBox"),
+      loginOtp: $("#loginOtp"),
       symbolPreset: $("#symbolPreset"),
       chartSymbolPreview: $("#chartSymbolPreview"),
       marketSymbolPreview: $("#marketSymbolPreview")
@@ -100,6 +114,9 @@
     let realtimeChannel = null;
     let telegramLinkCode = "";
     let cloudBusy = false;
+    let currentChartKey = "";
+    let lastChartReloadAt = 0;
+    let chartAutoRefreshTimer = null;
     function loadLocal() {
       for (const key of [STORAGE_KEY, LEGACY_STORAGE_KEY]) {
         try {
@@ -229,20 +246,85 @@
       els.symbolSelect.innerHTML = unique.length ? unique.map((t) => `<option value="${escapeHtml(t.id)}">${escapeHtml(t.name)} \xB7 ${escapeHtml(t.symbol)}</option>`).join("") : "<option>Keine Instrumente</option>";
       if (selectedId && trades.some((t) => t.id === selectedId)) els.symbolSelect.value = selectedId;
     }
-    function renderChart() {
+    function setChartStatus(message, detail = "") {
+      if (!els.chartStatus) return;
+      els.chartStatus.innerHTML = `<span>${escapeHtml(message)}</span>${detail ? `<span>${escapeHtml(detail)}</span>` : ""}`;
+    }
+    function chartPrefs() {
+      const mode = els.chartMode.value || storageGet(CHART_MODE_KEY) || "overview";
+      const range = els.chartRange.value || storageGet(CHART_RANGE_KEY) || "12M";
+      const interval = els.chartInterval.value || storageGet(CHART_INTERVAL_KEY) || "D";
+      els.chartMode.value = mode;
+      els.chartRange.value = range;
+      els.chartInterval.value = interval;
+      els.chartRange.classList.toggle("hidden", mode !== "overview");
+      els.chartInterval.classList.toggle("hidden", mode !== "advanced");
+      return { mode, range, interval };
+    }
+    function renderChart(force = false) {
       const t = trades.find((x) => x.id === selectedId) || trades[0];
       if (!(t == null ? void 0 : t.symbol)) {
         els.chartHost.innerHTML = '<div class="chart-placeholder">Noch kein TradingView-Symbol hinterlegt.</div>';
+        setChartStatus("Kein TradingView-Symbol hinterlegt.");
         return;
       }
-      els.chartCaption.textContent = `${t.name} \xB7 ${t.symbol} \xB7 ${t.horizon || "Horizont offen"}`;
+      const prefs = chartPrefs();
+      const key = `${t.symbol}|${prefs.mode}|${prefs.range}|${prefs.interval}`;
+      if (!force && key === currentChartKey && els.chartHost.querySelector("iframe")) return;
+      currentChartKey = key;
+      lastChartReloadAt = Date.now();
+      els.chartCaption.textContent = `${t.name} · ${t.symbol} · ${prefs.mode === "overview" ? "Zeitraum " + prefs.range : "Intervall " + prefs.interval}`;
       els.chartHost.innerHTML = '<div class="tradingview-widget-container" style="height:100%;width:100%"><div class="tradingview-widget-container__widget" style="height:100%;width:100%"></div></div>';
       const s = document.createElement("script");
-      s.src = "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
       s.async = true;
-      s.onerror = () => { els.chartHost.innerHTML = '<div class="chart-placeholder">TradingView-Chart konnte nicht geladen werden. Prüfe Internet- oder Inhaltsblocker.</div>'; };
-      s.textContent = JSON.stringify({ autosize: true, symbol: t.symbol, interval: "D", timezone: "Europe/Berlin", theme: "dark", style: "1", locale: "de", allow_symbol_change: true, calendar: false, details: true, hide_side_toolbar: false, hide_top_toolbar: false, hide_legend: false, hide_volume: false, backgroundColor: "rgba(7,16,25,1)", gridColor: "rgba(36,56,74,.38)", withdateranges: true, save_image: false, support_host: "https://www.tradingview.com" });
+      s.onerror = () => {
+        els.chartHost.innerHTML = '<div class="chart-placeholder">TradingView-Chart konnte nicht geladen werden. Prüfe Internet-, Datenschutz- oder Inhaltsblocker.</div>';
+        setChartStatus("TradingView konnte nicht geladen werden.", "Dashboard-Alarme arbeiten davon unabhängig.");
+      };
+      if (prefs.mode === "overview") {
+        s.src = "https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js";
+        s.textContent = JSON.stringify({
+          symbol: t.symbol,
+          width: "100%",
+          height: "100%",
+          locale: "de",
+          dateRange: prefs.range,
+          colorTheme: "dark",
+          trendLineColor: "rgba(99,169,255,1)",
+          underLineColor: "rgba(99,169,255,.28)",
+          underLineBottomColor: "rgba(99,169,255,0)",
+          isTransparent: true,
+          autosize: true,
+          largeChartUrl: "",
+          noTimeScale: false
+        });
+      } else {
+        s.src = "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
+        s.textContent = JSON.stringify({
+          autosize: true,
+          symbol: t.symbol,
+          interval: prefs.interval,
+          timezone: "exchange",
+          theme: "dark",
+          style: "1",
+          locale: "de",
+          allow_symbol_change: true,
+          calendar: false,
+          details: true,
+          hide_side_toolbar: false,
+          hide_top_toolbar: false,
+          hide_legend: false,
+          hide_volume: false,
+          backgroundColor: "rgba(7,16,25,1)",
+          gridColor: "rgba(36,56,74,.38)",
+          withdateranges: true,
+          save_image: false,
+          support_host: "https://www.tradingview.com"
+        });
+      }
       $(".tradingview-widget-container", els.chartHost).appendChild(s);
+      const loaded = new Intl.DateTimeFormat("de-DE", { hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(new Date());
+      setChartStatus(`Widget neu geladen: ${loaded}`, "TradingView-Daten können je Handelsplatz verzögert sein.");
     }
     function ladder(t) {
       const raw = [["Ziel 3", num(t.target3), "#4ad295"], ["Ziel 2", num(t.target2), "#4ad295"], ["Ziel 1", num(t.target1), "#4ad295"], ["Live/Referenz", num(t.currentPrice), "#63a9ff"], ["Limit", num(t.limitPrice), "#f5bd4f"], ["Entry oben", num(t.entryHigh), "#50d2c2"], ["Entry unten", num(t.entryLow), "#50d2c2"], ["Stop", num(t.stop), "#ff6b7a"], ["KO", num(t.koBarrier), "#ff6b7a"]].filter((x) => x[1] !== null);
@@ -304,12 +386,35 @@
       $("#kpiReview").textContent = upcoming ? displayDate(upcoming.reviewDate) : "\u2014";
       $("#kpiReviewSub").textContent = upcoming ? upcoming.name : "kein Termin hinterlegt";
     }
+    function minutesSince(value) {
+      if (!value) return null;
+      const time = new Date(value).getTime();
+      if (!Number.isFinite(time)) return null;
+      return Math.max(0, Math.round((Date.now() - time) / 60000));
+    }
+    function renderAlarmHealth() {
+      if (!els.alarmHealthSummary) return;
+      const selected = trades.find((x) => x.id === selectedId) || trades[0];
+      const active = trades.filter((t) => t.monitoringEnabled && [t.alertEntry,t.alertLimit,t.alertStop,t.alertTarget1,t.alertTarget2,t.alertTarget3,t.alertKo].some(Boolean));
+      const checked = active.filter((t) => t.lastCheckAt);
+      const errors = active.filter((t) => t.lastCheckError);
+      const last = checked.sort((a,b) => String(b.lastCheckAt).localeCompare(String(a.lastCheckAt)))[0];
+      const age = last ? minutesSince(last.lastCheckAt) : null;
+      const stateClass = errors.length ? "bad" : age === null ? "warn" : age > 30 ? "warn" : "good";
+      const selectedQuoteAge = selected ? minutesSince(selected.currentPriceAt) : null;
+      els.alarmHealthSummary.innerHTML = `
+        <div class="health-item ${stateClass}"><div class="label">Letzte Serverprüfung</div><div class="value">${last ? escapeHtml(displayDateTime(last.lastCheckAt)) : "Noch keine Prüfung"}</div></div>
+        <div class="health-item ${errors.length ? "bad" : "good"}"><div class="label">Aktive Pläne / Fehler</div><div class="value">${active.length} / ${errors.length}</div></div>
+        <div class="health-item ${selected && selected.lastCheckError ? "bad" : "neutral"}"><div class="label">Ausgewählter Plan</div><div class="value">${selected ? escapeHtml(selected.lastCheckError || "Kein Serverfehler gespeichert") : "Kein Plan"}</div></div>
+        <div class="health-item ${selectedQuoteAge !== null && selectedQuoteAge > 30 ? "warn" : "neutral"}"><div class="label">Kurszeit des Plans</div><div class="value">${selected && selected.currentPriceAt ? escapeHtml(displayDateTime(selected.currentPriceAt)) + ` · ${selectedQuoteAge} Min. alt` : "Noch kein EODHD-Kurs"}</div></div>`;
+    }
     function renderAll() {
       renderSymbolSelect();
       renderChart();
       renderSetup();
       renderTable();
       renderKpis();
+      renderAlarmHealth();
     }
     function selectTrade(id) {
       selectedId = id;
@@ -475,6 +580,24 @@
       showCloudMessage(`${rows.length} Pl\xE4ne wurden in die Cloud \xFCbernommen.`, true);
       await loadCloud();
     }
+    async function loadAlertHealthMap() {
+      const map = new Map();
+      if (!session) return map;
+      let result = await sb.from("alert_state").select("trade_id,checked_at,quote_at,last_error,data_source");
+      if (result.error && /quote_at|last_error|data_source/i.test(result.error.message || "")) {
+        result = await sb.from("alert_state").select("trade_id,checked_at");
+      }
+      if (result.error) return map;
+      for (const row of result.data || []) {
+        map.set(row.trade_id, {
+          lastCheckAt: row.checked_at || "",
+          quoteAt: row.quote_at || "",
+          lastCheckError: row.last_error || "",
+          dataSource: row.data_source || ""
+        });
+      }
+      return map;
+    }
     async function loadCloud() {
       var _a2;
       if (!session) return;
@@ -486,7 +609,8 @@
         return;
       }
       if (data == null ? void 0 : data.length) {
-        trades = data.map(fromRow);
+        const health = await loadAlertHealthMap();
+        trades = data.map((row) => ({ ...fromRow(row), ...(health.get(row.id) || {}) }));
         selectedId = trades.some((t) => t.id === selectedId) ? selectedId : ((_a2 = trades[0]) == null ? void 0 : _a2.id) || null;
         saveLocal();
         renderAll();
@@ -539,9 +663,15 @@
       els.loggedOutBox.classList.toggle("hidden", logged);
       els.loggedInBox.classList.toggle("hidden", !logged);
       els.telegramBox.classList.toggle("hidden", !logged);
+      els.alarmHealthBox.classList.toggle("hidden", !logged);
       els.signalsBox.classList.toggle("hidden", !logged);
       els.userEmail.textContent = ((_a2 = session == null ? void 0 : session.user) == null ? void 0 : _a2.email) || "\u2014";
-      setCloudState(logged ? "online" : "", logged ? "Cloud" : "Lokal");
+      if (!logged) {
+        const pendingEmail = storageGet(PENDING_LOGIN_EMAIL_KEY) || "";
+        if (pendingEmail && !$("#loginEmail").value) $("#loginEmail").value = pendingEmail;
+        els.loginOtpBox.classList.toggle("hidden", !pendingEmail);
+      }
+      setCloudState(logged ? "online" : "", logged ? "Cloud verbunden" : "Cloud-Anmeldung");
     }
     async function initCloud() {
       if (!sb) {
@@ -569,13 +699,32 @@
         }, 0);
       });
     }
-    async function sendLoginLink() {
-      const email = $("#loginEmail").value.trim();
+    async function sendLoginCode() {
+      const email = $("#loginEmail").value.trim().toLowerCase();
       if (!email) return showCloudMessage("Bitte eine E-Mail-Adresse eingeben.", false);
       setBusy(true);
-      const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: APP_URL } });
+      const { error } = await sb.auth.signInWithOtp({ email, options: { shouldCreateUser: true } });
       setBusy(false);
-      showCloudMessage(error ? "Anmeldelink konnte nicht gesendet werden: " + error.message : "Anmeldelink wurde gesendet. \xD6ffne ihn auf dem gew\xFCnschten Ger\xE4t.", !error);
+      if (error) return showCloudMessage("Code konnte nicht gesendet werden: " + error.message, false);
+      storageSet(PENDING_LOGIN_EMAIL_KEY, email);
+      els.loginOtpBox.classList.remove("hidden");
+      els.loginOtp.value = "";
+      els.loginOtp.focus();
+      showCloudMessage("E-Mail-Code wurde gesendet. Gib den sechsstelligen Code hier ein.", true);
+    }
+    async function verifyLoginCode() {
+      const email = ($("#loginEmail").value.trim() || storageGet(PENDING_LOGIN_EMAIL_KEY) || "").toLowerCase();
+      const token = els.loginOtp.value.replace(/\s+/g, "");
+      if (!email) return showCloudMessage("Bitte zuerst die E-Mail-Adresse eingeben.", false);
+      if (!token) return showCloudMessage("Bitte den E-Mail-Code eingeben.", false);
+      setBusy(true);
+      const { error } = await sb.auth.verifyOtp({ email, token, type: "email" });
+      setBusy(false);
+      if (error) return showCloudMessage("Code konnte nicht bestätigt werden: " + error.message, false);
+      storageSet(PENDING_LOGIN_EMAIL_KEY, "");
+      els.loginOtp.value = "";
+      els.loginOtpBox.classList.add("hidden");
+      showCloudMessage("Cloud-Anmeldung erfolgreich.", true);
     }
     async function generateTelegramCode() {
       if (!session) return;
@@ -609,6 +758,29 @@
       showCloudMessage((data == null ? void 0 : data.message) || "Telegram verbunden.", true);
       await loadNotificationSettings();
     }
+    async function checkAlertsNow() {
+      if (!session) return showCloudMessage("Bitte zuerst in der Cloud anmelden.", false);
+      setBusy(true);
+      showCloudMessage("Alarmprüfung läuft …");
+      const { data, error } = await sb.functions.invoke("check-alerts", { body: { manual: true } });
+      setBusy(false);
+      if (error) {
+        let details = error.message || String(error);
+        try {
+          if (error.context instanceof Response) {
+            const payload = await error.context.clone().json();
+            details = payload?.error || payload?.message || JSON.stringify(payload);
+          }
+        } catch (_e) {}
+        return showCloudMessage("Alarmprüfung fehlgeschlagen: " + details, false);
+      }
+      const failed = Number(data?.failed || 0);
+      const events = Number(data?.events_sent || 0);
+      const checked = Number(data?.checked || 0);
+      const firstError = (data?.results || []).find((r) => r.error)?.error;
+      showCloudMessage(`Alarmprüfung: ${checked} Pläne, ${events} Signale, ${failed} Fehler${firstError ? " · " + firstError : ""}`, failed ? false : true);
+      await loadCloud();
+    }
     $("#newBtn").onclick = () => openModal();
     $("#closeModalBtn").onclick = closeModal;
     $("#cancelBtn").onclick = closeModal;
@@ -624,8 +796,28 @@
     });
     els.symbolSelect.addEventListener("change", () => {
       selectedId = els.symbolSelect.value;
+      currentChartKey = "";
       renderAll();
     });
+    els.chartMode.value = storageGet(CHART_MODE_KEY) || "overview";
+    els.chartRange.value = storageGet(CHART_RANGE_KEY) || "12M";
+    els.chartInterval.value = storageGet(CHART_INTERVAL_KEY) || "D";
+    els.chartMode.addEventListener("change", () => {
+      storageSet(CHART_MODE_KEY, els.chartMode.value);
+      currentChartKey = "";
+      renderChart(true);
+    });
+    els.chartRange.addEventListener("change", () => {
+      storageSet(CHART_RANGE_KEY, els.chartRange.value);
+      currentChartKey = "";
+      renderChart(true);
+    });
+    els.chartInterval.addEventListener("change", () => {
+      storageSet(CHART_INTERVAL_KEY, els.chartInterval.value);
+      currentChartKey = "";
+      renderChart(true);
+    });
+    els.chartRefreshBtn.addEventListener("click", () => renderChart(true));
     [els.searchInput, els.typeFilter, els.directionFilter, els.statusFilter].forEach((el) => el.addEventListener("input", () => {
       renderTable();
       renderKpis();
@@ -660,18 +852,27 @@
     els.cloudModal.addEventListener("click", (e) => {
       if (e.target === els.cloudModal) els.cloudModal.classList.remove("open");
     });
-    $("#loginBtn").onclick = sendLoginLink;
+    $("#loginBtn").onclick = sendLoginCode;
+    $("#verifyOtpBtn").onclick = verifyLoginCode;
+    els.loginOtp.addEventListener("keydown", (event) => { if (event.key === "Enter") verifyLoginCode(); });
     $("#logoutBtn").onclick = () => sb.auth.signOut();
     $("#uploadLocalBtn").onclick = uploadAllLocal;
     $("#reloadCloudBtn").onclick = loadCloud;
+    els.runAlertsBtn.onclick = checkAlertsNow;
     $("#generateCodeBtn").onclick = generateTelegramCode;
     $("#connectTelegramBtn").onclick = connectTelegram;
     initTicker();
     renderAll();
     initCloud();
+    chartAutoRefreshTimer = window.setInterval(() => {
+      if (!document.hidden && Date.now() - lastChartReloadAt > 300000) renderChart(true);
+    }, 60000);
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden && Date.now() - lastChartReloadAt > 60000) renderChart(true);
+    });
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", function() {
-        navigator.serviceWorker.register("./service-worker.js?v=11").catch(function(err) {
+        navigator.serviceWorker.register("./service-worker.js?v=14").catch(function(err) {
           console.warn("Service Worker konnte nicht registriert werden.", err);
         });
       });

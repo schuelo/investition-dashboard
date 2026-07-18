@@ -267,7 +267,105 @@
     .cloud-ready .cloud-only { display:initial; }
     @media (max-width:760px) { .checkbox-grid { grid-template-columns:1fr 1fr; } }
     @media (max-width:480px) { .checkbox-grid { grid-template-columns:1fr; } }
-  </style>
+
+
+    /* Hauptnavigation und News Feed */
+    .main-nav {
+      display:flex; gap:8px; padding:0 24px 12px; overflow-x:auto;
+      scrollbar-width:none;
+    }
+    .main-nav::-webkit-scrollbar { display:none; }
+    .nav-btn {
+      display:inline-flex; align-items:center; gap:8px; white-space:nowrap;
+      border:1px solid var(--border); border-radius:999px; padding:8px 12px;
+      background:rgba(13,24,36,.82); color:var(--muted); font-weight:750;
+    }
+    .nav-btn.active { color:#031019; background:var(--accent); border-color:transparent; }
+    .app-page[hidden] { display:none !important; }
+    .news-hero {
+      display:flex; align-items:flex-start; justify-content:space-between; gap:16px;
+      margin-bottom:16px; padding:18px;
+    }
+    .news-hero h2 { margin:0; font-size:22px; letter-spacing:-.03em; }
+    .news-hero p { margin:5px 0 0; color:var(--muted); max-width:820px; }
+    .news-toolbar {
+      display:grid; grid-template-columns:minmax(220px,1.3fr) repeat(3,minmax(130px,.5fr));
+      gap:9px; padding:12px 14px; border-bottom:1px solid var(--border);
+    }
+    .news-layout {
+      display:grid; grid-template-columns:minmax(330px,.72fr) minmax(0,1.28fr);
+      gap:16px; align-items:start;
+    }
+    .news-list-card, .news-detail-card { overflow:hidden; min-height:610px; }
+    .news-list { max-height:720px; overflow:auto; }
+    .news-item {
+      width:100%; display:block; text-align:left; border:0; border-bottom:1px solid rgba(36,56,74,.8);
+      padding:14px 15px; color:var(--text); background:transparent; transition:.15s ease;
+    }
+    .news-item:hover, .news-item.selected { background:rgba(80,210,194,.065); }
+    .news-item.unread .news-title::before {
+      content:''; display:inline-block; width:7px; height:7px; margin:0 8px 1px 0;
+      border-radius:50%; background:var(--accent);
+    }
+    .news-meta-row { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:6px; }
+    .news-time { color:var(--muted); font-size:11px; font-variant-numeric:tabular-nums; }
+    .news-topic { color:var(--accent); font-size:10px; font-weight:850; text-transform:uppercase; letter-spacing:.08em; }
+    .news-title { font-weight:820; line-height:1.35; }
+    .news-summary { margin-top:6px; color:#aebfce; font-size:12px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+    .news-tags { display:flex; flex-wrap:wrap; gap:5px; margin-top:9px; }
+    .news-detail { padding:18px; }
+    .news-detail h2 { margin:0; font-size:24px; letter-spacing:-.035em; line-height:1.2; }
+    .news-detail-meta { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:10px 0 16px; color:var(--muted); font-size:12px; }
+    .news-detail-content { color:#d1dce6; white-space:pre-wrap; line-height:1.65; }
+    .news-analysis-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:16px 0; }
+    .news-analysis-box { padding:12px; border:1px solid var(--border); border-radius:11px; background:rgba(6,15,23,.46); }
+    .news-analysis-box .label { color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:.08em; }
+    .news-analysis-box .value { margin-top:6px; font-weight:780; white-space:pre-wrap; }
+    .news-source-link { display:inline-flex; margin-top:16px; text-decoration:none; }
+    .news-empty { display:grid; place-items:center; min-height:360px; padding:30px; color:var(--muted); text-align:center; }
+    .news-status { min-height:18px; margin-top:8px; color:var(--muted); font-size:12px; }
+    .news-status.good { color:var(--good); }
+    .news-status.bad { color:var(--bad); }
+    @media (max-width:980px) {
+      .news-layout { grid-template-columns:1fr; }
+      .news-list-card, .news-detail-card { min-height:auto; }
+      .news-list { max-height:520px; }
+      .news-analysis-grid { grid-template-columns:1fr; }
+    }
+    @media (max-width:760px) {
+      .main-nav { padding-left:14px; padding-right:14px; }
+      .news-hero { flex-direction:column; }
+      .news-toolbar { grid-template-columns:1fr 1fr; }
+    }
+    @media (max-width:480px) {
+      .news-toolbar { grid-template-columns:1fr; }
+      .news-detail h2 { font-size:20px; }
+    }
+
+  
+
+    /* Version 14: Chart-Steuerung und Alarmzustand */
+    .chart-controls { display:flex; align-items:center; justify-content:flex-end; gap:8px; flex-wrap:wrap; min-width:min(100%,620px); }
+    .chart-control { width:auto; min-width:120px; padding:8px 9px; }
+    .chart-control.range { min-width:105px; }
+    .chart-status { padding:8px 14px; border-top:1px solid var(--border); color:var(--muted); font-size:11px; display:flex; gap:8px; flex-wrap:wrap; justify-content:space-between; }
+    .chart-status strong { color:#cbd9e5; }
+    .health-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-top:10px; }
+    .health-item { padding:10px; border:1px solid var(--border); border-radius:10px; background:#08131e; }
+    .health-item .label { color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:.07em; }
+    .health-item .value { margin-top:4px; font-size:12px; font-weight:750; overflow-wrap:anywhere; }
+    .health-item.good .value { color:var(--good); }
+    .health-item.warn .value { color:var(--warn); }
+    .health-item.bad .value { color:var(--bad); }
+    @media (max-width:760px) {
+      .chart-controls { width:100%; justify-content:stretch; }
+      .chart-control { flex:1 1 120px; min-width:0; }
+      .chart-controls .btn { flex:0 0 auto; }
+      .chart-host { height:430px; }
+      .health-grid { grid-template-columns:1fr; }
+    }
+
+</style>
 </head>
 <body>
 <div id="appError" hidden style="position:sticky;top:0;z-index:9999;background:#7f1d1d;color:#fff;padding:12px 16px;font:600 14px system-ui;text-align:center"></div>
@@ -318,20 +416,25 @@ setTimeout(function(){
         </div>
       </div>
       <div class="actions">
-        <button class="btn ghost cloud-indicator" id="cloudBtn"><span class="status-dot" id="cloudDot"></span><span class="label-text" id="cloudLabel">Lokal</span></button>
+        <button class="btn ghost cloud-indicator" id="cloudBtn"><span class="status-dot" id="cloudDot"></span><span class="label-text" id="cloudLabel">Cloud-Anmeldung</span></button>
         <button class="btn ghost" id="exportBtn">⇩ <span class="label-text">Export</span></button>
         <button class="btn ghost" id="importBtn">⇧ <span class="label-text">Import</span></button>
         <button class="btn primary" id="newBtn">＋ <span class="label-text">Trade-Plan</span></button>
         <input class="file-input" id="importFile" type="file" accept="application/json" />
       </div>
     </div>
+
+    <nav class="main-nav" aria-label="Dashboard-Bereiche">
+      <button class="nav-btn active" id="navTradingBtn" data-page="trading">▦ Trading & Analysen</button>
+      <button class="nav-btn" id="navNewsBtn" data-page="news">◉ News Feed</button>
+    </nav>
     <div class="ticker-wrap" id="tickerHost"></div>
   </header>
 
-  <main class="page">
+  <main class="page app-page" id="tradingPage">
     <div class="notice">
       <div>ⓘ</div>
-      <div><strong>Live-Marktansicht:</strong> Ticker und Chart werden von TradingView bereitgestellt. Analysewerte werden lokal gespeichert und nach Anmeldung zusätzlich mit deiner Supabase-Cloud synchronisiert. Telegram-Alarme laufen serverseitig; je nach Kursdatenanbieter können Kurse verzögert sein.</div>
+      <div><strong>Marktdaten:</strong> TradingView liefert Chart und Ticker; je nach Börse können diese Echtzeit, verzögert oder End-of-Day sein. Telegram-Alarme verwenden getrennt den EODHD-Kurs. Der Alarmstatus zeigt, wann der Server zuletzt geprüft hat und wie alt der Kurs ist.</div>
     </div>
 
     <section class="kpi-grid">
@@ -349,9 +452,27 @@ setTimeout(function(){
             <h2>Live-Chart</h2>
             <p id="chartCaption">Instrument auswählen, um Chart und Setup gemeinsam zu prüfen.</p>
           </div>
-          <select id="symbolSelect" class="symbol-select" aria-label="Instrument auswählen"></select>
+          <div class="chart-controls">
+            <select id="symbolSelect" class="symbol-select chart-control" aria-label="Instrument auswählen"></select>
+            <select id="chartMode" class="chart-control" aria-label="Chart-Modus">
+              <option value="overview">Kursverlauf</option>
+              <option value="advanced">Analysechart</option>
+            </select>
+            <select id="chartRange" class="chart-control range" aria-label="Zeitraum">
+              <option value="1D">1 Tag</option><option value="5D">5 Tage</option><option value="1M">1 Monat</option>
+              <option value="3M">3 Monate</option><option value="6M">6 Monate</option><option value="12M" selected>1 Jahr</option>
+              <option value="60M">5 Jahre</option><option value="ALL">Maximal</option>
+            </select>
+            <select id="chartInterval" class="chart-control hidden" aria-label="Kerzenintervall">
+              <option value="1">1 Min.</option><option value="5">5 Min.</option><option value="15">15 Min.</option>
+              <option value="60">1 Std.</option><option value="240">4 Std.</option><option value="D" selected>1 Tag</option>
+              <option value="W">1 Woche</option><option value="M">1 Monat</option>
+            </select>
+            <button class="btn small" id="chartRefreshBtn" type="button">↻ Aktualisieren</button>
+          </div>
         </div>
         <div class="chart-host" id="chartHost"><div class="chart-placeholder">Chart wird geladen …</div></div>
+        <div class="chart-status" id="chartStatus"><span>TradingView-Widget wird initialisiert.</span></div>
       </article>
 
       <aside class="card setup-card">
@@ -386,6 +507,56 @@ setTimeout(function(){
       </div>
     </section>
   </main>
+
+  <main class="page app-page" id="newsPage" hidden>
+    <section class="card news-hero">
+      <div>
+        <h2>News Feed · Wöchentlicher Marktausblick</h2>
+        <p>Marktrelevante Meldungen zu KI, Energie, Halbleitern, Makro, EUR/USD und beobachteten Unternehmen. Zeitstempel und Thema erscheinen in der Liste; ein Klick öffnet den vollständigen Inhalt.</p>
+      </div>
+      <div class="actions">
+        <button class="btn" id="newsImportBtn">⇧ News importieren</button>
+        <button class="btn primary" id="newsSyncBtn">↻ Feed aktualisieren</button>
+        <input class="file-input" id="newsImportFile" type="file" accept="application/json" />
+      </div>
+    </section>
+
+    <section class="card" style="margin-bottom:16px">
+      <div class="news-toolbar">
+        <input id="newsSearchInput" type="search" placeholder="Thema, Titel, Symbol, Inhalt …" />
+        <select id="newsTopicFilter">
+          <option value="">Alle Themen</option>
+          <option>KI</option><option>Energie</option><option>Halbleiter</option><option>Makro</option><option>EUR/USD</option><option>Unternehmen</option><option>Sonstiges</option>
+        </select>
+        <select id="newsImpactFilter">
+          <option value="">Alle Relevanzen</option><option value="hoch">Hoch</option><option value="mittel">Mittel</option><option value="niedrig">Niedrig</option>
+        </select>
+        <select id="newsReadFilter">
+          <option value="">Alle Einträge</option><option value="unread">Nur ungelesen</option><option value="read">Nur gelesen</option>
+        </select>
+      </div>
+    </section>
+
+    <section class="news-layout">
+      <article class="card news-list-card">
+        <div class="card-head">
+          <div><h2>Feed</h2><p id="newsLastUpdated">Noch nicht synchronisiert</p></div>
+          <span class="chip neutral" id="newsCountChip">0 Einträge</span>
+        </div>
+        <div class="news-list" id="newsList"></div>
+      </article>
+
+      <article class="card news-detail-card" id="newsDetailCard">
+        <div class="card-head">
+          <div><h2>Inhalt</h2><p>Meldung, Marktfolgen und Einordnung</p></div>
+          <button class="btn small" id="markAllReadBtn">Alle als gelesen</button>
+        </div>
+        <div class="news-detail" id="newsDetail"></div>
+      </article>
+    </section>
+    <div class="news-status" id="newsStatus"></div>
+  </main>
+
 </div>
 
 <div class="modal-backdrop" id="modalBackdrop" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
@@ -520,14 +691,22 @@ setTimeout(function(){
     <div class="modal-head"><h3 id="cloudModalTitle">Cloud & Benachrichtigungen</h3><button class="btn small ghost" id="closeCloudBtn">✕</button></div>
     <div class="modal-body">
       <div class="cloud-box" id="loggedOutBox">
-        <h4>Supabase-Anmeldung</h4>
-        <p>Du erhältst einen sicheren Anmeldelink per E-Mail. Danach werden Analysen zwischen iPhone und Computer synchronisiert.</p>
-        <div class="inline-actions"><input type="email" id="loginEmail" placeholder="deine E-Mail-Adresse" /><button class="btn primary" id="loginBtn">Anmeldelink senden</button></div>
+        <h4>Cloud-Anmeldung mit E-Mail-Code</h4>
+        <p>Gib deine E-Mail-Adresse ein. Du erhältst einen sechsstelligen Code, den du direkt hier in der Home-Screen-App bestätigst. Dadurch ist kein Wechsel zurück aus Safari erforderlich.</p>
+        <div class="inline-actions"><input type="email" id="loginEmail" autocomplete="email" placeholder="deine E-Mail-Adresse" /><button class="btn primary" id="loginBtn">Code anfordern</button></div>
+        <div class="inline-actions hidden" id="loginOtpBox" style="margin-top:10px"><input type="text" id="loginOtp" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="6-stelliger E-Mail-Code" /><button class="btn primary" id="verifyOtpBtn">Code bestätigen</button></div>
+        <p class="microcopy" style="margin-top:10px">Die Home-Screen-App speichert ihre Cloud-Sitzung getrennt von Safari. Die Anmeldung ist daher einmal direkt in dieser App erforderlich.</p>
       </div>
       <div class="cloud-box hidden" id="loggedInBox">
         <h4>Cloud verbunden</h4>
         <p id="userEmail">—</p>
         <div class="inline-actions"><button class="btn primary" id="uploadLocalBtn">Lokale Pläne in Cloud übernehmen</button><button class="btn" id="reloadCloudBtn">Cloud neu laden</button><button class="btn" id="logoutBtn">Abmelden</button></div>
+      </div>
+      <div class="cloud-box hidden" id="alarmHealthBox">
+        <h4>Alarmprüfung</h4>
+        <p>Prüft deine aktiven EODHD-Symbole sofort. Die Function akzeptiert deine Supabase-Sitzung; das CRON-Secret bleibt serverseitig.</p>
+        <div class="inline-actions"><button class="btn primary" id="runAlertsBtn">Alarme jetzt prüfen</button></div>
+        <div class="health-grid" id="alarmHealthSummary"></div>
       </div>
       <div class="cloud-box hidden" id="telegramBox">
         <h4>Telegram verbinden</h4>
@@ -545,8 +724,9 @@ setTimeout(function(){
   </div>
 </div>
 
-<script defer src="./supabase.js?v=11"></script>
-<script defer src="./app.js?v=11"></script>
+<script defer src="./supabase.js?v=14"></script>
+<script defer src="./app.js?v=14"></script>
+<script defer src="./news.js?v=14"></script>
 
 </body>
 </html>
