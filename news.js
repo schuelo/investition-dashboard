@@ -103,7 +103,7 @@
   function renderDetail(n) {
     if (!n) { els.detail.innerHTML = '<div class="news-empty">Wähle einen Eintrag aus der Liste.</div>'; return; }
     const source = safeUrl(n.source_url);
-    const symbols = n.symbols.length ? n.symbols.map(s => `<span class="chip neutral">${escapeHtml(s)}</span>`).join(' ') : '—';
+    const symbols = n.symbols.length ? n.symbols.map(s => `<button type="button" class="btn small news-analysis-link" data-analysis-symbol="${escapeHtml(s)}"><span>${escapeHtml(s)}</span><span>Analyse öffnen →</span></button>`).join(' ') : '—';
     const tags = n.tags.length ? n.tags.map(s => `<span class="chip neutral">${escapeHtml(s)}</span>`).join(' ') : '—';
     els.detail.innerHTML = `
       <div class="news-topic">${escapeHtml(n.topic)}</div>
@@ -119,6 +119,23 @@
       <div class="news-analysis-box" style="margin-top:16px"><div class="label">Betroffene Symbole</div><div class="value">${symbols}</div></div>
       <div class="news-analysis-box" style="margin-top:10px"><div class="label">Themen-Tags</div><div class="value">${tags}</div></div>
       ${source ? `<a class="btn news-source-link" href="${escapeHtml(source)}" target="_blank" rel="noopener noreferrer">Originalquelle öffnen ↗</a>` : ''}`;
+    $$('[data-analysis-symbol]', els.detail).forEach(button => {
+      button.onclick = () => openLinkedAnalysis(button.dataset.analysisSymbol || '');
+    });
+  }
+  function openLinkedAnalysis(symbol) {
+    const dashboard = window.InvestitionDashboard;
+    if (!dashboard || typeof dashboard.openAnalysisBySymbol !== 'function') {
+      setStatus('Die Analyseansicht ist noch nicht vollständig geladen. Bitte Seite kurz neu öffnen.', 'bad');
+      return;
+    }
+    const result = dashboard.openAnalysisBySymbol(symbol);
+    if (!result?.ok) {
+      setStatus(`Für ${symbol} wurde kein zugehöriger Trade-Plan gefunden.`, 'bad');
+      return;
+    }
+    showPage('trading');
+    setStatus(`Analyse ${result.name} geöffnet.`, 'good');
   }
   function selectItem(id) {
     selectedId = id; readIds.add(id); saveReadIds(); renderList();

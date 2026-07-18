@@ -1,10 +1,10 @@
-const CACHE_NAME = 'investition-dashboard-v16-chart-news';
+const CACHE_NAME = 'investition-dashboard-v17-analysis-links';
 const CORE = [
   './',
   './index.html',
-  './app.js?v=16',
-  './supabase.js?v=16',
-  './news.js?v=16',
+  './app.js?v=17',
+  './supabase.js?v=17',
+  './news.js?v=17',
   './startdaten.json'
 ];
 

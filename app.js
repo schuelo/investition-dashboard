@@ -444,9 +444,47 @@
     }
     function selectTrade(id) {
       selectedId = id;
+      currentChartKey = "";
       renderAll();
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
+    function symbolMatchTokens(value) {
+      const normalized = String(value || "").trim().toUpperCase().replace(/\s+/g, "");
+      if (!normalized) return [];
+      const tokens = new Set([normalized]);
+      if (normalized.includes(":")) tokens.add(normalized.split(":").pop());
+      if (normalized.includes(".")) tokens.add(normalized.split(".")[0]);
+      return [...tokens].filter(Boolean);
+    }
+    function findTradeBySymbol(symbol) {
+      const wanted = new Set(symbolMatchTokens(symbol));
+      if (!wanted.size) return null;
+      return trades.find((trade) => {
+        const available = new Set([
+          ...symbolMatchTokens(trade.symbol),
+          ...symbolMatchTokens(trade.marketSymbol)
+        ]);
+        return [...wanted].some((token) => available.has(token));
+      }) || null;
+    }
+    window.InvestitionDashboard = Object.assign(window.InvestitionDashboard || {}, {
+      openAnalysisBySymbol(symbol) {
+        const trade = findTradeBySymbol(symbol);
+        if (!trade) return { ok: false, symbol, message: "Keine zugehörige Analyse gefunden." };
+        selectedId = trade.id;
+        currentChartKey = "";
+        if (els.searchInput) els.searchInput.value = "";
+        if (els.typeFilter) els.typeFilter.value = "";
+        if (els.directionFilter) els.directionFilter.value = "";
+        if (els.statusFilter) els.statusFilter.value = "";
+        renderAll();
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return { ok: true, id: trade.id, name: trade.name, symbol: trade.symbol };
+      },
+      hasAnalysisForSymbol(symbol) {
+        return Boolean(findTradeBySymbol(symbol));
+      }
+    });
     function normalizeSymbolInput(value) {
       return String(value || "").trim().toUpperCase().replace(/\s+/g, "");
     }
@@ -972,7 +1010,7 @@
     });
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", function() {
-        navigator.serviceWorker.register("./service-worker.js?v=16").catch(function(err) {
+        navigator.serviceWorker.register("./service-worker.js?v=17").catch(function(err) {
           console.warn("Service Worker konnte nicht registriert werden.", err);
         });
       });
