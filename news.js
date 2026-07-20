@@ -17,7 +17,7 @@
   });
 
   const els = {
-    tradingPage: $('#tradingPage'), newsPage: $('#newsPage'), navTrading: $('#navTradingBtn'), navNews: $('#navNewsBtn'),
+    tradingPage: $('#tradingPage'), decisionPage: $('#decisionPage'), newsPage: $('#newsPage'), navTrading: $('#navTradingBtn'), navDecision: $('#navDecisionBtn'), navNews: $('#navNewsBtn'),
     list: $('#newsList'), detail: $('#newsDetail'), detailCard: $('#newsDetailCard'), count: $('#newsCountChip'), lastUpdated: $('#newsLastUpdated'),
     search: $('#newsSearchInput'), topic: $('#newsTopicFilter'), impact: $('#newsImpactFilter'), read: $('#newsReadFilter'),
     sync: $('#newsSyncBtn'), importBtn: $('#newsImportBtn'), importFile: $('#newsImportFile'), status: $('#newsStatus'), markAll: $('#markAllReadBtn'),
@@ -31,6 +31,7 @@
   let realtimeChannel = null;
   let readIds = loadReadIds();
 
+  function notifyNewsChanged() { window.dispatchEvent(new CustomEvent('investition:news-changed', {detail:{count:items.length}})); }
   function loadLocal() {
     try { const parsed = JSON.parse(localStorage.getItem(LOCAL_KEY) || '[]'); return Array.isArray(parsed) ? parsed.map(normalize) : []; }
     catch { return []; }
@@ -142,11 +143,22 @@
     if (matchMedia('(max-width:980px)').matches) els.detailCard.scrollIntoView({behavior:'smooth', block:'start'});
   }
   function showPage(name) {
-    const news = name === 'news';
-    els.tradingPage.hidden = news; els.newsPage.hidden = !news;
-    els.navTrading.classList.toggle('active', !news); els.navNews.classList.toggle('active', news);
-    history.replaceState(null, '', news ? '#news' : '#trading');
+    const page = ['decision', 'trading', 'news'].includes(name) ? name : 'decision';
+    const news = page === 'news';
+    const decision = page === 'decision';
+    els.tradingPage.hidden = page !== 'trading';
+    if (els.decisionPage) els.decisionPage.hidden = !decision;
+    els.newsPage.hidden = !news;
+    els.navTrading?.classList.toggle('active', page === 'trading');
+    els.navDecision?.classList.toggle('active', decision);
+    els.navNews?.classList.toggle('active', news);
+    history.replaceState(null, '', `#${page}`);
     if (news) renderList();
+    if (decision) window.dispatchEvent(new CustomEvent('investition:decision-visible'));
+  }
+  function pageFromHash() {
+    const value = String(location.hash || '').replace('#', '');
+    return ['decision', 'trading', 'news'].includes(value) ? value : 'decision';
   }
   async function loadCloudNews() {
     if (!sb || !session) {
@@ -168,6 +180,7 @@
     els.lastUpdated.textContent = items[0] ? `Neueste Meldung: ${dateTime(items[0].published_at)}` : 'Cloud-Tabelle ist erreichbar, enthält aber noch keine Meldungen';
     setStatus(items.length ? `${items.length} Meldungen aus Supabase geladen.` : 'Die News-Tabelle ist leer. Tippe auf „Feed aktualisieren“.', items.length ? 'good' : '');
     renderList();
+    notifyNewsChanged();
   }
   async function syncNews() {
     if (!sb || !session) {
@@ -206,7 +219,7 @@
       if (!Array.isArray(incoming)) throw new Error('Kein gültiges News-Array gefunden.');
       const mapped = incoming.map(normalize);
       items = [...mapped, ...items.filter(old => !mapped.some(n => (n.external_id && n.external_id === old.external_id) || n.id === old.id))];
-      saveLocal(); selectedId = mapped[0]?.id || selectedId; renderList();
+      saveLocal(); selectedId = mapped[0]?.id || selectedId; renderList(); notifyNewsChanged();
       setStatus(`${mapped.length} News-Einträge lokal importiert.`, 'good');
       if (session) {
         const rows = mapped.map(n => ({...n, is_published:true}));
@@ -254,15 +267,22 @@
   }
 
   els.navTrading.onclick = () => showPage('trading');
+  if (els.navDecision) els.navDecision.onclick = () => showPage('decision');
   els.navNews.onclick = () => showPage('news');
   [els.search, els.topic, els.impact, els.read].forEach(el => el.addEventListener('input', renderList));
   els.sync.onclick = syncNews;
   els.importBtn.onclick = () => els.importFile.click();
   els.importFile.onchange = async () => { const file = els.importFile.files[0]; if (file) await importNews(file); els.importFile.value=''; };
   els.markAll.onclick = () => { items.forEach(n => readIds.add(n.id)); saveReadIds(); renderList(); };
-  window.addEventListener('hashchange', () => showPage(location.hash === '#news' ? 'news' : 'trading'));
+  window.addEventListener('hashchange', () => showPage(pageFromHash()));
+  window.InvestitionNavigation = Object.assign(window.InvestitionNavigation || {}, { showPage, getPage: pageFromHash });
+  window.InvestitionNews = Object.assign(window.InvestitionNews || {}, {
+    getItems: () => items.map(item => ({...item, symbols:[...item.symbols], tags:[...item.tags]})),
+    refresh: loadCloudNews,
+    sync: syncNews
+  });
 
-  showPage(location.hash === '#news' ? 'news' : 'trading');
+  showPage(pageFromHash());
   renderList();
   initCloud();
 })();

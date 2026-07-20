@@ -1,10 +1,11 @@
-const CACHE_NAME = 'investition-dashboard-v17-1-fixed-daily-chart';
+const CACHE_NAME = 'investition-dashboard-v25-0-decision-center';
 const CORE = [
   './',
   './index.html',
-  './app.js?v=17.1',
-  './supabase.js?v=17.1',
-  './news.js?v=17.1',
+  './app.js?v=25.0',
+  './supabase.js?v=25.0',
+  './news.js?v=25.0',
+  './decision.js?v=25.0',
   './startdaten.json'
 ];
 
@@ -20,9 +21,7 @@ self.addEventListener('install', event => {
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys()
-      .then(keys => Promise.all(
-        keys.map(key => key === CACHE_NAME ? undefined : caches.delete(key))
-      ))
+      .then(keys => Promise.all(keys.map(key => key === CACHE_NAME ? undefined : caches.delete(key))))
       .then(() => self.clients.claim())
   );
 });
@@ -49,7 +48,7 @@ self.addEventListener('fetch', event => {
 
   event.respondWith(
     caches.match(request).then(cached => {
-      const fresh = fetch(request).then(response => {
+      const fresh = fetch(request, { cache: 'no-cache' }).then(response => {
         if (response.ok) {
           const copy = response.clone();
           caches.open(CACHE_NAME).then(cache => cache.put(request, copy));

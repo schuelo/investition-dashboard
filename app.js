@@ -117,6 +117,9 @@
     let currentChartKey = "";
     let lastChartReloadAt = 0;
     let chartAutoRefreshTimer = null;
+    function emitDashboardEvent(name, detail = {}) {
+      try { window.dispatchEvent(new CustomEvent(name, { detail })); } catch (_e) {}
+    }
     function loadLocal() {
       for (const key of [STORAGE_KEY, LEGACY_STORAGE_KEY]) {
         try {
@@ -153,6 +156,7 @@
     }
     function saveLocal() {
       storageSet(STORAGE_KEY, JSON.stringify(trades));
+      emitDashboardEvent("investition:data-changed", { trades: trades.map((trade) => ({ ...trade })) });
     }
     function isUuid(v) {
       return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v || "");
@@ -338,7 +342,7 @@
       }
       $(".tradingview-widget-container", els.chartHost).appendChild(s);
       const loaded = new Intl.DateTimeFormat("de-DE", { hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(new Date());
-      setChartStatus(`Widget neu geladen: ${loaded}`, "Zeitraum und Kerzenintervall werden über die Schalter oberhalb des Charts gesetzt. TradingView-Daten können je Handelsplatz verzögert sein.");
+      setChartStatus(`Widget neu geladen: ${loaded}`, "Im Kursverlauf wird der Zeitraum über die Schalter oberhalb des Charts gesetzt. Der Analysechart verwendet das Tagesintervall. TradingView-Daten können je Handelsplatz verzögert sein.");
     }
     function ladder(t) {
       const raw = [["Ziel 3", num(t.target3), "#4ad295"], ["Ziel 2", num(t.target2), "#4ad295"], ["Ziel 1", num(t.target1), "#4ad295"], ["Live/Referenz", num(t.currentPrice), "#63a9ff"], ["Limit", num(t.limitPrice), "#f5bd4f"], ["Entry oben", num(t.entryHigh), "#50d2c2"], ["Entry unten", num(t.entryLow), "#50d2c2"], ["Stop", num(t.stop), "#ff6b7a"], ["KO", num(t.koBarrier), "#ff6b7a"]].filter((x) => x[1] !== null);
@@ -456,6 +460,7 @@
       }) || null;
     }
     window.InvestitionDashboard = Object.assign(window.InvestitionDashboard || {}, {
+      version: "25.0",
       openAnalysisBySymbol(symbol) {
         const trade = findTradeBySymbol(symbol);
         if (!trade) return { ok: false, symbol, message: "Keine zugehörige Analyse gefunden." };
@@ -466,11 +471,38 @@
         if (els.directionFilter) els.directionFilter.value = "";
         if (els.statusFilter) els.statusFilter.value = "";
         renderAll();
+        emitDashboardEvent("investition:selection-changed", { trade: { ...trade } });
         window.scrollTo({ top: 0, behavior: "smooth" });
         return { ok: true, id: trade.id, name: trade.name, symbol: trade.symbol };
       },
       hasAnalysisForSymbol(symbol) {
         return Boolean(findTradeBySymbol(symbol));
+      },
+      getTrades() {
+        return trades.map((trade) => ({ ...trade }));
+      },
+      getSelectedTrade() {
+        const trade = trades.find((item) => item.id === selectedId);
+        return trade ? { ...trade } : null;
+      },
+      getSession() {
+        return session;
+      },
+      getSupabase() {
+        return sb;
+      },
+      selectTradeById(id) {
+        const trade = trades.find((item) => item.id === id);
+        if (!trade) return { ok: false, id };
+        selectTrade(id);
+        emitDashboardEvent("investition:selection-changed", { trade: { ...trade } });
+        return { ok: true, trade: { ...trade } };
+      },
+      refreshFromCloud() {
+        return loadCloud();
+      },
+      openCloudSettings() {
+        els.cloudModal.classList.add("open");
       }
     });
     function normalizeSymbolInput(value) {
@@ -723,6 +755,7 @@
         if (savedEmail && !$("#loginEmail").value) $("#loginEmail").value = savedEmail;
       }
       setCloudState(logged ? "online" : "", logged ? "Cloud verbunden" : "Cloud-Anmeldung");
+      emitDashboardEvent("investition:auth-changed", { session });
     }
     async function initCloud() {
       if (!sb) {
@@ -974,6 +1007,7 @@
     initTicker();
     renderAll();
     initCloud();
+    emitDashboardEvent("investition:ready", { version: "25.0", trades: trades.map((trade) => ({ ...trade })) });
     chartAutoRefreshTimer = window.setInterval(() => {
       if (!document.hidden && Date.now() - lastChartReloadAt > 300000) renderChart(true);
     }, 60000);
@@ -982,7 +1016,7 @@
     });
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", function() {
-        navigator.serviceWorker.register("./service-worker.js?v=17.1").catch(function(err) {
+        navigator.serviceWorker.register("./service-worker.js?v=25.0").catch(function(err) {
           console.warn("Service Worker konnte nicht registriert werden.", err);
         });
       });

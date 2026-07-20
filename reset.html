@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Dashboard zurücksetzen</title>
+  <title>Dashboard 25.0 zurücksetzen</title>
   <style>
     body{margin:0;background:#07111f;color:#eef4ff;font:16px/1.5 system-ui,-apple-system,sans-serif;display:grid;place-items:center;min-height:100vh;padding:24px}
     main{max-width:560px;background:#101d2f;border:1px solid #29405f;border-radius:18px;padding:26px;box-shadow:0 18px 50px #0006}
@@ -12,11 +12,11 @@
 </head>
 <body>
 <main>
-  <h1>Dashboard-Cache zurücksetzen</h1>
+  <h1>Dashboard 25.0 zurücksetzen</h1>
   <p>Diese Seite löscht nur Service-Worker-Caches und Registrierungen. Deine lokal gespeicherten Trade-Pläne im Browser werden nicht gelöscht.</p>
   <p id="status">Bereit.</p>
   <button id="resetBtn">Jetzt zurücksetzen</button>
-  <a href="./?v=17.1">Dashboard öffnen</a>
+  <a href="./?v=25.0">Dashboard öffnen</a>
 </main>
 <script>
 async function resetDashboard(){
@@ -33,7 +33,7 @@ async function resetDashboard(){
     }
     status.className='ok';
     status.textContent='Erledigt. Das Dashboard wird neu geöffnet.';
-    setTimeout(()=>location.replace('./?v=17.1&reset=1'),700);
+    setTimeout(()=>location.replace('./?v=25.0&reset=1'),700);
   }catch(e){
     status.className='bad';
     status.textContent='Fehler: '+(e.message||String(e));
