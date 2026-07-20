@@ -396,7 +396,7 @@
     }
     @media (max-width:480px) { .news-health { grid-template-columns:1fr; } }
 
-    /* Dashboard 25.0: Entscheidungszentrale (Ausbaustufen 18–23 und 25) */
+    /* Dashboard 25.1: Entscheidungszentrale (Ausbaustufen 18–23 und 25) */
     .decision-hero { padding:18px 20px; margin-bottom:10px; overflow:hidden; position:relative; }
     .decision-hero::after {
       content:""; position:absolute; width:260px; height:260px; right:-110px; top:-150px;
@@ -622,7 +622,7 @@ setTimeout(function(){
           <p>Priorisierte Signale, Investmentthesen, Ereignisse, Szenarien, Portfoliorisiken, Signalvalidierung und Systemgesundheit in einer gemeinsamen Entscheidungskette.</p>
         </div>
         <div class="decision-version">
-          <span class="chip good">Dashboard 25.0</span>
+          <span class="chip good">Dashboard 25.1</span>
           <span class="chip neutral">Ausbaustufen 18–23 + 25</span>
           <button class="btn small" id="decisionRefreshBtn" type="button">↻ Aktualisieren</button>
         </div>
@@ -850,9 +850,10 @@ setTimeout(function(){
             <div class="field"><label>Ziel 2</label><input name="target2" inputmode="decimal" placeholder="0,00" /></div>
             <div class="field"><label>Ziel 3</label><input name="target3" inputmode="decimal" placeholder="0,00" /></div>
             <div class="field"><label>Risikobudget</label><input name="riskBudget" inputmode="decimal" placeholder="z. B. 500" /></div>
-            <div class="field"><label>Geplante Stückzahl</label><input name="quantity" inputmode="decimal" placeholder="z. B. 25" /></div>
-            <div class="field"><label>Positionswert</label><input name="positionValue" inputmode="decimal" placeholder="optional" /></div>
+            <div class="field"><label>Geplante Stückzahl (Setup)</label><input name="quantity" inputmode="decimal" placeholder="z. B. 25" /></div>
+            <div class="field"><label>Geplanter Positionswert (Setup)</label><input name="positionValue" inputmode="decimal" placeholder="optional" /></div>
             <div class="field"><label>Order-ID / Broker-Notiz</label><input name="orderRef" placeholder="optional" /></div>
+            <div class="field span-4"><div class="symbol-warning"><strong>Ab Version 25.1:</strong> Diese Stückzahl und dieser Positionswert dienen nur der Orderplanung. Tatsächlich gehaltene Bestände werden unter <strong>Entscheidungszentrale → Portfolio &amp; KO → Depotposition erfassen</strong> gepflegt.</div></div>
           </div>
         </div>
 
@@ -961,10 +962,10 @@ setTimeout(function(){
   </div>
 </div>
 
-<script defer src="./supabase.js?v=25.0"></script>
-<script defer src="./app.js?v=25.0"></script>
-<script defer src="./news.js?v=25.0"></script>
-<script defer src="./decision.js?v=25.0"></script>
+<script defer src="./supabase.js?v=25.1"></script>
+<script defer src="./app.js?v=25.1"></script>
+<script defer src="./news.js?v=25.1"></script>
+<script defer src="./decision.js?v=25.1"></script>
 
 </body>
 </html>

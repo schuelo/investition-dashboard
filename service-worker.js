@@ -1,11 +1,11 @@
-const CACHE_NAME = 'investition-dashboard-v25-0-decision-center';
+const CACHE_NAME = 'investition-dashboard-v25-1-depot-positions';
 const CORE = [
   './',
   './index.html',
-  './app.js?v=25.0',
-  './supabase.js?v=25.0',
-  './news.js?v=25.0',
-  './decision.js?v=25.0',
+  './app.js?v=25.1',
+  './supabase.js?v=25.1',
+  './news.js?v=25.1',
+  './decision.js?v=25.1',
   './startdaten.json'
 ];
 

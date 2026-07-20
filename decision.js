@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const VERSION = '25.0';
+  const VERSION = '25.1';
   const LOCAL_PREFIX = 'investition-decision-v25-';
   const DEFAULT_PREFS = {
     portfolio_value: 100000,
@@ -35,6 +35,7 @@
     activeTab: 'today',
     selectedTradeId: null,
     editingEventId: null,
+    editingPositionId: null,
     session: null,
     sb: null,
     cloudReady: false,
@@ -44,6 +45,7 @@
     theses: loadLocal('theses', []),
     scenarios: loadLocal('scenarios', []),
     events: loadLocal('events', []),
+    positions: loadLocal('positions', []),
     preferences: {...DEFAULT_PREFS, ...loadLocal('preferences', {})},
     signalStates: loadLocal('signal-states', []),
     outcomes: loadLocal('outcomes', []),
@@ -65,7 +67,12 @@
     return String(value ?? '').replace(/[&<>'"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]));
   }
   function uuid() {
-    try { return crypto.randomUUID(); } catch { return `v25-${Date.now()}-${Math.random().toString(36).slice(2)}`; }
+    try { return crypto.randomUUID(); } catch {
+      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, ch => {
+        const r = Math.random() * 16 | 0;
+        return (ch === 'x' ? r : (r & 3 | 8)).toString(16);
+      });
+    }
   }
   function num(value, fallback = null) {
     if (value === null || value === undefined || value === '') return fallback;
@@ -160,20 +167,59 @@
   function signalStateFor(key) { return state.signalStates.find(item => item.signal_key === key) || null; }
   function outcomeFor(eventId) { return state.outcomes.find(item => String(item.alert_event_id) === String(eventId)) || null; }
   function currentPrice(trade) { return num(trade?.currentPrice); }
-  function positionValue(trade) {
-    const direct = num(trade?.positionValue);
-    if (direct !== null && direct > 0) return direct;
-    const quantity = num(trade?.quantity);
-    const price = currentPrice(trade);
-    return quantity !== null && price !== null ? Math.abs(quantity * price) : 0;
+  function positionTrade(position) { return position?.trade_id ? tradeById(position.trade_id) : null; }
+  function positionQuote(position) {
+    const manual = num(position?.current_price_override);
+    if (manual !== null) return {price:manual, at:position.current_price_at || position.updated_at || null, source:'manuell'};
+    const trade = positionTrade(position);
+    if (!trade) return {price:null, at:null, source:'kein Kurs'};
+    const isKo = String(position.instrument_type || '').toLowerCase().includes('knock') || trade.type === 'Knock-out';
+    const price = isKo ? num(trade.productPrice) : currentPrice(trade);
+    return {
+      price,
+      at: isKo ? (trade.productPrice ? trade.updatedAt || trade.currentPriceAt || null : null) : (trade.currentPriceAt || null),
+      source: isKo ? 'Analyse · Produktkurs' : 'Analyse · letzter Kurs'
+    };
   }
-  function riskToStop(trade) {
-    const direct = num(trade?.riskBudget);
-    if (direct !== null && direct > 0) return direct;
-    const quantity = num(trade?.quantity);
-    const price = currentPrice(trade);
-    const stop = num(trade?.stop);
-    return quantity !== null && price !== null && stop !== null ? Math.abs(quantity * (price - stop)) : 0;
+  function positionMetrics(position) {
+    const quantity = Math.abs(num(position?.quantity, 0));
+    const entry = num(position?.average_entry_price, 0);
+    const fees = Math.max(0, num(position?.fees, 0));
+    const currency = String(position?.currency || 'EUR').toUpperCase();
+    const fx = currency === 'EUR' ? 1 : Math.max(0, num(position?.fx_rate_to_eur, 0));
+    const quote = positionQuote(position);
+    const current = quote.price;
+    const direction = String(position?.direction || 'Long').toLowerCase();
+    const investedLocal = quantity * entry + fees;
+    const currentValueLocal = current === null ? null : quantity * current;
+    const pnlLocal = current === null ? null : (direction === 'short' ? (entry - current) : (current - entry)) * quantity - fees;
+    const investedEur = investedLocal * fx;
+    const currentValueEur = currentValueLocal === null ? null : currentValueLocal * fx;
+    const pnlEur = pnlLocal === null ? null : pnlLocal * fx;
+    const pnlPct = pnlEur === null || investedEur <= 0 ? null : pnlEur / investedEur * 100;
+    const stop = num(position?.stop_price);
+    let initialRiskEur = null;
+    let currentRiskEur = null;
+    let stopBreached = false;
+    if (stop !== null && quantity > 0) {
+      if (direction === 'short') {
+        initialRiskEur = stop > entry ? ((stop - entry) * quantity + fees) * fx : null;
+        if (current !== null) {
+          stopBreached = current >= stop;
+          currentRiskEur = Math.max(0, stop - current) * quantity * fx;
+        }
+      } else {
+        initialRiskEur = stop < entry ? ((entry - stop) * quantity + fees) * fx : null;
+        if (current !== null) {
+          stopBreached = current <= stop;
+          currentRiskEur = Math.max(0, current - stop) * quantity * fx;
+        }
+      }
+    } else if (/knock|zertifikat/i.test(String(position?.instrument_type || ''))) {
+      initialRiskEur = investedEur;
+      currentRiskEur = currentValueEur;
+    }
+    return {quantity, entry, fees, currency, fx, quote, current, direction, investedLocal, currentValueLocal, pnlLocal, investedEur, currentValueEur, pnlEur, pnlPct, stop, initialRiskEur, currentRiskEur, stopBreached};
   }
   function normalizeSymbolTokens(value) {
     const input = String(value || '').toUpperCase().replace(/\s+/g, '');
@@ -205,17 +251,34 @@
     return price && barrier !== null ? Math.abs((price - barrier) / price) * 100 : null;
   }
   function computeExposures() {
-    const positions = trades().map(trade => ({trade, value:positionValue(trade), thesis:thesisFor(trade.id)})).filter(item => item.value > 0);
-    const invested = positions.reduce((sum, item) => sum + item.value, 0);
+    const positions = state.positions
+      .filter(position => bool(position.is_open, true))
+      .map(position => {
+        const trade = positionTrade(position);
+        const thesis = trade ? thesisFor(trade.id) : {sector:'', region:'', currency_exposure:''};
+        const metrics = positionMetrics(position);
+        return {position, trade, thesis, metrics, value:metrics.currentValueEur ?? 0};
+      });
+    const currentValue = positions.reduce((sum, item) => sum + (item.metrics.currentValueEur ?? 0), 0);
+    const investedCapital = positions.reduce((sum, item) => sum + item.metrics.investedEur, 0);
+    const pnl = positions.reduce((sum, item) => sum + (item.metrics.pnlEur ?? 0), 0);
+    const totalRisk = positions.reduce((sum, item) => sum + (item.metrics.currentRiskEur ?? 0), 0);
+    const cash = Math.max(0, num(state.preferences.cash_value, 0));
+    const portfolioValue = currentValue + cash;
+    const denominator = portfolioValue > 0 ? portfolioValue : (currentValue > 0 ? currentValue : Math.max(0, num(state.preferences.portfolio_value, 0)));
     const group = key => {
       const map = new Map();
       positions.forEach(item => {
-        const label = item.thesis[key] || (key === 'currency_exposure' ? item.trade.currency : '') || 'Nicht zugeordnet';
+        let label = '';
+        if (key === 'sector') label = item.position.sector || item.thesis.sector;
+        else if (key === 'region') label = item.position.region || item.thesis.region;
+        else label = item.position.currency || item.thesis.currency_exposure;
+        label = label || 'Nicht zugeordnet';
         map.set(label, (map.get(label) || 0) + item.value);
       });
-      return [...map.entries()].map(([label, value]) => ({label, value, pct: invested > 0 ? value / invested * 100 : 0})).sort((a,b) => b.value - a.value);
+      return [...map.entries()].map(([label, value]) => ({label, value, pct: denominator > 0 ? value / denominator * 100 : 0})).sort((a,b) => b.value - a.value);
     };
-    return {positions, invested, sectors:group('sector'), regions:group('region'), currencies:group('currency_exposure')};
+    return {positions, invested:currentValue, currentValue, investedCapital, pnl, totalRisk, cash, portfolioValue, denominator, sectors:group('sector'), regions:group('region'), currencies:group('currency_exposure')};
   }
   function computeHealth() {
     const list = trades();
@@ -227,7 +290,7 @@
     const health = [
       {name:'Browser / Netzwerk', status:navigator.onLine ? 'good' : 'bad', value:navigator.onLine ? 'Online' : 'Offline', detail:'Direkter Verbindungsstatus dieses Geräts'},
       {name:'Cloud-Anmeldung', status:state.session ? 'good' : 'warn', value:state.session ? 'Verbunden' : 'Nicht angemeldet', detail:state.session?.user?.email || 'Lokaler Betrieb bleibt möglich'},
-      {name:'Entscheidungsschema', status:schemaMissing ? 'warn' : 'good', value:schemaMissing ? 'Lokaler Modus' : 'Cloud aktiv', detail:schemaMissing ? 'version25-schema.sql noch nicht vollständig erreichbar' : 'Thesen, Szenarien und Ereignisse werden synchronisiert'},
+      {name:'Entscheidungsschema', status:schemaMissing ? 'warn' : 'good', value:schemaMissing ? 'Lokaler Modus' : 'Cloud aktiv', detail:schemaMissing ? 'version25-schema.sql + version25-1-schema.sql noch nicht vollständig erreichbar' : 'Thesen, Szenarien, Ereignisse und Depotpositionen werden synchronisiert'},
       {name:'Kursdaten', status:!latestQuote ? 'warn' : ageHours(latestQuote) > 24 ? 'bad' : ageHours(latestQuote) > 6 ? 'warn' : 'good', value:latestQuote ? formatDate(latestQuote, true) : 'Keine Daten', detail:latestQuote ? `Alter ${formatNumber(ageHours(latestQuote),1)} Stunden` : 'Alarmprüfung oder Referenzkurs fehlt'},
       {name:'Alarmprüfung', status:alertErrors ? 'bad' : !latestCheck ? 'warn' : ageHours(latestCheck) > 4 ? 'warn' : 'good', value:latestCheck ? formatDate(latestCheck, true) : 'Noch nicht gelaufen', detail:alertErrors ? `${alertErrors} Pläne mit Fehler` : 'Keine gemeldeten Planfehler'},
       {name:'News Feed', status:!latestNews ? 'warn' : ageHours(latestNews) > 48 ? 'warn' : 'good', value:latestNews ? formatDate(latestNews, true) : 'Leer', detail:`${state.news.length} lokal geladene Meldungen`},
@@ -318,10 +381,12 @@
 
     const exposure = computeExposures();
     const topPosition = exposure.positions.slice().sort((a,b) => b.value-a.value)[0];
-    if (topPosition && exposure.invested > 0) {
-      const weight = topPosition.value / exposure.invested * 100;
-      if (weight > num(prefs.max_single_weight_pct, 20)) signals.push(signal({key:`portfolio:single:${topPosition.trade.id}`, source_type:'portfolio', trade_id:topPosition.trade.id, symbol:topPosition.trade.symbol, title:`Einzeltitelkonzentration ${topPosition.trade.name}: ${formatPct(weight)}`, summary:`Grenzwert ${formatPct(prefs.max_single_weight_pct)} überschritten.`, action:'Neue Käufe oder Teilreduktion im Portfoliokontext prüfen.', relevance:100, confidence:100, impact:80, urgency:55}));
+    if (topPosition && exposure.denominator > 0) {
+      const weight = topPosition.value / exposure.denominator * 100;
+      const linkedTrade = topPosition.trade;
+      if (weight > num(prefs.max_single_weight_pct, 20)) signals.push(signal({key:`portfolio:single:${topPosition.position.id}`, source_type:'portfolio', trade_id:linkedTrade?.id || null, symbol:topPosition.position.symbol || linkedTrade?.symbol || '', title:`Einzeltitelkonzentration ${topPosition.position.name}: ${formatPct(weight)}`, summary:`Grenzwert ${formatPct(prefs.max_single_weight_pct)} überschritten.`, action:'Neue Käufe oder Teilreduktion im Portfoliokontext prüfen.', relevance:100, confidence:100, impact:80, urgency:55}));
     }
+    exposure.positions.filter(item => item.metrics.stopBreached).forEach(item => signals.push(signal({key:`portfolio:stop:${item.position.id}`, source_type:'portfolio', trade_id:item.trade?.id || null, symbol:item.position.symbol || item.trade?.symbol || '', title:`Stop der Depotposition ${item.position.name} erreicht`, summary:`Aktueller Kurs ${formatNumber(item.metrics.current)}; Stop ${formatNumber(item.metrics.stop)} ${item.metrics.currency}.`, action:'Ausführung, Slippage und verbleibende Position unverzüglich prüfen.', relevance:100, confidence:95, impact:100, urgency:100, severity:'critical'})));
     const topSector = exposure.sectors[0];
     if (topSector && topSector.pct > num(prefs.max_sector_weight_pct, 35)) signals.push(signal({key:`portfolio:sector:${topSector.label}`, source_type:'portfolio', title:`Sektorkonzentration ${topSector.label}: ${formatPct(topSector.pct)}`, summary:`Grenzwert ${formatPct(prefs.max_sector_weight_pct)} überschritten.`, action:'Zusätzliche Positionen im selben Sektor restriktiver bewerten.', relevance:95, confidence:100, impact:75, urgency:45}));
 
@@ -366,10 +431,11 @@
     }
 
     const uid = state.session.user.id;
-    const [theses, scenarios, events, preferences, signalStates, outcomes, alertEvents, news, notificationSettings, healthRows] = await Promise.all([
+    const [theses, scenarios, events, positions, preferences, signalStates, outcomes, alertEvents, news, notificationSettings, healthRows] = await Promise.all([
       safeSelect('investment_theses', q => q.select('*').eq('user_id', uid), state.theses),
       safeSelect('valuation_scenarios', q => q.select('*').eq('user_id', uid), state.scenarios),
       safeSelect('market_events', q => q.select('*').eq('user_id', uid).order('event_at', {ascending:true}), state.events),
+      safeSelect('depot_positions', q => q.select('*').eq('user_id', uid).order('is_open', {ascending:false}).order('updated_at', {ascending:false}), state.positions),
       safeSelect('notification_policies', q => q.select('*').eq('user_id', uid).maybeSingle(), null),
       safeSelect('decision_signal_state', q => q.select('*').eq('user_id', uid), state.signalStates),
       safeSelect('signal_outcomes', q => q.select('*').eq('user_id', uid), state.outcomes),
@@ -382,6 +448,7 @@
     if (Array.isArray(theses)) state.theses = theses;
     if (Array.isArray(scenarios)) state.scenarios = scenarios;
     if (Array.isArray(events)) state.events = events;
+    if (Array.isArray(positions)) state.positions = positions;
     if (preferences && !Array.isArray(preferences)) state.preferences = {...DEFAULT_PREFS, ...preferences};
     if (Array.isArray(signalStates)) state.signalStates = signalStates;
     if (Array.isArray(outcomes)) state.outcomes = outcomes;
@@ -390,11 +457,11 @@
     if (notificationSettings && !Array.isArray(notificationSettings)) state.notificationSettings = notificationSettings;
     if (Array.isArray(healthRows)) state.healthRows = healthRows;
 
-    state.schemaReady = !state.errors.some(message => /investment_theses|valuation_scenarios|market_events|notification_policies/i.test(message));
+    state.schemaReady = !state.errors.some(message => /investment_theses|valuation_scenarios|market_events|depot_positions|notification_policies/i.test(message));
     state.lastLoadedAt = new Date().toISOString();
     saveAllLocal();
     setStatus(state.errors.length
-      ? `Cloud teilweise geladen. ${state.errors.length} Tabellenhinweis(e); fehlende Version-25-Tabellen arbeiten lokal.`
+      ? `Cloud teilweise geladen. ${state.errors.length} Tabellenhinweis(e); fehlende Version-25.1-Tabellen arbeiten lokal.`
       : `Cloud-Entscheidungsdaten geladen · ${formatDate(state.lastLoadedAt, true)}.`, state.errors.length ? 'warn' : 'good');
   }
 
@@ -402,6 +469,7 @@
     saveLocal('theses', state.theses);
     saveLocal('scenarios', state.scenarios);
     saveLocal('events', state.events);
+    saveLocal('positions', state.positions);
     saveLocal('preferences', state.preferences);
     saveLocal('signal-states', state.signalStates);
     saveLocal('outcomes', state.outcomes);
@@ -432,7 +500,7 @@
     return `<div class="decision-panel-head"><div><h3>${escapeHtml(title)}</h3><p>${escapeHtml(subtitle)}</p></div>${right}</div>`;
   }
   function renderExposure(title, items) {
-    return `<div class="card decision-panel">${sectionHeader(title, 'Anteil am investierten Positionswert')}<div class="exposure-bars">${items.length ? items.map(item => `<div class="exposure-row"><div class="exposure-label">${escapeHtml(item.label)}</div><div class="exposure-track"><div class="exposure-fill" style="width:${Math.min(100,item.pct)}%"></div></div><div class="exposure-value">${formatPct(item.pct)}</div></div>`).join('') : '<div class="decision-empty">Keine Positionswerte vorhanden.</div>'}</div></div>`;
+    return `<div class="card decision-panel">${sectionHeader(title, 'Anteil am aktuellen Gesamtportfolio')}<div class="exposure-bars">${items.length ? items.map(item => `<div class="exposure-row"><div class="exposure-label">${escapeHtml(item.label)}</div><div class="exposure-track"><div class="exposure-fill" style="width:${Math.min(100,item.pct)}%"></div></div><div class="exposure-value">${formatPct(item.pct)}</div></div>`).join('') : '<div class="decision-empty">Keine Positionswerte vorhanden.</div>'}</div></div>`;
   }
 
   function renderToday() {
@@ -444,12 +512,12 @@
       {key:'info', title:'Wochenbericht', subtitle:'Niedrigere Dringlichkeit', filter:item => item.severity === 'info'}
     ];
     const exposure = computeExposures();
-    const activeRisk = trades().reduce((sum, trade) => sum + riskToStop(trade), 0);
+    const activeRisk = exposure.totalRisk;
     const kpis = [
       {label:'Sofort prüfen', value:signals.filter(groups[0].filter).length, sub:'kritische Zustände'},
       {label:'Heute prüfen', value:signals.filter(groups[1].filter).length, sub:'priorisierte Aufgaben'},
       {label:'Kapital im Risiko', value:formatMoney(activeRisk), sub:'bis Stop / Risikobudget'},
-      {label:'Investiert', value:formatMoney(exposure.invested), sub:`${exposure.positions.length} Positionen`}
+      {label:'Aktueller Positionswert', value:formatMoney(exposure.currentValue), sub:`${exposure.positions.length} offene Positionen`}
     ];
     content.innerHTML = `<div class="decision-grid">
       <div class="card decision-panel decision-span-12"><div class="decision-kpis">${kpis.map(item => `<div class="decision-kpi"><div class="label">${escapeHtml(item.label)}</div><div class="value">${escapeHtml(item.value)}</div><div class="sub">${escapeHtml(item.sub)}</div></div>`).join('')}</div></div>
@@ -628,35 +696,139 @@
     state.events = state.events.filter(item => item.id !== id); saveLocal('events', state.events); await deleteCloud('market_events', id); renderEvents();
   }
 
+  function positionEditorRow() {
+    return state.positions.find(item => item.id === state.editingPositionId) || null;
+  }
+  function selectOptions(values, selected) {
+    return values.map(value => `<option value="${escapeHtml(value)}" ${String(selected || '') === value ? 'selected' : ''}>${escapeHtml(value)}</option>`).join('');
+  }
+  function renderPositionForm() {
+    const row = positionEditorRow() || {};
+    return `<form id="depotPositionForm">
+      <input type="hidden" name="id" value="${escapeHtml(row.id || '')}">
+      <div class="decision-form-grid">
+        <div class="span-2"><label>Mit Analyse verknüpfen</label><select name="trade_id"><option value="">Keine Verknüpfung</option>${tradeOptions(row.trade_id || '')}</select></div>
+        <div class="span-2"><label>Instrument / Positionsname</label><input name="name" required value="${escapeHtml(row.name || '')}" placeholder="z. B. SK hynix"></div>
+        <div><label>Symbol</label><input name="symbol" value="${escapeHtml(row.symbol || '')}" placeholder="KRX:000660"></div>
+        <div><label>Broker</label><input name="broker" value="${escapeHtml(row.broker || '')}" placeholder="optional"></div>
+        <div><label>Depot / Konto</label><input name="account_name" value="${escapeHtml(row.account_name || '')}" placeholder="optional"></div>
+        <div><label>Instrumenttyp</label><select name="instrument_type">${selectOptions(['Aktie','ETF','Fonds','Knock-out','Zertifikat','Sonstiges'], row.instrument_type || 'Aktie')}</select></div>
+        <div><label>Richtung</label><select name="direction">${selectOptions(['Long','Short'], row.direction || 'Long')}</select></div>
+        <div><label>Währung</label><input name="currency" value="${escapeHtml(row.currency || 'EUR')}" placeholder="EUR"></div>
+        <div><label>Tatsächliche Stückzahl</label><input name="quantity" required type="number" step="any" min="0.00000001" value="${escapeHtml(row.quantity ?? '')}"></div>
+        <div><label>Ø Einstandskurs</label><input name="average_entry_price" required type="number" step="any" min="0" value="${escapeHtml(row.average_entry_price ?? '')}"></div>
+        <div><label>Gebühren gesamt</label><input name="fees" type="number" step="any" min="0" value="${escapeHtml(row.fees ?? 0)}"></div>
+        <div><label>Kaufdatum</label><input name="purchase_date" type="date" value="${escapeHtml(row.purchase_date || '')}"></div>
+        <div><label>Aktueller Kurs manuell</label><input name="current_price_override" type="number" step="any" min="0" value="${escapeHtml(row.current_price_override ?? '')}" placeholder="leer = Analyse-Kurs"></div>
+        <div><label>FX zu EUR</label><input name="fx_rate_to_eur" type="number" step="any" min="0.00000001" value="${escapeHtml(row.fx_rate_to_eur ?? 1)}"><div class="field-help">EUR = 1; sonst EUR-Wert je Einheit der Positionswährung.</div></div>
+        <div><label>Stop der Position</label><input name="stop_price" type="number" step="any" min="0" value="${escapeHtml(row.stop_price ?? '')}"></div>
+        <div><label>Sektor</label><input name="sector" value="${escapeHtml(row.sector || '')}" placeholder="z. B. Halbleiter"></div>
+        <div><label>Region</label><input name="region" value="${escapeHtml(row.region || '')}" placeholder="z. B. Südkorea"></div>
+        <div class="span-2"><label>Notiz</label><textarea name="notes" rows="3" placeholder="Kaufthese, Teilkäufe, Besonderheiten">${escapeHtml(row.notes || '')}</textarea></div>
+        <div class="span-2"><label><input name="is_open" type="checkbox" ${bool(row.is_open, true) ? 'checked' : ''}> Position ist offen und fließt in die aktuelle Portfolioauswertung ein</label></div>
+      </div>
+      <div class="signal-actions"><button class="btn primary" type="submit">${row.id ? 'Position aktualisieren' : 'Depotposition speichern'}</button><button class="btn" type="button" id="resetPositionForm">Neue Eingabe</button>${row.id ? '<button class="btn danger" type="button" id="deletePositionFromForm">Position löschen</button>' : ''}</div>
+      <p class="form-note">Ohne manuellen Kurs wird bei einer verknüpften Aktie der letzte Analysekurs verwendet. Bei Knock-outs muss der Produktkurs in der Analyse oder hier manuell gepflegt werden. Fremdwährungen benötigen einen aktuellen FX-Faktor zu EUR.</p>
+    </form>`;
+  }
   function renderPortfolio() {
     const exposure = computeExposures();
     const prefs = state.preferences;
-    const totalRisk = trades().reduce((sum,trade) => sum+riskToStop(trade),0);
-    const portfolioValue = num(prefs.portfolio_value,0);
-    const riskPct = portfolioValue > 0 ? totalRisk/portfolioValue*100 : 0;
+    const totalRisk = exposure.totalRisk;
+    const effectivePortfolioValue = exposure.denominator;
+    const riskPct = effectivePortfolioValue > 0 ? totalRisk / effectivePortfolioValue * 100 : 0;
     const koTrades = trades().filter(trade => trade.type === 'Knock-out' || num(trade.koBarrier) !== null);
     const warnings = [];
-    const activeCurrencies = [...new Set(exposure.positions.map(item => String(item.trade.currency || 'EUR').toUpperCase()))];
-    if (activeCurrencies.length > 1) warnings.push(`Mehrere Währungen (${activeCurrencies.join(', ')}): Positionswerte werden ohne automatische FX-Umrechnung als Näherung addiert.`);
-    exposure.positions.forEach(item => { const pct=exposure.invested?item.value/exposure.invested*100:0; if(pct>num(prefs.max_single_weight_pct,20)) warnings.push(`${item.trade.name}: ${formatPct(pct)} Einzeltitelgewicht`); });
-    exposure.sectors.forEach(item => { if(item.pct>num(prefs.max_sector_weight_pct,35)) warnings.push(`${item.label}: ${formatPct(item.pct)} Sektoranteil`); });
-    if (riskPct > num(prefs.max_total_risk_pct,8)) warnings.push(`Gesamtrisiko ${formatPct(riskPct)} über Grenzwert`);
-    const broadLoss = exposure.invested * .10;
-    const semiLoss = exposure.positions.filter(item => /halb|semi|chip|memory/i.test(item.thesis.sector || '')).reduce((sum,item)=>sum+item.value*.15,0);
-    const fxLoss = exposure.positions.filter(item => String(item.thesis.currency_exposure || item.trade.currency || 'EUR').toUpperCase() !== 'EUR').reduce((sum,item)=>sum+item.value*.08,0);
+    exposure.positions.forEach(item => {
+      const p = item.position, m = item.metrics;
+      const pct = effectivePortfolioValue > 0 ? item.value / effectivePortfolioValue * 100 : 0;
+      if (pct > num(prefs.max_single_weight_pct,20)) warnings.push(`${p.name}: ${formatPct(pct)} des Gesamtportfolios`);
+      if (m.current === null) warnings.push(`${p.name}: Kein aktueller Kurs; Marktwert und Gewinn/Verlust fehlen.`);
+      if (m.direction === 'short') warnings.push(`${p.name}: Short-Positionswert wird als Bruttoexponierung dargestellt; Broker-Margin und Leihkosten sind nicht enthalten.`);
+      if (m.currency !== 'EUR' && Math.abs(m.fx - 1) < 0.0000001) warnings.push(`${p.name}: Fremdwährung ${m.currency}, aber FX-Faktor steht auf 1.`);
+      const quoteAge = ageHours(m.quote.at);
+      if (quoteAge !== null && quoteAge > 24) warnings.push(`${p.name}: Kurs ist ${formatNumber(quoteAge,0)} Stunden alt.`);
+      if (m.stopBreached) warnings.push(`${p.name}: Stop ${formatNumber(m.stop)} ${m.currency} wurde erreicht oder überschritten.`);
+    });
+    exposure.sectors.forEach(item => { if(item.pct > num(prefs.max_sector_weight_pct,35)) warnings.push(`${item.label}: ${formatPct(item.pct)} Sektoranteil am Gesamtportfolio`); });
+    if (riskPct > num(prefs.max_total_risk_pct,8)) warnings.push(`Risiko bis Stop ${formatPct(riskPct)} über Grenzwert`);
+    const broadLoss = exposure.currentValue * .10;
+    const semiLoss = exposure.positions.filter(item => /halb|semi|chip|memory/i.test(item.position.sector || item.thesis.sector || '')).reduce((sum,item)=>sum+item.value*.15,0);
+    const fxLoss = exposure.positions.filter(item => item.metrics.currency !== 'EUR').reduce((sum,item)=>sum+item.value*.08,0);
+    const allPositions = state.positions.slice().sort((a,b) => Number(bool(b.is_open,true)) - Number(bool(a.is_open,true)) || String(b.updated_at||'').localeCompare(String(a.updated_at||'')));
+    const pnlClass = exposure.pnl >= 0 ? 'good' : 'bad';
     content.innerHTML = `<div class="decision-grid">
-      <div class="card decision-panel decision-span-12"><div class="decision-kpis"><div class="decision-kpi"><div class="label">Portfoliowert</div><div class="value">${formatMoney(portfolioValue)}</div><div class="sub">inkl. Cash gemäß Einstellung</div></div><div class="decision-kpi"><div class="label">Investiert (Näherung)</div><div class="value">${formatMoney(exposure.invested)}</div><div class="sub">ohne automatische FX-Umrechnung</div></div><div class="decision-kpi"><div class="label">Risiko bis Stop (Näherung)</div><div class="value">${formatMoney(totalRisk)}</div><div class="sub">${formatPct(riskPct)} des Portfolios</div></div><div class="decision-kpi"><div class="label">Warnungen</div><div class="value">${warnings.length}</div><div class="sub">Konzentration und Risiko</div></div></div></div>
-      <div class="card decision-panel decision-span-5">${sectionHeader('Portfolio-Grenzwerte', 'Grundlage für Positions- und Konzentrationsentscheidungen')}<form id="portfolioPrefsForm"><div class="decision-form-grid"><div class="span-2"><label>Portfoliowert EUR</label><input name="portfolio_value" type="number" step="0.01" value="${escapeHtml(prefs.portfolio_value)}"></div><div class="span-2"><label>Cash EUR</label><input name="cash_value" type="number" step="0.01" value="${escapeHtml(prefs.cash_value)}"></div><div><label>Max. Einzeltitel %</label><input name="max_single_weight_pct" type="number" value="${escapeHtml(prefs.max_single_weight_pct)}"></div><div><label>Max. Sektor %</label><input name="max_sector_weight_pct" type="number" value="${escapeHtml(prefs.max_sector_weight_pct)}"></div><div><label>Max. Gesamtrisiko %</label><input name="max_total_risk_pct" type="number" value="${escapeHtml(prefs.max_total_risk_pct)}"></div><div><label>KO gelb %</label><input name="ko_yellow_pct" type="number" value="${escapeHtml(prefs.ko_yellow_pct)}"></div><div><label>KO orange %</label><input name="ko_orange_pct" type="number" value="${escapeHtml(prefs.ko_orange_pct)}"></div><div><label>KO rot %</label><input name="ko_red_pct" type="number" value="${escapeHtml(prefs.ko_red_pct)}"></div></div><div class="signal-actions"><button class="btn primary" type="submit">Grenzwerte speichern</button></div></form></div>
-      <div class="card decision-panel decision-span-7">${sectionHeader('Risikohinweise', 'Regelbasiert aus Positionen und Grenzwerten')}<div class="signal-list-v25">${warnings.length ? warnings.map(text=>`<div class="risk-warning bad">${escapeHtml(text)}</div>`).join('') : '<div class="risk-warning">Keine hinterlegten Grenzwerte überschritten.</div>'}</div><div class="decision-kpis" style="margin-top:12px"><div class="decision-kpi"><div class="label">Breitmarkt −10 %</div><div class="value">−${formatMoney(broadLoss)}</div><div class="sub">vereinfachte Schätzung</div></div><div class="decision-kpi"><div class="label">Halbleiter −15 %</div><div class="value">−${formatMoney(semiLoss)}</div><div class="sub">nach Sektorzuordnung</div></div><div class="decision-kpi"><div class="label">Fremdwährung −8 %</div><div class="value">−${formatMoney(fxLoss)}</div><div class="sub">nicht-EUR Exponierung</div></div><div class="decision-kpi"><div class="label">Cashquote</div><div class="value">${portfolioValue>0?formatPct(num(prefs.cash_value,0)/portfolioValue*100):'—'}</div><div class="sub">Liquiditätspuffer</div></div></div></div>
+      <div class="card decision-panel decision-span-12"><div class="decision-kpis"><div class="decision-kpi"><div class="label">Aktueller Depotwert</div><div class="value">${formatMoney(exposure.portfolioValue)}</div><div class="sub">offene Positionen + Cash</div></div><div class="decision-kpi"><div class="label">Investiertes Kapital</div><div class="value">${formatMoney(exposure.investedCapital)}</div><div class="sub">Einstand inkl. Gebühren</div></div><div class="decision-kpi"><div class="label">Aktueller Positionswert</div><div class="value">${formatMoney(exposure.currentValue)}</div><div class="sub">auf EUR umgerechnet</div></div><div class="decision-kpi"><div class="label">Unrealisierter G/V</div><div class="value"><span class="chip ${pnlClass}">${exposure.pnl >= 0 ? '+' : ''}${formatMoney(exposure.pnl)}</span></div><div class="sub">nach Gebühren, vor Steuern</div></div><div class="decision-kpi"><div class="label">Risiko bis Stop</div><div class="value">${formatMoney(totalRisk)}</div><div class="sub">${formatPct(riskPct)} des Gesamtportfolios</div></div><div class="decision-kpi"><div class="label">Cash</div><div class="value">${formatMoney(exposure.cash)}</div><div class="sub">manuell hinterlegt</div></div></div></div>
+      <div class="card decision-panel decision-span-12">${sectionHeader(state.editingPositionId ? 'Depotposition bearbeiten' : 'Depotposition erfassen', 'Tatsächlicher Bestand, Einstand, Marktwert, Gewinn/Verlust und Stop-Risiko – getrennt vom Trade-Setup')}${renderPositionForm()}</div>
+      <div class="card decision-panel decision-span-12">${sectionHeader('Depotpositionen', `${exposure.positions.length} offen · ${state.positions.filter(item=>!bool(item.is_open,true)).length} geschlossen`)}<div class="table-shell-v25"><table class="portfolio-table"><thead><tr><th>Status / Instrument</th><th>Einstand</th><th>Aktueller Kurs</th><th>Investiert</th><th>Aktueller Wert</th><th>G/V</th><th>Rendite</th><th>Risiko</th><th>Gewicht</th><th>Aktion</th></tr></thead><tbody>${allPositions.length ? allPositions.map(position => {
+        const m=positionMetrics(position), trade=positionTrade(position), open=bool(position.is_open,true), weight=open&&effectivePortfolioValue>0?(m.currentValueEur??0)/effectivePortfolioValue*100:0;
+        const pnl=m.pnlEur, localSuffix=m.currency==='EUR'?'':`<div class="cell-sub">${formatMoney(m.pnlLocal,m.currency)}</div>`;
+        return `<tr><td><span class="chip ${open?'good':'neutral'}">${open?'offen':'geschlossen'}</span><div><strong>${escapeHtml(position.name)}</strong></div><div class="cell-sub">${escapeHtml(position.symbol || trade?.symbol || '')} · ${escapeHtml(position.broker || 'kein Broker')}</div></td><td>${formatMoney(m.entry,m.currency)}<div class="cell-sub">${formatNumber(m.quantity)} Stück · Gebühren ${formatMoney(m.fees,m.currency)}</div></td><td>${m.current===null?'—':formatMoney(m.current,m.currency)}<div class="cell-sub">${escapeHtml(m.quote.source)}${m.quote.at?` · ${formatDate(m.quote.at,true)}`:''}</div></td><td>${formatMoney(m.investedEur)}${m.currency!=='EUR'?`<div class="cell-sub">${formatMoney(m.investedLocal,m.currency)} · FX ${formatNumber(m.fx,6)}</div>`:''}</td><td>${m.currentValueEur===null?'—':formatMoney(m.currentValueEur)}${m.currency!=='EUR'&&m.currentValueLocal!==null?`<div class="cell-sub">${formatMoney(m.currentValueLocal,m.currency)}</div>`:''}</td><td>${pnl===null?'—':`<span class="chip ${pnl>=0?'good':'bad'}">${pnl>=0?'+':''}${formatMoney(pnl)}</span>${localSuffix}`}</td><td>${m.pnlPct===null?'—':`<span class="chip ${m.pnlPct>=0?'good':'bad'}">${m.pnlPct>=0?'+':''}${formatPct(m.pnlPct)}</span>`}</td><td>${m.currentRiskEur===null?'—':formatMoney(m.currentRiskEur)}<div class="cell-sub">${m.stop===null?(/knock|zertifikat/i.test(position.instrument_type)?'Maximalrisiko Produkt':'kein Stop'):m.stopBreached?'STOP ERREICHT':`Stop ${formatMoney(m.stop,m.currency)}`}</div>${m.initialRiskEur!==null?`<div class="cell-sub">Initial ${formatMoney(m.initialRiskEur)}</div>`:''}</td><td>${open?formatPct(weight):'—'}</td><td><div class="signal-actions"><button class="btn small" data-edit-position="${escapeHtml(position.id)}">Bearbeiten</button>${trade?`<button class="btn small" data-open-trade="${escapeHtml(trade.id)}">Analyse</button>`:''}<button class="btn small danger" data-delete-position="${escapeHtml(position.id)}">Löschen</button></div></td></tr>`;
+      }).join('') : '<tr><td colspan="10" class="empty-table">Noch keine Depotposition erfasst.</td></tr>'}</tbody></table></div></div>
+      <div class="card decision-panel decision-span-5">${sectionHeader('Portfolio-Grenzwerte', 'Cash, Referenzwert und Risikolimits')}<form id="portfolioPrefsForm"><div class="decision-form-grid"><div class="span-2"><label>Referenz-Portfoliowert EUR (Fallback)</label><input name="portfolio_value" type="number" step="0.01" value="${escapeHtml(prefs.portfolio_value)}"><div class="field-help">Wird nur verwendet, wenn noch kein aktueller Depotwert berechnet werden kann.</div></div><div class="span-2"><label>Cash EUR</label><input name="cash_value" type="number" step="0.01" value="${escapeHtml(prefs.cash_value)}"></div><div><label>Max. Einzeltitel %</label><input name="max_single_weight_pct" type="number" value="${escapeHtml(prefs.max_single_weight_pct)}"></div><div><label>Max. Sektor %</label><input name="max_sector_weight_pct" type="number" value="${escapeHtml(prefs.max_sector_weight_pct)}"></div><div><label>Max. Gesamtrisiko %</label><input name="max_total_risk_pct" type="number" value="${escapeHtml(prefs.max_total_risk_pct)}"></div><div><label>KO gelb %</label><input name="ko_yellow_pct" type="number" value="${escapeHtml(prefs.ko_yellow_pct)}"></div><div><label>KO orange %</label><input name="ko_orange_pct" type="number" value="${escapeHtml(prefs.ko_orange_pct)}"></div><div><label>KO rot %</label><input name="ko_red_pct" type="number" value="${escapeHtml(prefs.ko_red_pct)}"></div></div><div class="signal-actions"><button class="btn primary" type="submit">Grenzwerte speichern</button></div></form></div>
+      <div class="card decision-panel decision-span-7">${sectionHeader('Risikohinweise', 'Datenqualität, Stop, FX und Konzentration')}<div class="signal-list-v25">${warnings.length ? warnings.map(text=>`<div class="risk-warning bad">${escapeHtml(text)}</div>`).join('') : '<div class="risk-warning">Keine hinterlegten Grenzwerte oder Datenqualitätsregeln verletzt.</div>'}</div><div class="decision-kpis" style="margin-top:12px"><div class="decision-kpi"><div class="label">Breitmarkt −10 %</div><div class="value">−${formatMoney(broadLoss)}</div><div class="sub">vereinfachte Schätzung</div></div><div class="decision-kpi"><div class="label">Halbleiter −15 %</div><div class="value">−${formatMoney(semiLoss)}</div><div class="sub">nach Sektorzuordnung</div></div><div class="decision-kpi"><div class="label">Fremdwährung −8 %</div><div class="value">−${formatMoney(fxLoss)}</div><div class="sub">EUR-Wert der FX-Positionen</div></div><div class="decision-kpi"><div class="label">Cashquote</div><div class="value">${effectivePortfolioValue>0?formatPct(exposure.cash/effectivePortfolioValue*100):'—'}</div><div class="sub">Liquiditätspuffer</div></div></div></div>
       <div class="decision-span-4">${renderExposure('Sektoren', exposure.sectors)}</div><div class="decision-span-4">${renderExposure('Regionen', exposure.regions)}</div><div class="decision-span-4">${renderExposure('Währungen', exposure.currencies)}</div>
-      <div class="card decision-panel decision-span-12">${sectionHeader('KO-Risikocockpit', 'Abstand, Hebel, Barriere und Kursalter getrennt vom Aktienrisiko')}<div class="ko-grid">${koTrades.length ? koTrades.map(trade => { const distance=koDistance(trade); const level=distance===null?'':distance<=num(prefs.ko_red_pct,5)?'red':distance<=num(prefs.ko_orange_pct,10)?'orange':distance<=num(prefs.ko_yellow_pct,15)?'yellow':''; return `<div class="ko-card ${level}"><strong>${escapeHtml(trade.name)}</strong><div class="cell-sub">${escapeHtml(trade.wkn || trade.symbol || '')}</div><div class="ko-distance">${formatPct(distance)}</div><div class="cell-sub">KO ${formatNumber(trade.koBarrier)} · Hebel ${formatNumber(trade.leverage,1)}</div><div class="cell-sub">Kurs ${formatNumber(trade.currentPrice)} · ${formatDate(trade.currentPriceAt,true)}</div><div class="signal-actions"><button class="btn small" data-open-trade="${escapeHtml(trade.id)}">Analyse öffnen</button></div></div>`; }).join('') : '<div class="decision-empty">Keine Knock-out-Produkte oder KO-Barrieren hinterlegt.</div>'}</div></div>
+      <div class="card decision-panel decision-span-12">${sectionHeader('KO-Risikocockpit', 'Barriere und Hebel aus den verknüpften Analysen; Gewinn/Verlust aus Depotpositionen oben')}<div class="ko-grid">${koTrades.length ? koTrades.map(trade => { const distance=koDistance(trade); const level=distance===null?'':distance<=num(prefs.ko_red_pct,5)?'red':distance<=num(prefs.ko_orange_pct,10)?'orange':distance<=num(prefs.ko_yellow_pct,15)?'yellow':''; return `<div class="ko-card ${level}"><strong>${escapeHtml(trade.name)}</strong><div class="cell-sub">${escapeHtml(trade.wkn || trade.symbol || '')}</div><div class="ko-distance">${formatPct(distance)}</div><div class="cell-sub">KO ${formatNumber(trade.koBarrier)} · Hebel ${formatNumber(trade.leverage,1)}</div><div class="cell-sub">Basiswert ${formatNumber(trade.currentPrice)} · ${formatDate(trade.currentPriceAt,true)}</div><div class="signal-actions"><button class="btn small" data-open-trade="${escapeHtml(trade.id)}">Analyse öffnen</button></div></div>`; }).join('') : '<div class="decision-empty">Keine Knock-out-Analysen oder KO-Barrieren hinterlegt.</div>'}</div></div>
       <div class="card decision-panel decision-span-6">${sectionHeader('Positionsgrößenrechner', 'Maximalverlust statt Bauchgefühl')}<div class="decision-form-grid" id="positionSizeCalc"><div><label>Maximalverlust EUR</label><input id="calcLoss" type="number" value="300"></div><div><label>Einstieg</label><input id="calcEntry" type="number" step="0.01" value="100"></div><div><label>Stop</label><input id="calcStop" type="number" step="0.01" value="94"></div><div><label>Ergebnis</label><div class="scenario-result"><div class="big" id="calcQuantity">50 Stück</div><div class="cell-sub" id="calcValue">5.000 EUR</div></div></div></div></div>
-      <div class="card decision-panel decision-span-6">${sectionHeader('Positionen', 'Wert, Gewicht und Risiko bis Stop')}<div class="table-shell-v25"><table class="portfolio-table"><thead><tr><th>Instrument</th><th>Wert</th><th>Gewicht</th><th>Risiko</th><th>Sektor</th></tr></thead><tbody>${exposure.positions.length ? exposure.positions.map(item=>`<tr><td><strong>${escapeHtml(item.trade.name)}</strong><div class="cell-sub">${escapeHtml(item.trade.symbol||'')}</div></td><td>${formatMoney(item.value,item.trade.currency||'EUR')}</td><td>${formatPct(exposure.invested?item.value/exposure.invested*100:0)}</td><td>${formatMoney(riskToStop(item.trade),item.trade.currency||'EUR')}</td><td>${escapeHtml(item.thesis.sector||'—')}</td></tr>`).join('') : '<tr><td colspan="5" class="empty-table">Keine Positionswerte vorhanden.</td></tr>'}</tbody></table></div></div>
+      <div class="card decision-panel decision-span-6">${sectionHeader('Berechnungslogik', 'Transparente Grundlage der Kennzahlen')}<div class="notification-preview">Investiert = Stückzahl × Ø Einstand + Gebühren
+Aktueller Wert = Stückzahl × aktueller Kurs
+Long-G/V = (Kurs − Einstand) × Stückzahl − Gebühren
+Short-G/V = (Einstand − Kurs) × Stückzahl − Gebühren
+EUR-Wert = Wert in Positionswährung × FX-Faktor
+Risiko bis Stop = Abstand aktueller Kurs zum Stop × Stückzahl
+KO ohne Produkt-Stop = verbleibender Produktwert als Maximalrisiko</div></div>
     </div>`;
     $('#portfolioPrefsForm').onsubmit = savePortfolioPrefs;
+    $('#depotPositionForm').onsubmit = saveDepotPosition;
+    $('#resetPositionForm').onclick = () => { state.editingPositionId = null; renderPortfolio(); };
+    if ($('#deletePositionFromForm')) $('#deletePositionFromForm').onclick = () => removeDepotPosition(state.editingPositionId);
+    const tradeSelect = $('#depotPositionForm')?.elements?.trade_id;
+    if (tradeSelect) tradeSelect.onchange = () => prefillPositionFromTrade(tradeSelect.value);
+    $$('[data-edit-position]', content).forEach(button => button.onclick = () => { state.editingPositionId=button.dataset.editPosition; renderPortfolio(); setTimeout(()=>$('#depotPositionForm')?.scrollIntoView({behavior:'smooth',block:'start'}),50); });
+    $$('[data-delete-position]', content).forEach(button => button.onclick = () => removeDepotPosition(button.dataset.deletePosition));
     $$('[data-open-trade]', content).forEach(button => button.onclick = () => { dashboard()?.selectTradeById?.(button.dataset.openTrade); window.InvestitionNavigation?.showPage?.('trading'); });
     ['calcLoss','calcEntry','calcStop'].forEach(id => $('#'+id)?.addEventListener('input', updatePositionSize));
     updatePositionSize();
+  }
+  function prefillPositionFromTrade(tradeId) {
+    const form=$('#depotPositionForm'), trade=tradeById(tradeId); if(!form||!trade)return;
+    const thesis=thesisFor(trade.id);
+    form.elements.name.value=trade.name||'';
+    form.elements.symbol.value=trade.symbol||trade.marketSymbol||'';
+    form.elements.instrument_type.value=trade.type==='Knock-out'?'Knock-out':'Aktie';
+    form.elements.direction.value=String(trade.direction||'Long').toLowerCase().includes('short')?'Short':'Long';
+    form.elements.currency.value=trade.currency||'EUR';
+    form.elements.stop_price.value=trade.stop||'';
+    form.elements.sector.value=thesis.sector||'';
+    form.elements.region.value=thesis.region||'';
+    if(trade.type==='Knock-out'&&num(trade.productPrice)!==null)form.elements.current_price_override.value=trade.productPrice;
+  }
+  async function saveDepotPosition(event) {
+    event.preventDefault(); const data=serializeForm(event.currentTarget); const existing=state.positions.find(item=>item.id===data.id);
+    const quantity=num(data.quantity), entry=num(data.average_entry_price), currency=String(data.currency||'EUR').trim().toUpperCase();
+    const fx=currency==='EUR'?1:num(data.fx_rate_to_eur);
+    if(!String(data.name||'').trim())return setStatus('Positionsname fehlt.','bad');
+    if(quantity===null||quantity<=0)return setStatus('Stückzahl muss größer als null sein.','bad');
+    if(entry===null||entry<0)return setStatus('Einstandskurs ist ungültig.','bad');
+    if(fx===null||fx<=0)return setStatus('FX-Faktor zu EUR muss größer als null sein.','bad');
+    const manual=num(data.current_price_override);
+    const row={
+      id:data.id||uuid(), trade_id:data.trade_id||null, name:String(data.name).trim(), symbol:String(data.symbol||'').trim()||null,
+      broker:String(data.broker||'').trim()||null, account_name:String(data.account_name||'').trim()||null,
+      instrument_type:data.instrument_type||'Aktie', direction:data.direction||'Long', currency, quantity,
+      average_entry_price:entry, fees:Math.max(0,num(data.fees,0)), purchase_date:data.purchase_date||null,
+      current_price_override:manual, current_price_at:manual!==null?new Date().toISOString():(existing?.current_price_at||null),
+      fx_rate_to_eur:fx, stop_price:num(data.stop_price), sector:String(data.sector||'').trim()||null,
+      region:String(data.region||'').trim()||null, notes:String(data.notes||'').trim(), is_open:bool(data.is_open,true),
+      created_at:existing?.created_at||new Date().toISOString(), updated_at:new Date().toISOString()
+    };
+    state.positions=[...state.positions.filter(item=>item.id!==row.id),row]; saveLocal('positions',state.positions);
+    await upsertCloud('depot_positions',row,'id'); state.editingPositionId=null; setStatus(`Depotposition „${row.name}“ gespeichert.`,'good'); renderPortfolio();
+  }
+  async function removeDepotPosition(id) {
+    const row=state.positions.find(item=>item.id===id); if(!row)return;
+    if(!confirm(`Depotposition „${row.name}“ endgültig löschen?`))return;
+    state.positions=state.positions.filter(item=>item.id!==id); saveLocal('positions',state.positions); await deleteCloud('depot_positions',id); state.editingPositionId=null; setStatus(`Depotposition „${row.name}“ gelöscht.`,'good'); renderPortfolio();
   }
   async function savePortfolioPrefs(event) {
     event.preventDefault(); const data=serializeForm(event.currentTarget);
@@ -746,11 +918,11 @@ Regel: gleiche Zustandsstufe nicht wiederholen; erst Eskalation oder Entwarnung 
       <div class="card decision-panel decision-span-7">${sectionHeader('Diagnosehinweise', 'Konkrete nächste Schritte bei Warnungen')}<div class="signal-list-v25">${health.filter(item=>item.status!=='good').map(item=>`<div class="risk-warning ${item.status==='bad'?'bad':''}"><strong>${escapeHtml(item.name)}:</strong> ${escapeHtml(item.detail)}</div>`).join('')||'<div class="risk-warning">Alle prüfbaren Komponenten melden einen guten Status.</div>'}</div><div class="notification-preview" style="margin-top:12px">Datenqualitätsregel:
 Kein Kauf-, Stop- oder KO-Entscheid auf Basis eines veralteten oder fehlgeschlagenen Kursabrufs. Der Zeitpunkt und die Quelle müssen sichtbar sein.</div></div>
       <div class="card decision-panel decision-span-5">${sectionHeader('Cloud-/Function-Protokoll', 'Letzte gespeicherte Systemprüfungen')}<div class="system-log">${state.healthRows.length?state.healthRows.slice(0,25).map(row=>`<div class="system-log-row"><strong>${escapeHtml(row.component||'System')} · ${escapeHtml(row.status||'')}</strong><span>${formatDate(row.checked_at,true)} · ${escapeHtml(row.message||row.details||'')}</span></div>`).join(''):'<div class="decision-empty">Noch keine serverseitigen Health-Einträge. Die Oberfläche leitet den Status derzeit direkt aus den vorhandenen Daten ab.</div>'}</div></div>
-      <div class="card decision-panel decision-span-12">${sectionHeader('Installationsstand', 'Für den vollständigen Funktionsumfang')}<div class="table-shell-v25"><table><thead><tr><th>Baustein</th><th>Status</th><th>Erforderlich</th></tr></thead><tbody><tr><td>GitHub Dashboard</td><td><span class="chip good">25.0</span></td><td>index.html, app.js, news.js, decision.js, service-worker.js, reset.html</td></tr><tr><td>Supabase Schema</td><td><span class="chip ${state.schemaReady?'good':'warn'}">${state.schemaReady?'erreichbar':'prüfen'}</span></td><td>version25-schema.sql</td></tr><tr><td>Alarm-Function</td><td><span class="chip neutral">optional aktualisieren</span></td><td>check-alerts-index.ts für Eskalationsstufen</td></tr><tr><td>Digest-Function</td><td><span class="chip neutral">optional</span></td><td>send-digest-index.ts + setup-v25-cron.sql</td></tr><tr><td>Signalauswertung</td><td><span class="chip neutral">optional</span></td><td>evaluate-signals-index.ts</td></tr></tbody></table></div></div></div>`;
+      <div class="card decision-panel decision-span-12">${sectionHeader('Installationsstand', 'Für den vollständigen Funktionsumfang')}<div class="table-shell-v25"><table><thead><tr><th>Baustein</th><th>Status</th><th>Erforderlich</th></tr></thead><tbody><tr><td>GitHub Dashboard</td><td><span class="chip good">25.1</span></td><td>index.html, app.js, news.js, decision.js, service-worker.js, reset.html</td></tr><tr><td>Supabase Schema</td><td><span class="chip ${state.schemaReady?'good':'warn'}">${state.schemaReady?'erreichbar':'prüfen'}</span></td><td>version25-schema.sql + version25-1-schema.sql</td></tr><tr><td>Alarm-Function</td><td><span class="chip neutral">optional aktualisieren</span></td><td>check-alerts-index.ts für Eskalationsstufen</td></tr><tr><td>Digest-Function</td><td><span class="chip neutral">optional</span></td><td>send-digest-index.ts + setup-v25-cron.sql</td></tr><tr><td>Signalauswertung</td><td><span class="chip neutral">optional</span></td><td>evaluate-signals-index.ts</td></tr></tbody></table></div></div></div>`;
     $('#exportDecisionData').onclick=exportDecisionData;
   }
   function exportDecisionData() {
-    const payload={version:VERSION,exported_at:new Date().toISOString(),theses:state.theses,scenarios:state.scenarios,events:state.events,preferences:state.preferences,signal_states:state.signalStates,outcomes:state.outcomes};
+    const payload={version:VERSION,exported_at:new Date().toISOString(),theses:state.theses,scenarios:state.scenarios,events:state.events,positions:state.positions,preferences:state.preferences,signal_states:state.signalStates,outcomes:state.outcomes};
     const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`investition-entscheidungsdaten-${new Date().toISOString().slice(0,10)}.json`; a.click(); URL.revokeObjectURL(a.href);
   }
 

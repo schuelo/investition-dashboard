@@ -460,7 +460,7 @@
       }) || null;
     }
     window.InvestitionDashboard = Object.assign(window.InvestitionDashboard || {}, {
-      version: "25.0",
+      version: "25.1",
       openAnalysisBySymbol(symbol) {
         const trade = findTradeBySymbol(symbol);
         if (!trade) return { ok: false, symbol, message: "Keine zugehörige Analyse gefunden." };
@@ -1007,7 +1007,7 @@
     initTicker();
     renderAll();
     initCloud();
-    emitDashboardEvent("investition:ready", { version: "25.0", trades: trades.map((trade) => ({ ...trade })) });
+    emitDashboardEvent("investition:ready", { version: "25.1", trades: trades.map((trade) => ({ ...trade })) });
     chartAutoRefreshTimer = window.setInterval(() => {
       if (!document.hidden && Date.now() - lastChartReloadAt > 300000) renderChart(true);
     }, 60000);
@@ -1016,7 +1016,7 @@
     });
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", function() {
-        navigator.serviceWorker.register("./service-worker.js?v=25.0").catch(function(err) {
+        navigator.serviceWorker.register("./service-worker.js?v=25.1").catch(function(err) {
           console.warn("Service Worker konnte nicht registriert werden.", err);
         });
       });
