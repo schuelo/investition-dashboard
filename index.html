@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="color-scheme" content="dark" />
-  <title>Investition – Analyse- & Trading-Dashboard</title>
+  <title>Investition – geschütztes Analyse- & Trading-Dashboard</title>
   <style>
     :root {
       --bg: #071019;
@@ -396,7 +396,7 @@
     }
     @media (max-width:480px) { .news-health { grid-template-columns:1fr; } }
 
-    /* Dashboard 25.1: Entscheidungszentrale (Ausbaustufen 18–23 und 25) */
+    /* Dashboard 25.2: Entscheidungszentrale (Ausbaustufen 18–23 und 25) */
     .decision-hero { padding:18px 20px; margin-bottom:10px; overflow:hidden; position:relative; }
     .decision-hero::after {
       content:""; position:absolute; width:260px; height:260px; right:-110px; top:-150px;
@@ -547,9 +547,58 @@
       .exposure-row { grid-template-columns:minmax(80px,1fr) minmax(80px,1.5fr) 52px; }
     }
 
+
+    /* Version 25.2: vollständige Login-Wall und Cloud-only-Betrieb */
+    body.auth-locked { overflow: hidden; }
+    body.auth-locked .app-shell {
+      visibility: hidden;
+      pointer-events: none;
+      user-select: none;
+    }
+    .auth-gate {
+      position: fixed; inset: 0; z-index: 10000;
+      display: grid; place-items: center; padding: 22px;
+      background:
+        radial-gradient(circle at 15% 0%, rgba(80,210,194,.18), transparent 31rem),
+        radial-gradient(circle at 100% 15%, rgba(99,169,255,.14), transparent 34rem),
+        #071019;
+    }
+    .auth-gate.hidden { display: none !important; }
+    .auth-card {
+      width: min(460px, 100%); padding: 26px;
+      border: 1px solid #30475b; border-radius: 20px;
+      background: linear-gradient(180deg, rgba(16,31,46,.98), rgba(10,21,32,.98));
+      box-shadow: 0 32px 90px rgba(0,0,0,.5);
+    }
+    .auth-brand { display:flex; align-items:center; gap:13px; margin-bottom:20px; }
+    .auth-brand .brand-mark { flex:0 0 auto; }
+    .auth-card h2 { margin:0; font-size:23px; letter-spacing:-.035em; }
+    .auth-card .auth-subtitle { margin:4px 0 0; color:var(--muted); font-size:12px; }
+    .auth-form { display:grid; gap:11px; margin-top:18px; }
+    .auth-form label { font-size:11px; color:var(--muted); margin-bottom:-5px; }
+    .auth-form .btn { min-height:44px; }
+    .auth-secondary { display:flex; justify-content:center; margin-top:10px; }
+    .auth-message {
+      min-height:20px; margin-top:13px; padding:9px 10px;
+      border-radius:9px; color:var(--muted); font-size:12px; text-align:center;
+    }
+    .auth-message.good { color:var(--good); background:rgba(74,210,149,.08); }
+    .auth-message.bad { color:#ff9aa5; background:rgba(255,107,122,.08); }
+    .auth-security {
+      margin-top:17px; padding-top:15px; border-top:1px solid var(--border);
+      display:grid; gap:7px; color:var(--muted); font-size:11px;
+    }
+    .auth-security span { display:flex; gap:8px; align-items:flex-start; }
+    .auth-security b { color:var(--accent); font-weight:900; }
+    @media (max-width:520px) {
+      .auth-gate { padding:14px; align-items:center; }
+      .auth-card { padding:21px 17px; border-radius:17px; }
+      .auth-card h2 { font-size:21px; }
+    }
+
 </style>
 </head>
-<body>
+<body class="auth-locked">
 <div id="appError" hidden style="position:sticky;top:0;z-index:9999;background:#7f1d1d;color:#fff;padding:12px 16px;font:600 14px system-ui;text-align:center"></div>
 <script>
 window.__dashboardBooted=false;
@@ -587,7 +636,35 @@ setTimeout(function(){
   }
 },8000);
 </script>
-<div class="app-shell">
+<div class="auth-gate" id="authGate" role="dialog" aria-modal="true" aria-labelledby="authGateTitle">
+  <section class="auth-card">
+    <div class="auth-brand">
+      <div class="brand-mark">I</div>
+      <div>
+        <h2 id="authGateTitle">Investition Dashboard</h2>
+        <p class="auth-subtitle">Geschützter Cloud-Zugang · Version 25.2</p>
+      </div>
+    </div>
+    <p style="margin:0;color:#c3d1de">Melde dich mit deinem bestehenden Supabase-Konto an. Ohne erfolgreiche Anmeldung bleiben Dashboard, Analysen, Depotpositionen, News und Benachrichtigungen gesperrt.</p>
+    <form class="auth-form" id="authGateForm">
+      <label for="gateLoginEmail">E-Mail</label>
+      <input type="email" id="gateLoginEmail" autocomplete="username" inputmode="email" required placeholder="deine E-Mail-Adresse" />
+      <label for="gateLoginPassword">Passwort</label>
+      <input type="password" id="gateLoginPassword" autocomplete="current-password" minlength="8" required placeholder="Passwort (mindestens 8 Zeichen)" />
+      <button class="btn primary" id="gateLoginBtn" type="submit">Anmelden</button>
+    </form>
+    <div class="auth-secondary">
+      <button class="btn small ghost" id="gateSetupLinkBtn" type="button">Zugang wiederherstellen / Passwort einrichten</button>
+    </div>
+    <div class="auth-message" id="gateMessage" aria-live="polite">Sitzung wird geprüft …</div>
+    <div class="auth-security">
+      <span><b>✓</b> Ausschließlich Cloud-Betrieb; lokale Analyse- und Depotdaten werden nicht mehr gespeichert.</span>
+      <span><b>✓</b> Automatische Sperre nach 30 Minuten ohne Aktivität.</span>
+      <span><b>✓</b> Nach Neuladen oder vollständigem Beenden der App ist das Passwort wieder erforderlich.</span>
+    </div>
+  </section>
+</div>
+<div class="app-shell" id="appShell" inert aria-hidden="true">
   <header class="topbar">
     <div class="brand-row">
       <div class="brand">
@@ -599,6 +676,7 @@ setTimeout(function(){
       </div>
       <div class="actions">
         <button class="btn ghost cloud-indicator" id="cloudBtn"><span class="status-dot" id="cloudDot"></span><span class="label-text" id="cloudLabel">Cloud-Anmeldung</span></button>
+        <button class="btn ghost" id="quickLockBtn" title="Dashboard sofort sperren">🔒 <span class="label-text">Sperren</span></button>
         <button class="btn ghost" id="exportBtn">⇩ <span class="label-text">Export</span></button>
         <button class="btn ghost" id="importBtn">⇧ <span class="label-text">Import</span></button>
         <button class="btn primary" id="newBtn">＋ <span class="label-text">Trade-Plan</span></button>
@@ -622,7 +700,7 @@ setTimeout(function(){
           <p>Priorisierte Signale, Investmentthesen, Ereignisse, Szenarien, Portfoliorisiken, Signalvalidierung und Systemgesundheit in einer gemeinsamen Entscheidungskette.</p>
         </div>
         <div class="decision-version">
-          <span class="chip good">Dashboard 25.1</span>
+          <span class="chip good">Dashboard 25.2</span>
           <span class="chip neutral">Ausbaustufen 18–23 + 25</span>
           <button class="btn small" id="decisionRefreshBtn" type="button">↻ Aktualisieren</button>
         </div>
@@ -914,23 +992,13 @@ setTimeout(function(){
     <div class="modal-head"><h3 id="cloudModalTitle">Cloud & Benachrichtigungen</h3><button class="btn small ghost" id="closeCloudBtn">✕</button></div>
     <div class="modal-body">
       <div class="cloud-box" id="loggedOutBox">
-        <h4>Cloud-Anmeldung mit E-Mail und Passwort</h4>
-        <p>Melde dich direkt in der Home-Screen-App an. Für die regelmäßige Anmeldung wird keine E-Mail versendet und kein SMTP-Anbieter benötigt.</p>
-        <div class="inline-actions">
-          <input type="email" id="loginEmail" autocomplete="email" placeholder="deine E-Mail-Adresse" />
-          <input type="password" id="loginPassword" autocomplete="current-password" minlength="8" placeholder="Passwort (mindestens 8 Zeichen)" />
-        </div>
-        <div class="inline-actions" style="margin-top:10px">
-          <button class="btn primary" id="loginBtn">Anmelden</button>
-          <button class="btn" id="signupBtn">Konto anlegen</button>
-          <button class="btn ghost" id="setupLinkBtn">Einmaliger Einrichtungslink</button>
-        </div>
-        <p class="microcopy" style="margin-top:10px">Bei einem bereits vorhandenen Magic-Link-/OTP-Konto nutzt du einmalig den Einrichtungslink in Safari und legst danach unten ein Passwort fest. In Supabase muss „Confirm email“ deaktiviert sein, wenn ein neues Konto ohne Bestätigungs-E-Mail erstellt werden soll.</p>
+        <h4>Sitzung gesperrt</h4>
+        <p>Die vollständige Anmeldung erfolgt über die vorgeschaltete Login-Wall. Kontoerstellung und lokaler Betriebsmodus sind in Version 25.2 deaktiviert.</p>
       </div>
       <div class="cloud-box hidden" id="loggedInBox">
         <h4>Cloud verbunden</h4>
         <p id="userEmail">—</p>
-        <div class="inline-actions"><button class="btn primary" id="uploadLocalBtn">Lokale Pläne in Cloud übernehmen</button><button class="btn" id="reloadCloudBtn">Cloud neu laden</button><button class="btn" id="logoutBtn">Abmelden</button></div>
+        <div class="inline-actions"><button class="btn primary" id="reloadCloudBtn">Cloud neu laden</button><button class="btn" id="lockNowBtn">Jetzt sperren</button><button class="btn danger" id="logoutBtn">Abmelden</button></div><p class="microcopy" style="margin-top:10px">Die Sitzung wird zusätzlich nach 30 Minuten ohne Bedienung automatisch gesperrt. Nach Neuladen oder vollständigem Beenden der App ist eine neue Anmeldung erforderlich.</p>
         <hr style="border:0;border-top:1px solid var(--line);margin:18px 0">
         <h4>Passwort festlegen oder ändern</h4>
         <p>Damit kannst du einem bisherigen Magic-Link-/OTP-Konto einmalig ein Passwort geben.</p>
@@ -962,10 +1030,10 @@ setTimeout(function(){
   </div>
 </div>
 
-<script defer src="./supabase.js?v=25.1"></script>
-<script defer src="./app.js?v=25.1"></script>
-<script defer src="./news.js?v=25.1"></script>
-<script defer src="./decision.js?v=25.1"></script>
+<script defer src="./supabase.js?v=25.2"></script>
+<script defer src="./app.js?v=25.2"></script>
+<script defer src="./news.js?v=25.2"></script>
+<script defer src="./decision.js?v=25.2"></script>
 
 </body>
 </html>

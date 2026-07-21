@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const VERSION = '25.1';
+  const VERSION = '25.2';
   const LOCAL_PREFIX = 'investition-decision-v25-';
   const DEFAULT_PREFS = {
     portfolio_value: 100000,
@@ -119,20 +119,14 @@
     return Math.ceil((target - Date.now()) / 86400000);
   }
   function localKey(name) { return LOCAL_PREFIX + name; }
-  function loadLocal(name, fallback) {
-    try {
-      const parsed = JSON.parse(localStorage.getItem(localKey(name)) || 'null');
-      return parsed === null ? fallback : parsed;
-    } catch { return fallback; }
+  function loadLocal(_name, fallback) {
+    return fallback;
   }
-  function saveLocal(name, value) {
-    try { localStorage.setItem(localKey(name), JSON.stringify(value)); } catch {}
+  function saveLocal(_name, _value) {
+    // Version 25.2 speichert keine Investment-, Depot- oder Präferenzdaten lokal.
   }
   function loadNewsLocal() {
-    try {
-      const parsed = JSON.parse(localStorage.getItem('investition-news-feed-v1') || '[]');
-      return Array.isArray(parsed) ? parsed : [];
-    } catch { return []; }
+    return [];
   }
   function setStatus(text, type = '') {
     statusEl.textContent = text;
@@ -289,11 +283,11 @@
     const schemaMissing = !state.schemaReady;
     const health = [
       {name:'Browser / Netzwerk', status:navigator.onLine ? 'good' : 'bad', value:navigator.onLine ? 'Online' : 'Offline', detail:'Direkter Verbindungsstatus dieses Geräts'},
-      {name:'Cloud-Anmeldung', status:state.session ? 'good' : 'warn', value:state.session ? 'Verbunden' : 'Nicht angemeldet', detail:state.session?.user?.email || 'Lokaler Betrieb bleibt möglich'},
-      {name:'Entscheidungsschema', status:schemaMissing ? 'warn' : 'good', value:schemaMissing ? 'Lokaler Modus' : 'Cloud aktiv', detail:schemaMissing ? 'version25-schema.sql + version25-1-schema.sql noch nicht vollständig erreichbar' : 'Thesen, Szenarien, Ereignisse und Depotpositionen werden synchronisiert'},
+      {name:'Cloud-Anmeldung', status:state.session ? 'good' : 'warn', value:state.session ? 'Verbunden' : 'Nicht angemeldet', detail:state.session?.user?.email || 'Login-Wall aktiv; kein lokaler Betrieb'},
+      {name:'Entscheidungsschema', status:schemaMissing ? 'warn' : 'good', value:schemaMissing ? 'Schema prüfen' : 'Cloud aktiv', detail:schemaMissing ? 'version25-schema.sql + version25-1-schema.sql noch nicht vollständig erreichbar' : 'Thesen, Szenarien, Ereignisse und Depotpositionen werden synchronisiert'},
       {name:'Kursdaten', status:!latestQuote ? 'warn' : ageHours(latestQuote) > 24 ? 'bad' : ageHours(latestQuote) > 6 ? 'warn' : 'good', value:latestQuote ? formatDate(latestQuote, true) : 'Keine Daten', detail:latestQuote ? `Alter ${formatNumber(ageHours(latestQuote),1)} Stunden` : 'Alarmprüfung oder Referenzkurs fehlt'},
       {name:'Alarmprüfung', status:alertErrors ? 'bad' : !latestCheck ? 'warn' : ageHours(latestCheck) > 4 ? 'warn' : 'good', value:latestCheck ? formatDate(latestCheck, true) : 'Noch nicht gelaufen', detail:alertErrors ? `${alertErrors} Pläne mit Fehler` : 'Keine gemeldeten Planfehler'},
-      {name:'News Feed', status:!latestNews ? 'warn' : ageHours(latestNews) > 48 ? 'warn' : 'good', value:latestNews ? formatDate(latestNews, true) : 'Leer', detail:`${state.news.length} lokal geladene Meldungen`},
+      {name:'News Feed', status:!latestNews ? 'warn' : ageHours(latestNews) > 48 ? 'warn' : 'good', value:latestNews ? formatDate(latestNews, true) : 'Leer', detail:`${state.news.length} aus Supabase geladene Meldungen`},
       {name:'Telegram', status:state.notificationSettings?.telegram_chat_id ? 'good' : 'warn', value:state.notificationSettings?.telegram_chat_id ? 'Verbunden' : 'Nicht verbunden', detail:state.notificationSettings?.telegram_enabled === false ? 'Benachrichtigungen deaktiviert' : 'Verbindung in Cloud-Einstellungen prüfen'},
       {name:'Service Worker', status:'serviceWorker' in navigator ? (navigator.serviceWorker.controller ? 'good' : 'warn') : 'warn', value:navigator.serviceWorker?.controller ? 'Aktiv' : 'Nicht aktiv', detail:`Dashboard ${VERSION}`},
       {name:'Datenkonsistenz', status:list.some(item => !item.symbol || !item.marketSymbol) ? 'warn' : 'good', value:list.some(item => !item.symbol || !item.marketSymbol) ? 'Prüfung nötig' : 'Symbole vollständig', detail:`${list.length} Trade-Pläne geprüft`}
@@ -425,8 +419,19 @@
     state.cloudReady = Boolean(state.sb && state.session);
     if (!state.cloudReady) {
       state.schemaReady = false;
+      state.theses = [];
+      state.scenarios = [];
+      state.events = [];
+      state.positions = [];
+      state.preferences = {...DEFAULT_PREFS};
+      state.signalStates = [];
+      state.outcomes = [];
+      state.healthRows = [];
+      state.alertEvents = [];
+      state.news = [];
+      state.notificationSettings = null;
       state.lastLoadedAt = new Date().toISOString();
-      setStatus('Lokaler Modus: Für geräteübergreifende Thesen, Ereignisse und Präferenzen in der Cloud anmelden.', 'warn');
+      setStatus('Anmeldung erforderlich. Der lokale Betriebsmodus ist in Version 25.2 deaktiviert.', 'warn');
       return;
     }
 
@@ -461,7 +466,7 @@
     state.lastLoadedAt = new Date().toISOString();
     saveAllLocal();
     setStatus(state.errors.length
-      ? `Cloud teilweise geladen. ${state.errors.length} Tabellenhinweis(e); fehlende Version-25.1-Tabellen arbeiten lokal.`
+      ? `Cloud teilweise geladen. ${state.errors.length} Tabellenhinweis(e); fehlende Version-25.1-Tabellen stehen bis zur Schema-Korrektur nicht zur Verfügung.`
       : `Cloud-Entscheidungsdaten geladen · ${formatDate(state.lastLoadedAt, true)}.`, state.errors.length ? 'warn' : 'good');
   }
 
@@ -477,12 +482,12 @@
   }
 
   async function upsertCloud(table, row, onConflict) {
-    if (!state.sb || !state.session) return {local:true};
+    if (!state.sb || !state.session) return {error:new Error('Anmeldung erforderlich')};
     const payload = {...row, user_id:state.session.user.id};
     const {error} = await state.sb.from(table).upsert(payload, onConflict ? {onConflict} : undefined);
     if (error) {
       state.errors.push(`${table}: ${error.message}`);
-      setStatus(`Lokal gespeichert; Cloud-Speicherung fehlgeschlagen: ${error.message}`, 'warn');
+      setStatus(`Cloud-Speicherung fehlgeschlagen; Änderung ist nicht dauerhaft gespeichert: ${error.message}`, 'bad');
       return {error};
     }
     return {ok:true};
@@ -490,7 +495,7 @@
   async function deleteCloud(table, id) {
     if (!state.sb || !state.session) return;
     const {error} = await state.sb.from(table).delete().eq('id', id).eq('user_id', state.session.user.id);
-    if (error) setStatus(`Lokal gelöscht; Cloud-Löschung fehlgeschlagen: ${error.message}`, 'warn');
+    if (error) setStatus(`Cloud-Löschung fehlgeschlagen: ${error.message}`, 'bad');
   }
 
   function tradeOptions(selected = '') {
@@ -918,7 +923,7 @@ Regel: gleiche Zustandsstufe nicht wiederholen; erst Eskalation oder Entwarnung 
       <div class="card decision-panel decision-span-7">${sectionHeader('Diagnosehinweise', 'Konkrete nächste Schritte bei Warnungen')}<div class="signal-list-v25">${health.filter(item=>item.status!=='good').map(item=>`<div class="risk-warning ${item.status==='bad'?'bad':''}"><strong>${escapeHtml(item.name)}:</strong> ${escapeHtml(item.detail)}</div>`).join('')||'<div class="risk-warning">Alle prüfbaren Komponenten melden einen guten Status.</div>'}</div><div class="notification-preview" style="margin-top:12px">Datenqualitätsregel:
 Kein Kauf-, Stop- oder KO-Entscheid auf Basis eines veralteten oder fehlgeschlagenen Kursabrufs. Der Zeitpunkt und die Quelle müssen sichtbar sein.</div></div>
       <div class="card decision-panel decision-span-5">${sectionHeader('Cloud-/Function-Protokoll', 'Letzte gespeicherte Systemprüfungen')}<div class="system-log">${state.healthRows.length?state.healthRows.slice(0,25).map(row=>`<div class="system-log-row"><strong>${escapeHtml(row.component||'System')} · ${escapeHtml(row.status||'')}</strong><span>${formatDate(row.checked_at,true)} · ${escapeHtml(row.message||row.details||'')}</span></div>`).join(''):'<div class="decision-empty">Noch keine serverseitigen Health-Einträge. Die Oberfläche leitet den Status derzeit direkt aus den vorhandenen Daten ab.</div>'}</div></div>
-      <div class="card decision-panel decision-span-12">${sectionHeader('Installationsstand', 'Für den vollständigen Funktionsumfang')}<div class="table-shell-v25"><table><thead><tr><th>Baustein</th><th>Status</th><th>Erforderlich</th></tr></thead><tbody><tr><td>GitHub Dashboard</td><td><span class="chip good">25.1</span></td><td>index.html, app.js, news.js, decision.js, service-worker.js, reset.html</td></tr><tr><td>Supabase Schema</td><td><span class="chip ${state.schemaReady?'good':'warn'}">${state.schemaReady?'erreichbar':'prüfen'}</span></td><td>version25-schema.sql + version25-1-schema.sql</td></tr><tr><td>Alarm-Function</td><td><span class="chip neutral">optional aktualisieren</span></td><td>check-alerts-index.ts für Eskalationsstufen</td></tr><tr><td>Digest-Function</td><td><span class="chip neutral">optional</span></td><td>send-digest-index.ts + setup-v25-cron.sql</td></tr><tr><td>Signalauswertung</td><td><span class="chip neutral">optional</span></td><td>evaluate-signals-index.ts</td></tr></tbody></table></div></div></div>`;
+      <div class="card decision-panel decision-span-12">${sectionHeader('Installationsstand', 'Für den vollständigen Funktionsumfang')}<div class="table-shell-v25"><table><thead><tr><th>Baustein</th><th>Status</th><th>Erforderlich</th></tr></thead><tbody><tr><td>GitHub Dashboard</td><td><span class="chip good">25.2</span></td><td>index.html, app.js, news.js, decision.js, service-worker.js, reset.html</td></tr><tr><td>Supabase Schema</td><td><span class="chip ${state.schemaReady?'good':'warn'}">${state.schemaReady?'erreichbar':'prüfen'}</span></td><td>version25-schema.sql + version25-1-schema.sql</td></tr><tr><td>Alarm-Function</td><td><span class="chip neutral">optional aktualisieren</span></td><td>check-alerts-index.ts für Eskalationsstufen</td></tr><tr><td>Digest-Function</td><td><span class="chip neutral">optional</span></td><td>send-digest-index.ts + setup-v25-cron.sql</td></tr><tr><td>Signalauswertung</td><td><span class="chip neutral">optional</span></td><td>evaluate-signals-index.ts</td></tr></tbody></table></div></div></div>`;
     $('#exportDecisionData').onclick=exportDecisionData;
   }
   function exportDecisionData() {

@@ -100,16 +100,23 @@
       alarmHealthBox: $("#alarmHealthBox"),
       alarmHealthSummary: $("#alarmHealthSummary"),
       runAlertsBtn: $("#runAlertsBtn"),
-      loginPassword: $("#loginPassword"),
       newPassword: $("#newPassword"),
       newPasswordConfirm: $("#newPasswordConfirm"),
+      authGate: $("#authGate"),
+      appShell: $("#appShell"),
+      gateForm: $("#authGateForm"),
+      gateEmail: $("#gateLoginEmail"),
+      gatePassword: $("#gateLoginPassword"),
+      gateMessage: $("#gateMessage"),
+      gateLoginBtn: $("#gateLoginBtn"),
+      gateSetupLinkBtn: $("#gateSetupLinkBtn"),
       symbolPreset: $("#symbolPreset"),
       chartSymbolPreview: $("#chartSymbolPreview"),
       marketSymbolPreview: $("#marketSymbolPreview")
     };
-    const sb = (_a = window.supabase) == null ? void 0 : _a.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: "implicit" } });
-    let trades = loadLocal();
-    let selectedId = ((_b = trades[0]) == null ? void 0 : _b.id) || null;
+    const sb = (_a = window.supabase) == null ? void 0 : _a.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, { auth: { persistSession: false, autoRefreshToken: true, detectSessionInUrl: true, flowType: "implicit" } });
+    let trades = [];
+    let selectedId = null;
     let session = null;
     let realtimeChannel = null;
     let telegramLinkCode = "";
@@ -117,46 +124,37 @@
     let currentChartKey = "";
     let lastChartReloadAt = 0;
     let chartAutoRefreshTimer = null;
+    const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
+    let lastActivityAt = Date.now();
+    let idleTimer = null;
+    let lockReason = "";
+    let widgetsStarted = false;
     function emitDashboardEvent(name, detail = {}) {
       try { window.dispatchEvent(new CustomEvent(name, { detail })); } catch (_e) {}
     }
     function loadLocal() {
-      for (const key of [STORAGE_KEY, LEGACY_STORAGE_KEY]) {
-        try {
-          const raw = storageGet(key);
-          const parsed = raw && JSON.parse(raw);
-          if (Array.isArray(parsed)) {
-            const normalized = parsed.map(normalizeTrade);
-            storageSet(STORAGE_KEY, JSON.stringify(normalized));
-            return normalized;
-          }
-        } catch (e) {
-          console.warn("Lokale Daten konnten nicht gelesen werden.", e);
-        }
-      }
-      storageSet(STORAGE_KEY, JSON.stringify(seed));
-      return seed;
-    }
-    function normalizeTrade(t) {
-      const id = isUuid(t.id) ? t.id : uuid();
-      return {
-        monitoringEnabled: true,
-        alertKoDistancePct: "10",
-        ...t,
-        id,
-        monitoringEnabled: bool(t.monitoringEnabled, true),
-        alertEntry: bool(t.alertEntry),
-        alertLimit: bool(t.alertLimit),
-        alertStop: bool(t.alertStop),
-        alertTarget1: bool(t.alertTarget1),
-        alertTarget2: bool(t.alertTarget2),
-        alertTarget3: bool(t.alertTarget3),
-        alertKo: bool(t.alertKo)
-      };
+      return [];
     }
     function saveLocal() {
-      storageSet(STORAGE_KEY, JSON.stringify(trades));
+      // Version 25.2 arbeitet ausschließlich in der Cloud. Persönliche Daten
+      // bleiben nur für die laufende Sitzung im Arbeitsspeicher.
       emitDashboardEvent("investition:data-changed", { trades: trades.map((trade) => ({ ...trade })) });
+    }
+    function purgePersonalBrowserData() {
+      try {
+        const explicitKeys = new Set([
+          STORAGE_KEY,
+          LEGACY_STORAGE_KEY,
+          "investition-news-feed-v1",
+          "investition-news-read-v1",
+          LOGIN_EMAIL_KEY
+        ]);
+        for (let index = localStorage.length - 1; index >= 0; index -= 1) {
+          const key = localStorage.key(index);
+          if (!key) continue;
+          if (explicitKeys.has(key) || key.startsWith("investition-decision-v25-")) localStorage.removeItem(key);
+        }
+      } catch (_e) {}
     }
     function isUuid(v) {
       return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v || "");
@@ -460,7 +458,7 @@
       }) || null;
     }
     window.InvestitionDashboard = Object.assign(window.InvestitionDashboard || {}, {
-      version: "25.1",
+      version: "25.2",
       openAnalysisBySymbol(symbol) {
         const trade = findTradeBySymbol(symbol);
         if (!trade) return { ok: false, symbol, message: "Keine zugehörige Analyse gefunden." };
@@ -503,6 +501,9 @@
       },
       openCloudSettings() {
         els.cloudModal.classList.add("open");
+      },
+      lock(reason) {
+        return lockSession(reason || "Sitzung gesperrt.");
       }
     });
     function normalizeSymbolInput(value) {
@@ -643,16 +644,17 @@
       return normalizeTrade({ id: r.id, name: r.name, symbol: r.symbol, marketSymbol: r.market_symbol || "", currency: r.currency || "", type: r.instrument_type, direction: r.direction, horizon: r.horizon || "", status: r.status || "", analysisDate: r.analysis_date || "", reviewDate: r.review_date || "", source: r.source || "", notes: r.notes || "", currentPrice: (_b2 = (_a2 = r.last_price) != null ? _a2 : r.reference_price) != null ? _b2 : "", currentPriceAt: r.last_price_at || "", entryLow: (_c = r.entry_low) != null ? _c : "", entryHigh: (_d = r.entry_high) != null ? _d : "", limitPrice: (_e = r.limit_price) != null ? _e : "", stop: (_f = r.stop_price) != null ? _f : "", target1: (_g = r.target1) != null ? _g : "", target2: (_h = r.target2) != null ? _h : "", target3: (_i = r.target3) != null ? _i : "", riskBudget: (_j = r.risk_budget) != null ? _j : "", quantity: (_k = r.quantity) != null ? _k : "", positionValue: (_l = r.position_value) != null ? _l : "", orderRef: r.order_ref || "", wkn: r.wkn || "", isin: r.isin || "", issuer: r.issuer || "", expiry: r.expiry || "", koBarrier: (_m = r.ko_barrier) != null ? _m : "", strike: (_n = r.strike_price) != null ? _n : "", leverage: (_o = r.leverage) != null ? _o : "", ratio: (_p = r.ratio) != null ? _p : "", productPrice: (_q = r.product_price) != null ? _q : "", koDistance: (_r = r.ko_distance_pct) != null ? _r : "", monitoringEnabled: r.monitoring_enabled, alertEntry: r.alert_entry, alertLimit: r.alert_limit, alertStop: r.alert_stop, alertTarget1: r.alert_target1, alertTarget2: r.alert_target2, alertTarget3: r.alert_target3, alertKo: r.alert_ko, alertKoDistancePct: (_s = r.alert_ko_distance_pct) != null ? _s : 10 });
     }
     async function upsertCloud(t, resetState = false) {
-      if (!session) return;
-      setCloudState("syncing", "Synchronisiert \u2026");
+      if (!session) return false;
+      setCloudState("syncing", "Synchronisiert …");
       const { error } = await sb.from("trade_plans").upsert(toRow(t));
       if (error) {
         setCloudState("error", "Cloud-Fehler");
         showCloudMessage(error.message, false);
-        return;
+        return false;
       }
       if (resetState) await sb.from("alert_state").delete().eq("trade_id", t.id);
       setCloudState("online", "Cloud");
+      return true;
     }
     async function uploadAllLocal() {
       if (!session) return;
@@ -696,11 +698,14 @@
         const health = await loadAlertHealthMap();
         trades = data.map((row) => ({ ...fromRow(row), ...(health.get(row.id) || {}) }));
         selectedId = trades.some((t) => t.id === selectedId) ? selectedId : ((_a2 = trades[0]) == null ? void 0 : _a2.id) || null;
-        saveLocal();
-        renderAll();
       } else {
-        showCloudMessage("Die Cloud ist noch leer. Deine lokalen Pl\xE4ne bleiben sichtbar; \xFCber \u201ELokale Pl\xE4ne in Cloud \xFCbernehmen\u201C kannst du sie hochladen.");
+        trades = [];
+        selectedId = null;
+        showCloudMessage("Die Cloud enthält noch keine Trade-Pläne. Lege einen neuen Plan an oder importiere eine zuvor exportierte JSON-Datei.");
       }
+      saveLocal();
+      renderAll();
+      purgePersonalBrowserData();
       setCloudState("online", "Cloud");
       await loadNotificationSettings();
       await loadSignals();
@@ -739,7 +744,56 @@
     }
     function setBusy(v) {
       cloudBusy = v;
-      $$("#cloudModal button").forEach((b) => b.disabled = v);
+      $$("#cloudModal button, #authGate button").forEach((b) => b.disabled = v);
+    }
+    function showGateMessage(text, good = null) {
+      if (!els.gateMessage) return;
+      els.gateMessage.textContent = text;
+      els.gateMessage.className = "auth-message" + (good === true ? " good" : good === false ? " bad" : "");
+    }
+    function setAuthLocked(locked, message = "") {
+      document.body.classList.toggle("auth-locked", locked);
+      els.authGate?.classList.toggle("hidden", !locked);
+      if (els.appShell) {
+        els.appShell.toggleAttribute("inert", locked);
+        els.appShell.setAttribute("aria-hidden", locked ? "true" : "false");
+      }
+      if (locked) {
+        els.gatePassword.value = "";
+        showGateMessage(message || "Bitte mit deinem bestehenden Konto anmelden.");
+        setTimeout(() => (els.gateEmail.value ? els.gatePassword : els.gateEmail)?.focus(), 80);
+      }
+    }
+    function stopIdleTimer() {
+      if (idleTimer) window.clearInterval(idleTimer);
+      idleTimer = null;
+    }
+    function recordActivity() {
+      if (session) lastActivityAt = Date.now();
+    }
+    function startIdleTimer() {
+      stopIdleTimer();
+      lastActivityAt = Date.now();
+      idleTimer = window.setInterval(() => {
+        if (session && Date.now() - lastActivityAt >= IDLE_TIMEOUT_MS) lockSession("Sitzung nach 30 Minuten ohne Aktivität automatisch gesperrt.");
+      }, 30000);
+    }
+    async function lockSession(reason = "Sitzung gesperrt. Bitte erneut anmelden.") {
+      lockReason = reason;
+      setAuthLocked(true, reason);
+      stopIdleTimer();
+      if (sb && session) {
+        try { await sb.auth.signOut(); } catch (_e) {}
+      } else {
+        session = null;
+        refreshAuthUi();
+      }
+    }
+    function ensureAuthenticatedAppStarted() {
+      if (widgetsStarted || !session) return;
+      widgetsStarted = true;
+      initTicker();
+      renderAll();
     }
     function refreshAuthUi() {
       var _a2;
@@ -749,17 +803,29 @@
       els.telegramBox.classList.toggle("hidden", !logged);
       els.alarmHealthBox.classList.toggle("hidden", !logged);
       els.signalsBox.classList.toggle("hidden", !logged);
-      els.userEmail.textContent = ((_a2 = session == null ? void 0 : session.user) == null ? void 0 : _a2.email) || "\u2014";
-      if (!logged) {
-        const savedEmail = storageGet(LOGIN_EMAIL_KEY) || "";
-        if (savedEmail && !$("#loginEmail").value) $("#loginEmail").value = savedEmail;
+      els.userEmail.textContent = ((_a2 = session == null ? void 0 : session.user) == null ? void 0 : _a2.email) || "—";
+      setCloudState(logged ? "online" : "", logged ? "Sitzung aktiv" : "Gesperrt");
+      setAuthLocked(!logged, lockReason || "Bitte mit deinem bestehenden Konto anmelden.");
+      if (logged) {
+        lockReason = "";
+        startIdleTimer();
+        ensureAuthenticatedAppStarted();
+      } else {
+        stopIdleTimer();
+        trades = [];
+        selectedId = null;
+        currentChartKey = "";
+        widgetsStarted = false;
+        if (els.tickerHost) els.tickerHost.innerHTML = "";
+        saveLocal();
+        renderAll();
       }
-      setCloudState(logged ? "online" : "", logged ? "Cloud verbunden" : "Cloud-Anmeldung");
       emitDashboardEvent("investition:auth-changed", { session });
     }
     async function initCloud() {
       if (!sb) {
         setCloudState("error", "Cloud nicht geladen");
+        setAuthLocked(true, "Supabase konnte nicht geladen werden. Prüfe die Internetverbindung und lade die Seite neu.");
         return;
       }
       const { data } = await sb.auth.getSession();
@@ -771,7 +837,7 @@
         if (new URLSearchParams(location.search).get("setup") === "password") {
           els.cloudModal.classList.add("open");
           setTimeout(() => els.newPassword?.focus(), 150);
-          showCloudMessage("Du bist über den Einrichtungslink angemeldet. Lege jetzt unten ein Passwort fest.", true);
+          showCloudMessage("Du bist über den Wiederherstellungslink angemeldet. Lege jetzt unten ein Passwort fest.", true);
         }
       }
       sb.auth.onAuthStateChange((_event, newSession) => {
@@ -789,14 +855,14 @@
       });
     }
     function loginCredentials() {
-      const email = $("#loginEmail").value.trim().toLowerCase();
-      const password = els.loginPassword.value;
+      const email = els.gateEmail.value.trim().toLowerCase();
+      const password = els.gatePassword.value;
       if (!email) {
-        showCloudMessage("Bitte eine E-Mail-Adresse eingeben.", false);
+        showGateMessage("Bitte eine E-Mail-Adresse eingeben.", false);
         return null;
       }
       if (!password || password.length < 8) {
-        showCloudMessage("Das Passwort muss mindestens 8 Zeichen lang sein.", false);
+        showGateMessage("Das Passwort muss mindestens 8 Zeichen lang sein.", false);
         return null;
       }
       return { email, password };
@@ -804,37 +870,18 @@
     async function signInPassword() {
       const credentials = loginCredentials();
       if (!credentials) return;
+      if (!sb) return showGateMessage("Supabase ist nicht verfügbar.", false);
       setBusy(true);
+      showGateMessage("Anmeldung wird geprüft …");
       const { error } = await sb.auth.signInWithPassword(credentials);
       setBusy(false);
-      if (error) return showCloudMessage("Anmeldung fehlgeschlagen: " + error.message, false);
-      storageSet(LOGIN_EMAIL_KEY, credentials.email);
-      els.loginPassword.value = "";
-      showCloudMessage("Cloud-Anmeldung erfolgreich.", true);
-    }
-    async function signUpPassword() {
-      const credentials = loginCredentials();
-      if (!credentials) return;
-      setBusy(true);
-      const { data, error } = await sb.auth.signUp(credentials);
-      setBusy(false);
-      if (error) {
-        const hint = /already|registered|exists/i.test(error.message || "")
-          ? " Das Konto existiert bereits. Nutze ‚Anmelden‘ oder den einmaligen Einrichtungslink, um ein Passwort festzulegen."
-          : "";
-        return showCloudMessage("Konto konnte nicht angelegt werden: " + error.message + hint, false);
-      }
-      storageSet(LOGIN_EMAIL_KEY, credentials.email);
-      els.loginPassword.value = "";
-      if (data?.session) {
-        showCloudMessage("Konto erstellt und Cloud verbunden. Du kannst neue Registrierungen in Supabase jetzt wieder deaktivieren.", true);
-      } else {
-        showCloudMessage("Konto erstellt, aber Supabase verlangt noch eine E-Mail-Bestätigung. Deaktiviere in Authentication → Sign In / Providers → Email die Option ‚Confirm email‘.", false);
-      }
+      if (error) return showGateMessage("Anmeldung fehlgeschlagen: " + error.message, false);
+      els.gatePassword.value = "";
+      showGateMessage("Anmeldung erfolgreich.", true);
     }
     async function sendSetupLink() {
-      const email = $("#loginEmail").value.trim().toLowerCase();
-      if (!email) return showCloudMessage("Bitte eine E-Mail-Adresse eingeben.", false);
+      const email = els.gateEmail.value.trim().toLowerCase();
+      if (!email) return showGateMessage("Bitte eine E-Mail-Adresse eingeben.", false);
       setBusy(true);
       const { error } = await sb.auth.signInWithOtp({
         email,
@@ -844,9 +891,8 @@
         }
       });
       setBusy(false);
-      if (error) return showCloudMessage("Einrichtungslink konnte nicht gesendet werden: " + error.message, false);
-      storageSet(LOGIN_EMAIL_KEY, email);
-      showCloudMessage("Einmaliger Einrichtungslink wurde gesendet. Öffne ihn in Safari, lege dort ein Passwort fest und melde dich danach in der Home-Screen-App mit E-Mail und Passwort an.", true);
+      if (error) return showGateMessage("Wiederherstellungslink konnte nicht gesendet werden: " + error.message, false);
+      showGateMessage("Einmaliger Wiederherstellungslink wurde gesendet. Öffne ihn in Safari und lege anschließend im Bereich Cloud & Benachrichtigungen ein Passwort fest.", true);
     }
     async function setAccountPassword() {
       if (!session) return showCloudMessage("Du musst angemeldet sein, um ein Passwort festzulegen.", false);
@@ -977,11 +1023,14 @@
       try {
         const parsed = JSON.parse(await file.text()), incoming = Array.isArray(parsed) ? parsed : parsed.trades;
         if (!Array.isArray(incoming)) throw new Error("Kein g\xFCltiger Trade-Datensatz.");
+        if (!session) throw new Error("Anmeldung erforderlich.");
         trades = incoming.map(normalizeTrade);
         selectedId = ((_a2 = trades[0]) == null ? void 0 : _a2.id) || null;
-        saveLocal();
-        renderAll();
-        if (session) showCloudMessage("Import lokal geladen. F\xFCr Cloud-Synchronisierung \u201ELokale Pl\xE4ne in Cloud \xFCbernehmen\u201C w\xE4hlen.");
+        const rows = trades.map(toRow);
+        const { error } = await sb.from("trade_plans").upsert(rows);
+        if (error) throw error;
+        showCloudMessage(`${rows.length} Pläne importiert und in der Cloud gespeichert.`, true);
+        await loadCloud();
       } catch (e) {
         alert("Import fehlgeschlagen: " + e.message);
       }
@@ -992,22 +1041,26 @@
     els.cloudModal.addEventListener("click", (e) => {
       if (e.target === els.cloudModal) els.cloudModal.classList.remove("open");
     });
-    $("#loginBtn").onclick = signInPassword;
-    $("#signupBtn").onclick = signUpPassword;
-    $("#setupLinkBtn").onclick = sendSetupLink;
+    els.gateForm.addEventListener("submit", (event) => { event.preventDefault(); signInPassword(); });
+    els.gateSetupLinkBtn.onclick = sendSetupLink;
     $("#setPasswordBtn").onclick = setAccountPassword;
-    els.loginPassword.addEventListener("keydown", (event) => { if (event.key === "Enter") signInPassword(); });
     els.newPasswordConfirm.addEventListener("keydown", (event) => { if (event.key === "Enter") setAccountPassword(); });
-    $("#logoutBtn").onclick = () => sb.auth.signOut();
-    $("#uploadLocalBtn").onclick = uploadAllLocal;
+    $("#lockNowBtn").onclick = () => lockSession("Sitzung manuell gesperrt.");
+    $("#quickLockBtn").onclick = () => lockSession("Sitzung manuell gesperrt.");
+    $("#logoutBtn").onclick = () => lockSession("Abgemeldet. Bitte erneut anmelden.");
     $("#reloadCloudBtn").onclick = loadCloud;
     els.runAlertsBtn.onclick = checkAlertsNow;
     $("#generateCodeBtn").onclick = generateTelegramCode;
     $("#connectTelegramBtn").onclick = connectTelegram;
-    initTicker();
+    ["pointerdown", "keydown", "touchstart"].forEach((eventName) => {
+      document.addEventListener(eventName, recordActivity, { passive: true });
+    });
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden && session && Date.now() - lastActivityAt >= IDLE_TIMEOUT_MS) lockSession("Sitzung nach 30 Minuten ohne Aktivität automatisch gesperrt.");
+    });
     renderAll();
     initCloud();
-    emitDashboardEvent("investition:ready", { version: "25.1", trades: trades.map((trade) => ({ ...trade })) });
+    emitDashboardEvent("investition:ready", { version: "25.2", trades: trades.map((trade) => ({ ...trade })) });
     chartAutoRefreshTimer = window.setInterval(() => {
       if (!document.hidden && Date.now() - lastChartReloadAt > 300000) renderChart(true);
     }, 60000);
@@ -1016,7 +1069,7 @@
     });
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", function() {
-        navigator.serviceWorker.register("./service-worker.js?v=25.1").catch(function(err) {
+        navigator.serviceWorker.register("./service-worker.js?v=25.2").catch(function(err) {
           console.warn("Service Worker konnte nicht registriert werden.", err);
         });
       });

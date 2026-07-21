@@ -12,8 +12,8 @@
     catch { return ''; }
   };
   const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : `news-${Date.now()}-${Math.random().toString(36).slice(2)}`);
-  const sb = window.supabase?.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: 'implicit' }
+  const sb = window.InvestitionDashboard?.getSupabase?.() || window.supabase?.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+    auth: { persistSession: false, autoRefreshToken: true, detectSessionInUrl: true, flowType: 'implicit' }
   });
 
   const els = {
@@ -32,16 +32,12 @@
   let readIds = loadReadIds();
 
   function notifyNewsChanged() { window.dispatchEvent(new CustomEvent('investition:news-changed', {detail:{count:items.length}})); }
-  function loadLocal() {
-    try { const parsed = JSON.parse(localStorage.getItem(LOCAL_KEY) || '[]'); return Array.isArray(parsed) ? parsed.map(normalize) : []; }
-    catch { return []; }
+  function loadLocal() { return []; }
+  function saveLocal() {
+    // Version 25.2 hält News nur im Arbeitsspeicher und lädt sie aus Supabase.
   }
-  function saveLocal() { try { localStorage.setItem(LOCAL_KEY, JSON.stringify(items)); } catch {} }
-  function loadReadIds() {
-    try { const parsed = JSON.parse(localStorage.getItem(READ_KEY) || '[]'); return new Set(Array.isArray(parsed) ? parsed : []); }
-    catch { return new Set(); }
-  }
-  function saveReadIds() { try { localStorage.setItem(READ_KEY, JSON.stringify([...readIds])); } catch {} }
+  function loadReadIds() { return new Set(); }
+  function saveReadIds() {}
   function normalize(n) {
     return {
       id: n.id || uuid(), external_id: n.external_id || n.externalId || null,
@@ -84,7 +80,7 @@
     const list = filtered();
     els.count.textContent = `${list.length} ${list.length === 1 ? 'Eintrag' : 'Einträge'}`;
     if (!list.length) {
-      els.list.innerHTML = '<div class="news-empty">Noch keine passenden Meldungen. Melde dich in der Cloud an und tippe auf „Feed aktualisieren“ oder importiere einen News-JSON-Datensatz.</div>';
+      els.list.innerHTML = '<div class="news-empty">Noch keine passenden Meldungen. Melde dich an und tippe auf „Feed aktualisieren“ oder importiere einen News-JSON-Datensatz direkt in die Cloud.</div>';
       renderDetail(null); return;
     }
     if (!list.some(n => n.id === selectedId)) selectedId = list[0].id;
@@ -213,6 +209,7 @@
     await loadCloudNews();
   }
   async function importNews(file) {
+    if (!session) { setStatus('Anmeldung erforderlich. Der lokale Import ist deaktiviert.', 'bad'); return; }
     try {
       const parsed = JSON.parse(await file.text());
       const incoming = Array.isArray(parsed) ? parsed : parsed.news;
@@ -220,11 +217,11 @@
       const mapped = incoming.map(normalize);
       items = [...mapped, ...items.filter(old => !mapped.some(n => (n.external_id && n.external_id === old.external_id) || n.id === old.id))];
       saveLocal(); selectedId = mapped[0]?.id || selectedId; renderList(); notifyNewsChanged();
-      setStatus(`${mapped.length} News-Einträge lokal importiert.`, 'good');
+      setStatus(`${mapped.length} News-Einträge eingelesen.`, 'good');
       if (session) {
         const rows = mapped.map(n => ({...n, is_published:true}));
         const {error} = await sb.from('market_news').upsert(rows, {onConflict:'external_id'});
-        if (error) setStatus(`Lokal importiert; Cloud-Upload nicht möglich: ${error.message}`, 'bad');
+        if (error) setStatus(`Import fehlgeschlagen: ${error.message}`, 'bad');
         else setStatus(`${mapped.length} Einträge importiert und in Supabase gespeichert.`, 'good');
       }
     } catch (e) { setStatus(`Import fehlgeschlagen: ${e.message}`, 'bad'); }
@@ -248,7 +245,7 @@
     } else {
       setHealth(els.cloudHealth, 'nicht angemeldet', 'warn');
       setHealth(els.tableHealth, 'Anmeldung erforderlich', 'warn');
-      setStatus('Für den Cloud-Newsfeed über „Cloud-Anmeldung“ anmelden. Lokale Imports bleiben verfügbar.');
+      setStatus('Anmeldung erforderlich. Lokaler Newsbetrieb ist in Version 25.2 deaktiviert.');
       renderList();
     }
     sb.auth.onAuthStateChange((_event, newSession) => {
@@ -260,6 +257,11 @@
         } else {
           setHealth(els.cloudHealth, 'nicht angemeldet', 'warn');
           setHealth(els.tableHealth, 'Anmeldung erforderlich', 'warn');
+          items = [];
+          selectedId = null;
+          readIds.clear();
+          if (realtimeChannel) { sb.removeChannel(realtimeChannel); realtimeChannel = null; }
+          setStatus('Anmeldung erforderlich. Lokaler Newsbetrieb ist deaktiviert.', 'warn');
           renderList();
         }
       }, 0);

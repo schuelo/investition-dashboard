@@ -1,89 +1,121 @@
-# Investition Dashboard v16
+# Investition Dashboard 25.2 – Passwortschutz
 
-## Was wurde behoben?
+Version 25.2 ergänzt eine vollständige Login-Wall vor dem Dashboard. Ohne erfolgreiche Supabase-Anmeldung sind Oberfläche, Analysen, Depotpositionen, News, Alarme und Einstellungen gesperrt.
 
-### TradingView
-- Die grauen bzw. schwer bedienbaren Auswahlfelder wurden durch echte Touch-Schaltflächen ersetzt.
-- **Kursverlauf**: 1T, 5T, 1M, 3M, 6M, 1J, 5J, Max.
-- **Analysechart**: 1m, 5m, 15m, 1h, 4h, 1T, 1W, 1M.
-- Der Kursverlauf verwendet das aktuelle TradingView-Widget **Symbol Overview** statt des Legacy-Mini-Widgets.
-- Jeder Klick lädt das TradingView-Widget mit dem gewählten Zeitraum bzw. Intervall neu.
+## Sicherheitsfunktionen
 
-### News Feed
-- Neue Diagnoseanzeige für Cloud-Anmeldung, Tabelle, Sync-Function und Datenquelle.
-- `Feed aktualisieren` erzwingt einen Serverabruf und zeigt die konkrete Fehlermeldung an.
-- Die neue `sync-news` Function nutzt **GDELT** als offene Newsquelle. Für den Newsfeed ist deshalb kein kostenpflichtiger EODHD-News-Tarif erforderlich.
-- EODHD bleibt unverändert für die Kurs- und Alarmprüfung zuständig.
+- Anmeldung ausschließlich mit bestehendem Supabase-Konto
+- Kontoerstellung aus der Dashboard-Oberfläche entfernt
+- lokaler Betriebsmodus deaktiviert
+- Supabase-Sitzung wird nicht dauerhaft im Browser gespeichert
+- nach Neuladen oder vollständigem Beenden der App ist eine neue Anmeldung erforderlich
+- automatische Sperre nach 30 Minuten ohne Bedienung
+- manuelle Sofortsperre über `Sperren`
+- persönliche Analyse-, Depot-, News- und Entscheidungsdaten werden nicht mehr in `localStorage` gespeichert
+- Service Worker cached ausschließlich statische Programmdateien, keine Supabase-Daten
 
-## A. GitHub aktualisieren
+## Vor dem Update: Sicherung
 
-Lade diese Dateien direkt in das Hauptverzeichnis des Repositorys:
+Version 25.2 entfernt nach einer erfolgreichen Cloud-Anmeldung alte persönliche Dashboard-Caches aus dem Browser. Vor dem Upload daher einmal sichern:
+
+1. Oben im bisherigen Dashboard `Export` ausführen.
+2. Unter `Entscheidungszentrale → System` die `Entscheidungsdaten exportieren`.
+3. Kontrollieren, dass die bisherigen Pläne und Depotpositionen in Supabase vorhanden sind.
+
+## GitHub aktualisieren
+
+Direkt im Hauptverzeichnis des GitHub-Repositorys ersetzen:
 
 - `index.html`
 - `app.js`
-- `supabase.js`
 - `news.js`
+- `decision.js`
 - `service-worker.js`
 - `reset.html`
+- `README.md`
+
+Diese Dateien können unverändert bleiben:
+
+- `supabase.js`
 - `startdaten.json`
-- `.nojekyll` (falls vorhanden)
+- `.nojekyll`
 
-Nicht in einen Unterordner hochladen. Danach `Commit changes`.
+SQL- und TypeScript-Dateien gehören nicht nach GitHub.
 
-Öffne anschließend auf dem iPhone:
+## Supabase einstellen
 
-`https://schuelo.github.io/investition-dashboard/reset.html?v=16`
+Das bestehende Konto bleibt erhalten. Das Konto darf nicht gelöscht werden, weil zugehörige Cloud-Daten über Fremdschlüssel mitgelöscht werden könnten.
 
-Tippe auf **Jetzt zurücksetzen** und öffne danach:
+In Supabase die Registrierung neuer Benutzer deaktivieren. Damit kann sich nur ein bereits vorhandener Benutzer anmelden. Der genaue Schalter befindet sich in der E-Mail-/Auth-Konfiguration und heißt sinngemäß `Allow new users to sign up`.
 
-`https://schuelo.github.io/investition-dashboard/?v=16`
+Erforderlich:
 
-## B. News-Tabelle anlegen
+- E-Mail-Provider aktiviert
+- bestehender Benutzer besitzt ein Passwort
+- neue Registrierungen deaktiviert
+- Row Level Security auf allen persönlichen Tabellen aktiviert
+- kein `service_role`-, `sb_secret_...`- oder sonstiger Server-Key in GitHub
 
-Supabase → SQL Editor → New query:
+## Cache zurücksetzen
 
-1. Inhalt von `news-schema.sql` einfügen.
-2. **Run** drücken.
+Nach dem GitHub-Commit in Safari öffnen:
 
-## C. News-Function ersetzen oder anlegen
+`https://schuelo.github.io/investition-dashboard/reset.html?v=25.2`
 
-Supabase → Edge Functions:
+Dann `Jetzt zurücksetzen` drücken und anschließend öffnen:
 
-1. Function `sync-news` öffnen oder neu anlegen.
-2. Vollständigen Inhalt von `sync-news-index.ts` einsetzen.
-3. **Verify JWT deaktivieren**.
-4. **Deploy function**.
+`https://schuelo.github.io/investition-dashboard/?v=25.2`
 
-Für den manuellen Abruf aus dem angemeldeten Dashboard ist kein neues Secret erforderlich. Für den Cronjob bleibt `CRON_SECRET` notwendig.
+Bei einer bereits installierten Home-Screen-App kann es erforderlich sein, das alte Symbol zu entfernen und die Seite erneut zum Home-Bildschirm hinzuzufügen.
 
-## D. Newsfeed testen
+## Anmeldung
 
-1. Im Dashboard in der Cloud anmelden.
-2. **News Feed** öffnen.
-3. **Feed aktualisieren** drücken.
-4. Die Diagnosefelder müssen anzeigen:
-   - Cloud-Anmeldung: deine E-Mail
-   - Supabase-Tabelle: erreichbar
-   - Sync-Function: erfolgreich
-   - News-Quelle: GDELT
+Die Login-Wall zeigt nur:
 
-## E. News-Cronjob aktivieren
+- E-Mail
+- Passwort
+- Anmelden
+- Zugang wiederherstellen / Passwort einrichten
 
-Voraussetzung: Das Vault-Secret `investment_cron_secret` enthält denselben Wert wie das Edge-Function-Secret `CRON_SECRET`.
+Die regelmäßige Anmeldung erfolgt mit E-Mail und Passwort. Ein Wiederherstellungslink wird nur benötigt, wenn das Passwort fehlt oder geändert werden muss.
 
-Im SQL Editor den Inhalt von `setup-news-cron-v16.sql` ausführen. Der Feed wird danach stündlich aktualisiert.
+## Sperrverhalten
 
-## F. Diagnose bei leerem Feed
+Die Sitzung wird gesperrt:
 
-Im SQL Editor `news-diagnose.sql` ausführen. Entscheidend sind:
+- nach 30 Minuten ohne Touch-, Tastatur- oder Zeigereingabe
+- nach `Sperren`
+- nach `Abmelden`
+- nach einem Neuladen
+- nach vollständigem Beenden und erneutem Starten der App
 
-- `market_news_table` darf nicht `null` sein.
-- `total_news` sollte nach dem ersten Sync größer als 0 sein.
-- Der Cronjob `sync-investment-news` sollte `active = true` anzeigen.
+Nach der Sperre werden Trade-Pläne aus dem Arbeitsspeicher entfernt und die Dashboard-Oberfläche wird wieder vollständig verdeckt.
 
-## G. TradingView bedienen
+## Cloud-only-Betrieb
 
-- Wähle **Kursverlauf**, um den gesamten Zeitraum über die Schalter zu ändern.
-- Wähle **Analysechart**, um die Kerzenauflösung über die Schalter zu ändern.
-- Die Schalter befinden sich oberhalb des Charts und werden türkis markiert, wenn sie aktiv sind.
-- TradingView kann je Handelsplatz verzögerte Daten anzeigen. Das ist unabhängig von den EODHD-Telegram-Alarmen.
+Neue und geänderte Trade-Pläne werden direkt in Supabase geschrieben. JSON-Importe werden ebenfalls direkt in die Cloud übernommen. Bei einem Cloud-Fehler ist die Änderung nicht dauerhaft gespeichert.
+
+Die folgenden Daten werden nicht mehr lokal persistiert:
+
+- Trade-Pläne
+- Depotpositionen
+- Investmentthesen
+- Szenarien
+- Ereignisse
+- Benachrichtigungspräferenzen
+- Signalauswertungen
+- News-Feed
+
+Unkritische Oberflächenpräferenzen wie Chartmodus oder Zeitraum können weiterhin lokal gespeichert werden.
+
+## Keine Backend-Migration erforderlich
+
+Für Version 25.2 müssen nicht geändert werden:
+
+- Datenbankschema 25.1
+- `sync-news`
+- `check-alerts`
+- `send-digest`
+- `evaluate-signals`
+
+Die funktionierende News-Function kann unverändert bleiben.

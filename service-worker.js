@@ -1,12 +1,11 @@
-const CACHE_NAME = 'investition-dashboard-v25-1-depot-positions';
+const CACHE_NAME = 'investition-dashboard-v25-2-login-wall';
 const CORE = [
   './',
   './index.html',
-  './app.js?v=25.1',
-  './supabase.js?v=25.1',
-  './news.js?v=25.1',
-  './decision.js?v=25.1',
-  './startdaten.json'
+  './app.js?v=25.2',
+  './supabase.js?v=25.2',
+  './news.js?v=25.2',
+  './decision.js?v=25.2'
 ];
 
 self.addEventListener('install', event => {
