@@ -1,11 +1,11 @@
-const CACHE_NAME = 'investition-dashboard-v25-2-login-wall';
+const CACHE_NAME = 'investition-dashboard-v25-2-1-normalize-fix';
 const CORE = [
   './',
   './index.html',
-  './app.js?v=25.2',
-  './supabase.js?v=25.2',
-  './news.js?v=25.2',
-  './decision.js?v=25.2'
+  './app.js?v=25.2.1',
+  './supabase.js?v=25.2.1',
+  './news.js?v=25.2.1',
+  './decision.js?v=25.2.1'
 ];
 
 self.addEventListener('install', event => {

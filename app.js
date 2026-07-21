@@ -135,8 +135,25 @@
     function loadLocal() {
       return [];
     }
+    function normalizeTrade(t = {}) {
+      const id = isUuid(t.id) ? t.id : uuid();
+      return {
+        monitoringEnabled: true,
+        alertKoDistancePct: "10",
+        ...t,
+        id,
+        monitoringEnabled: bool(t.monitoringEnabled, true),
+        alertEntry: bool(t.alertEntry),
+        alertLimit: bool(t.alertLimit),
+        alertStop: bool(t.alertStop),
+        alertTarget1: bool(t.alertTarget1),
+        alertTarget2: bool(t.alertTarget2),
+        alertTarget3: bool(t.alertTarget3),
+        alertKo: bool(t.alertKo)
+      };
+    }
     function saveLocal() {
-      // Version 25.2 arbeitet ausschließlich in der Cloud. Persönliche Daten
+      // Version 25.2.1 arbeitet ausschließlich in der Cloud. Persönliche Daten
       // bleiben nur für die laufende Sitzung im Arbeitsspeicher.
       emitDashboardEvent("investition:data-changed", { trades: trades.map((trade) => ({ ...trade })) });
     }
@@ -458,7 +475,7 @@
       }) || null;
     }
     window.InvestitionDashboard = Object.assign(window.InvestitionDashboard || {}, {
-      version: "25.2",
+      version: "25.2.1",
       openAnalysisBySymbol(symbol) {
         const trade = findTradeBySymbol(symbol);
         if (!trade) return { ok: false, symbol, message: "Keine zugehörige Analyse gefunden." };
@@ -1060,7 +1077,7 @@
     });
     renderAll();
     initCloud();
-    emitDashboardEvent("investition:ready", { version: "25.2", trades: trades.map((trade) => ({ ...trade })) });
+    emitDashboardEvent("investition:ready", { version: "25.2.1", trades: trades.map((trade) => ({ ...trade })) });
     chartAutoRefreshTimer = window.setInterval(() => {
       if (!document.hidden && Date.now() - lastChartReloadAt > 300000) renderChart(true);
     }, 60000);
@@ -1069,7 +1086,7 @@
     });
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", function() {
-        navigator.serviceWorker.register("./service-worker.js?v=25.2").catch(function(err) {
+        navigator.serviceWorker.register("./service-worker.js?v=25.2.1").catch(function(err) {
           console.warn("Service Worker konnte nicht registriert werden.", err);
         });
       });
