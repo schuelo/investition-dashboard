@@ -410,7 +410,7 @@
     }
     @media (max-width:480px) { .news-health { grid-template-columns:1fr; } }
 
-    /* Dashboard 26.0: Entscheidungszentrale (Ausbaustufen 18–23 und 25) */
+    /* Dashboard 27.0: Entscheidungszentrale (Ausbaustufen 18–23 und 25) */
     .decision-hero { padding:18px 20px; margin-bottom:10px; overflow:hidden; position:relative; }
     .decision-hero::after {
       content:""; position:absolute; width:260px; height:260px; right:-110px; top:-150px;
@@ -562,7 +562,7 @@
     }
 
 
-    /* Version 26.0: vollständige Login-Wall und Cloud-only-Betrieb */
+    /* Version 27.0: vollständige Login-Wall und Cloud-only-Betrieb */
     body.auth-locked { overflow: hidden; }
     body.auth-locked .app-shell {
       visibility: hidden;
@@ -608,6 +608,91 @@
       .auth-gate { padding:14px; align-items:center; }
       .auth-card { padding:21px 17px; border-radius:17px; }
       .auth-card h2 { font-size:21px; }
+    }
+
+
+    /* Version 27.0 – Professional Dark Design System */
+    :root {
+      --bg:#080d12; --panel:#10171f; --panel-2:#151e28; --panel-3:#1a2632;
+      --border:#263440; --text:#f0f5f8; --muted:#8796a5; --accent:#42d6c3;
+      --accent-2:#4f8cff; --good:#3bd59b; --warn:#f3aa45; --bad:#ff6678;
+      --gold:#d6a84b; --shadow:0 16px 44px rgba(0,0,0,.32); --radius:13px;
+      --sidebar:224px; --header:76px;
+    }
+    body { background:linear-gradient(135deg,#080d12 0%,#0a1118 48%,#071018 100%); letter-spacing:-.005em; }
+    body::before { content:""; position:fixed; inset:0; pointer-events:none; opacity:.22; background-image:linear-gradient(rgba(255,255,255,.018) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.018) 1px,transparent 1px); background-size:34px 34px; }
+    .app-shell { position:relative; }
+    .topbar { position:sticky; top:0; height:var(--header); z-index:30; margin-left:var(--sidebar); border-bottom:1px solid rgba(255,255,255,.07); background:rgba(8,13,18,.92); box-shadow:0 8px 28px rgba(0,0,0,.2); }
+    .brand-row { height:100%; padding:12px 24px; }
+    .brand-mark { background:linear-gradient(145deg,#42d6c3,#4f8cff); border-radius:10px; box-shadow:0 0 0 1px rgba(255,255,255,.08),0 10px 28px rgba(66,214,195,.18); }
+    .brand h1 { font-size:16px; font-weight:800; }
+    .brand p { color:#718293; }
+    .ticker-wrap { position:absolute; left:0; right:0; top:100%; background:#0b1219; border-bottom:1px solid var(--border); }
+    .main-nav { position:fixed; z-index:40; left:0; top:0; bottom:0; width:var(--sidebar); padding:92px 14px 18px; display:flex; flex-direction:column; gap:7px; overflow:visible; background:linear-gradient(180deg,#0c131a,#091016); border-right:1px solid rgba(255,255,255,.07); box-shadow:14px 0 40px rgba(0,0,0,.18); }
+    .main-nav::before { content:"INVESTITION"; position:absolute; top:25px; left:20px; color:#f2f6f8; font-size:14px; font-weight:900; letter-spacing:.13em; }
+    .main-nav::after { content:"V27 · PROFESSIONAL DARK"; position:absolute; bottom:20px; left:20px; color:#536575; font-size:9px; letter-spacing:.1em; }
+    .nav-btn { width:100%; min-height:44px; justify-content:flex-start; border:1px solid transparent; border-radius:9px; padding:10px 12px; background:transparent; color:#8d9caa; font-weight:720; text-align:left; }
+    .nav-btn:hover { color:#eef4f7; background:rgba(255,255,255,.035); border-color:rgba(255,255,255,.055); }
+    .nav-btn.active { color:#eafffb; background:linear-gradient(90deg,rgba(66,214,195,.18),rgba(66,214,195,.04)); border-color:rgba(66,214,195,.22); box-shadow:inset 3px 0 0 var(--accent); }
+    .page { max-width:none; margin-left:var(--sidebar); padding:70px 24px 48px; }
+    .card { background:linear-gradient(180deg,rgba(19,28,37,.96),rgba(14,21,29,.96)); border-color:rgba(145,168,186,.16); box-shadow:var(--shadow); }
+    .card-head { border-color:rgba(145,168,186,.14); }
+    .kpi-grid { gap:10px; }
+    .kpi { position:relative; overflow:hidden; min-height:104px; padding:17px; }
+    .kpi::after { content:""; position:absolute; left:0; right:0; bottom:0; height:2px; background:linear-gradient(90deg,var(--accent),transparent 70%); opacity:.65; }
+    .kpi .value { font-size:25px; }
+    .decision-hero,.news-hero { border-color:rgba(66,214,195,.2); background:linear-gradient(120deg,rgba(21,34,43,.98),rgba(12,21,29,.98)); }
+    .decision-hero h2,.news-hero h2 { font-size:24px; }
+    .decision-tabs { background:#0d151d; padding:6px; border-radius:12px; }
+    .decision-tab { border-radius:8px; }
+    .decision-tab.active { background:#1a2833; color:#ecfffc; box-shadow:inset 0 -2px 0 var(--accent); }
+    .btn { border-radius:8px; background:#121c25; border-color:#2a3946; }
+    .btn.primary { background:linear-gradient(135deg,#42d6c3,#35b9b5); color:#04100f; box-shadow:0 8px 22px rgba(66,214,195,.16); }
+    .btn:hover { border-color:#4b6273; }
+    input,select,textarea,.field-control { background:#0b1219; border-color:#293845; border-radius:8px; }
+    .news-priority-card { min-height:86px; background:linear-gradient(145deg,#111b24,#0c141b); border-color:#263642; }
+    .news-priority-card:hover,.news-priority-card.active { transform:translateY(-2px); border-color:rgba(66,214,195,.48); box-shadow:0 12px 25px rgba(0,0,0,.22); }
+    .news-item { border-color:rgba(145,168,186,.12); }
+    .news-item:hover,.news-item.selected { background:linear-gradient(90deg,rgba(66,214,195,.09),rgba(66,214,195,.015)); box-shadow:inset 3px 0 0 var(--accent); }
+    .table-card,.chart-card,.setup-card { border-color:rgba(145,168,186,.17); }
+    th { background:#101922; }
+    tbody tr:hover,tbody tr.selected { background:rgba(66,214,195,.055); }
+    .chip.good { color:#57e2af; }
+    .notice { background:#101922; border-color:#293b49; }
+    .auth-gate { background:radial-gradient(circle at 50% 15%,rgba(66,214,195,.13),transparent 32rem),#070c11; }
+    .auth-card { border-color:rgba(66,214,195,.22); box-shadow:0 36px 100px rgba(0,0,0,.55); }
+
+    @media (max-width:900px) {
+      :root { --header:64px; }
+      .topbar { margin-left:0; height:var(--header); }
+      .brand-row { padding:10px 14px; }
+      .brand p { display:none; }
+      .brand-mark { width:34px; height:34px; }
+      .actions .label-text { display:none; }
+      .actions { gap:5px; }
+      .actions .btn { min-width:38px; padding:8px; }
+      .ticker-wrap { display:none; }
+      .page { margin-left:0; padding:16px 13px 92px; }
+      .main-nav { top:auto; left:0; right:0; bottom:0; width:auto; height:72px; padding:8px 10px calc(8px + env(safe-area-inset-bottom)); flex-direction:row; justify-content:space-around; background:rgba(8,14,20,.96); border:0; border-top:1px solid rgba(255,255,255,.09); box-shadow:0 -10px 30px rgba(0,0,0,.35); backdrop-filter:blur(18px); }
+      .main-nav::before,.main-nav::after { display:none; }
+      .nav-btn { flex:1; min-width:0; min-height:52px; justify-content:center; padding:8px 5px; border-radius:10px; font-size:11px; text-align:center; white-space:normal; line-height:1.15; }
+      .nav-btn.active { box-shadow:inset 0 2px 0 var(--accent); }
+      .kpi-grid { grid-template-columns:1fr 1fr; }
+      .kpi { min-height:92px; }
+      .decision-tabs { overflow-x:auto; flex-wrap:nowrap; justify-content:flex-start; }
+      .decision-tab { flex:0 0 auto; }
+      .news-priority-strip { display:flex; overflow-x:auto; scroll-snap-type:x mandatory; padding-bottom:4px; }
+      .news-priority-card { min-width:155px; scroll-snap-align:start; }
+    }
+    @media (max-width:520px) {
+      .brand h1 { font-size:13px; max-width:150px; line-height:1.2; }
+      .actions #exportBtn,.actions #importBtn { display:none; }
+      .kpi-grid { grid-template-columns:1fr 1fr; gap:8px; }
+      .kpi { padding:13px; }
+      .kpi .value { font-size:21px; }
+      .main-grid { gap:11px; }
+      .card,.decision-hero,.news-hero { border-radius:11px; }
+      .news-layout { gap:11px; }
     }
 
 </style>
@@ -656,7 +741,7 @@ setTimeout(function(){
       <div class="brand-mark">I</div>
       <div>
         <h2 id="authGateTitle">Investition Dashboard</h2>
-        <p class="auth-subtitle">Geschützter Cloud-Zugang · Version 26.0</p>
+        <p class="auth-subtitle">Geschützter Cloud-Zugang · Version 27.0</p>
       </div>
     </div>
     <p style="margin:0;color:#c3d1de">Melde dich mit deinem bestehenden Supabase-Konto an. Ohne erfolgreiche Anmeldung bleiben Dashboard, Analysen, Depotpositionen, News und Benachrichtigungen gesperrt.</p>
@@ -684,8 +769,8 @@ setTimeout(function(){
       <div class="brand">
         <div class="brand-mark">I</div>
         <div>
-          <h1>Investition · Analyse- & Trading-Dashboard</h1>
-          <p>Aktien, Long-/Short-Knock-outs, Limits, Stops und Zielzonen</p>
+          <h1>Investition · Professional Trading Cockpit</h1>
+          <p>Portfolio, Signale, News und Risikosteuerung</p>
         </div>
       </div>
       <div class="actions">
@@ -714,7 +799,7 @@ setTimeout(function(){
           <p>Priorisierte Signale, Investmentthesen, Ereignisse, Szenarien, Portfoliorisiken, Signalvalidierung und Systemgesundheit in einer gemeinsamen Entscheidungskette.</p>
         </div>
         <div class="decision-version">
-          <span class="chip good">Dashboard 26.0</span>
+          <span class="chip good">Dashboard 27.0</span>
           <span class="chip neutral">Ausbaustufen 18–23 + 25</span>
           <button class="btn small" id="decisionRefreshBtn" type="button">↻ Aktualisieren</button>
         </div>
@@ -1021,7 +1106,7 @@ setTimeout(function(){
     <div class="modal-body">
       <div class="cloud-box" id="loggedOutBox">
         <h4>Sitzung gesperrt</h4>
-        <p>Die vollständige Anmeldung erfolgt über die vorgeschaltete Login-Wall. Kontoerstellung und lokaler Betriebsmodus sind in Version 26.0 deaktiviert.</p>
+        <p>Die vollständige Anmeldung erfolgt über die vorgeschaltete Login-Wall. Kontoerstellung und lokaler Betriebsmodus sind in Version 27.0 deaktiviert.</p>
       </div>
       <div class="cloud-box hidden" id="loggedInBox">
         <h4>Cloud verbunden</h4>
