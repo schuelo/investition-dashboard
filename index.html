@@ -410,7 +410,7 @@
     }
     @media (max-width:480px) { .news-health { grid-template-columns:1fr; } }
 
-    /* Dashboard 27.0: Entscheidungszentrale (Ausbaustufen 18–23 und 25) */
+    /* Dashboard 27.1: Entscheidungszentrale (Ausbaustufen 18–23 und 25) */
     .decision-hero { padding:18px 20px; margin-bottom:10px; overflow:hidden; position:relative; }
     .decision-hero::after {
       content:""; position:absolute; width:260px; height:260px; right:-110px; top:-150px;
@@ -562,7 +562,7 @@
     }
 
 
-    /* Version 27.0: vollständige Login-Wall und Cloud-only-Betrieb */
+    /* Version 27.1: vollständige Login-Wall und Cloud-only-Betrieb */
     body.auth-locked { overflow: hidden; }
     body.auth-locked .app-shell {
       visibility: hidden;
@@ -611,7 +611,7 @@
     }
 
 
-    /* Version 27.0 – Professional Dark Design System */
+    /* Version 27.1 – Professional Dark Design System */
     :root {
       --bg:#080d12; --panel:#10171f; --panel-2:#151e28; --panel-3:#1a2632;
       --border:#263440; --text:#f0f5f8; --muted:#8796a5; --accent:#42d6c3;
@@ -630,7 +630,7 @@
     .ticker-wrap { position:absolute; left:0; right:0; top:100%; background:#0b1219; border-bottom:1px solid var(--border); }
     .main-nav { position:fixed; z-index:40; left:0; top:0; bottom:0; width:var(--sidebar); padding:92px 14px 18px; display:flex; flex-direction:column; gap:7px; overflow:visible; background:linear-gradient(180deg,#0c131a,#091016); border-right:1px solid rgba(255,255,255,.07); box-shadow:14px 0 40px rgba(0,0,0,.18); }
     .main-nav::before { content:"INVESTITION"; position:absolute; top:25px; left:20px; color:#f2f6f8; font-size:14px; font-weight:900; letter-spacing:.13em; }
-    .main-nav::after { content:"V27 · PROFESSIONAL DARK"; position:absolute; bottom:20px; left:20px; color:#536575; font-size:9px; letter-spacing:.1em; }
+    .main-nav::after { content:"V27.1 · PROFESSIONAL DARK"; position:absolute; bottom:20px; left:20px; color:#536575; font-size:9px; letter-spacing:.1em; }
     .nav-btn { width:100%; min-height:44px; justify-content:flex-start; border:1px solid transparent; border-radius:9px; padding:10px 12px; background:transparent; color:#8d9caa; font-weight:720; text-align:left; }
     .nav-btn:hover { color:#eef4f7; background:rgba(255,255,255,.035); border-color:rgba(255,255,255,.055); }
     .nav-btn.active { color:#eafffb; background:linear-gradient(90deg,rgba(66,214,195,.18),rgba(66,214,195,.04)); border-color:rgba(66,214,195,.22); box-shadow:inset 3px 0 0 var(--accent); }
@@ -695,6 +695,32 @@
       .news-layout { gap:11px; }
     }
 
+
+    /* Version 27.1 – stabiler Desktop-Rahmen */
+    @media (min-width:901px) {
+      html, body { min-width:1024px; }
+      .app-shell { min-height:100vh; }
+      .main-nav {
+        position:fixed; inset:0 auto 0 0; width:var(--sidebar);
+        z-index:100; overflow:hidden; isolation:isolate;
+      }
+      .topbar {
+        position:sticky; top:0; z-index:80;
+        width:calc(100% - var(--sidebar)); margin-left:var(--sidebar);
+        overflow:visible; isolation:isolate;
+      }
+      .ticker-wrap {
+        position:absolute; left:0; right:0; top:100%; z-index:1;
+        overflow:hidden;
+      }
+      .brand-row { position:relative; z-index:2; }
+      .page {
+        width:calc(100% - var(--sidebar)); margin-left:var(--sidebar);
+        padding-top:70px;
+      }
+      .nav-btn { position:relative; z-index:2; flex:0 0 auto; }
+    }
+
 </style>
 </head>
 <body class="auth-locked">
@@ -741,7 +767,7 @@ setTimeout(function(){
       <div class="brand-mark">I</div>
       <div>
         <h2 id="authGateTitle">Investition Dashboard</h2>
-        <p class="auth-subtitle">Geschützter Cloud-Zugang · Version 27.0</p>
+        <p class="auth-subtitle">Geschützter Cloud-Zugang · Version 27.1</p>
       </div>
     </div>
     <p style="margin:0;color:#c3d1de">Melde dich mit deinem bestehenden Supabase-Konto an. Ohne erfolgreiche Anmeldung bleiben Dashboard, Analysen, Depotpositionen, News und Benachrichtigungen gesperrt.</p>
@@ -764,6 +790,11 @@ setTimeout(function(){
   </section>
 </div>
 <div class="app-shell" id="appShell" inert aria-hidden="true">
+    <nav class="main-nav" aria-label="Dashboard-Bereiche">
+      <button class="nav-btn active" id="navDecisionBtn" data-page="decision">◆ Entscheidungszentrale</button>
+      <button class="nav-btn" id="navTradingBtn" data-page="trading">▦ Trading & Analysen</button>
+      <button class="nav-btn" id="navNewsBtn" data-page="news">◉ News Feed</button>
+    </nav>
   <header class="topbar">
     <div class="brand-row">
       <div class="brand">
@@ -783,11 +814,6 @@ setTimeout(function(){
       </div>
     </div>
 
-    <nav class="main-nav" aria-label="Dashboard-Bereiche">
-      <button class="nav-btn active" id="navDecisionBtn" data-page="decision">◆ Entscheidungszentrale</button>
-      <button class="nav-btn" id="navTradingBtn" data-page="trading">▦ Trading & Analysen</button>
-      <button class="nav-btn" id="navNewsBtn" data-page="news">◉ News Feed</button>
-    </nav>
     <div class="ticker-wrap" id="tickerHost"></div>
   </header>
 
@@ -799,7 +825,7 @@ setTimeout(function(){
           <p>Priorisierte Signale, Investmentthesen, Ereignisse, Szenarien, Portfoliorisiken, Signalvalidierung und Systemgesundheit in einer gemeinsamen Entscheidungskette.</p>
         </div>
         <div class="decision-version">
-          <span class="chip good">Dashboard 27.0</span>
+          <span class="chip good">Dashboard 27.1</span>
           <span class="chip neutral">Ausbaustufen 18–23 + 25</span>
           <button class="btn small" id="decisionRefreshBtn" type="button">↻ Aktualisieren</button>
         </div>
@@ -1106,7 +1132,7 @@ setTimeout(function(){
     <div class="modal-body">
       <div class="cloud-box" id="loggedOutBox">
         <h4>Sitzung gesperrt</h4>
-        <p>Die vollständige Anmeldung erfolgt über die vorgeschaltete Login-Wall. Kontoerstellung und lokaler Betriebsmodus sind in Version 27.0 deaktiviert.</p>
+        <p>Die vollständige Anmeldung erfolgt über die vorgeschaltete Login-Wall. Kontoerstellung und lokaler Betriebsmodus sind in Version 27.1 deaktiviert.</p>
       </div>
       <div class="cloud-box hidden" id="loggedInBox">
         <h4>Cloud verbunden</h4>

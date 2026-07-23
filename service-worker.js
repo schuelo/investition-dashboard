@@ -1,11 +1,11 @@
-const CACHE_NAME = 'investition-dashboard-v27-news-intelligence';
+const CACHE_NAME = 'investition-dashboard-v27-1-professional-dark';
 const CORE = [
   './',
   './index.html',
-  './app.js?v=27.0',
-  './supabase.js?v=27.0',
-  './news.js?v=27.0',
-  './decision.js?v=27.0'
+  './app.js?v=27.1',
+  './supabase.js?v=27.1',
+  './news.js?v=27.1',
+  './decision.js?v=27.1'
 ];
 
 self.addEventListener('install', event => {
