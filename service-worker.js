@@ -1,11 +1,11 @@
-const CACHE_NAME = 'investition-dashboard-v25-2-1-normalize-fix';
+const CACHE_NAME = 'investition-dashboard-v26-news-intelligence';
 const CORE = [
   './',
   './index.html',
-  './app.js?v=25.2.1',
-  './supabase.js?v=25.2.1',
-  './news.js?v=25.2.1',
-  './decision.js?v=25.2.1'
+  './app.js?v=26.0',
+  './supabase.js?v=26.0',
+  './news.js?v=26.0',
+  './decision.js?v=26.0'
 ];
 
 self.addEventListener('install', event => {

@@ -1,30 +1,65 @@
-# Investition Dashboard 25.2 – Passwortschutz
+# Investition Dashboard V26.0 – News Intelligence
 
-Version 25.2 ergänzt eine vollständige Login-Wall vor dem Dashboard. Ohne erfolgreiche Supabase-Anmeldung sind Oberfläche, Analysen, Depotpositionen, News, Alarme und Einstellungen gesperrt.
+V26 erweitert V25.2.1 um einen priorisierten Nachrichtenfeed für tatsächlich gehaltene Depotpositionen, Watchlist-Werte, Branchen und Makrothemen.
 
-## Sicherheitsfunktionen
+## Neu in V26
 
-- Anmeldung ausschließlich mit bestehendem Supabase-Konto
-- Kontoerstellung aus der Dashboard-Oberfläche entfernt
-- lokaler Betriebsmodus deaktiviert
-- Supabase-Sitzung wird nicht dauerhaft im Browser gespeichert
-- nach Neuladen oder vollständigem Beenden der App ist eine neue Anmeldung erforderlich
-- automatische Sperre nach 30 Minuten ohne Bedienung
-- manuelle Sofortsperre über `Sperren`
-- persönliche Analyse-, Depot-, News- und Entscheidungsdaten werden nicht mehr in `localStorage` gespeichert
-- Service Worker cached ausschließlich statische Programmdateien, keine Supabase-Daten
+- Portfolio-News werden automatisch aus `depot_positions` abgeleitet und zuerst angezeigt.
+- Watchlist-News werden aus offenen Trade-Plänen abgeleitet, die nicht als Depotposition gehalten werden.
+- Gezielte EODHD-Newsabfragen je Wertpapier sowie zusätzliche Themenabfragen.
+- Automatische Symbol- und Namensverknüpfung.
+- Prioritätsstufen Portfolio, Watchlist, Branche und Markt.
+- Relevanzbewertung mit 1–5 Sternen.
+- Direkte Verknüpfung von Meldungen zur zugehörigen Analyse.
+- Sofortige Telegram-Hinweise für neue relevante Portfolio-Nachrichten über die Function `send-news-alerts`.
+- Deduplizierung versendeter Telegram-Nachrichten über `news_notification_log`.
 
-## Vor dem Update: Sicherung
+## 1. Sicherung
 
-Version 25.2 entfernt nach einer erfolgreichen Cloud-Anmeldung alte persönliche Dashboard-Caches aus dem Browser. Vor dem Upload daher einmal sichern:
+Vor dem Update Dashboard- und Entscheidungsdaten exportieren. Datenbanktabellen und bestehende Edge Functions nicht löschen.
 
-1. Oben im bisherigen Dashboard `Export` ausführen.
-2. Unter `Entscheidungszentrale → System` die `Entscheidungsdaten exportieren`.
-3. Kontrollieren, dass die bisherigen Pläne und Depotpositionen in Supabase vorhanden sind.
+## 2. Datenbankmigration
 
-## GitHub aktualisieren
+Im Supabase SQL Editor ausführen:
 
-Direkt im Hauptverzeichnis des GitHub-Repositorys ersetzen:
+`version26-news-schema.sql`
+
+Die Migration legt nur das Benachrichtigungsprotokoll und zusätzliche Indizes an.
+
+## 3. Edge Function `sync-news` aktualisieren
+
+In Supabase unter **Edge Functions → sync-news** den Inhalt durch `sync-news-index-v26.ts` ersetzen und deployen.
+
+Erforderliche Secrets:
+
+- `SUPABASE_URL`
+- `SUPABASE_SECRET_KEY` oder `SUPABASE_SERVICE_ROLE_KEY`
+- `SUPABASE_PUBLISHABLE_KEY` oder `SUPABASE_ANON_KEY`
+- `EODHD_API_TOKEN`
+- `CRON_SECRET`
+
+## 4. Edge Function `send-news-alerts` erstellen
+
+Neue Function mit dem Namen `send-news-alerts` anlegen, den Inhalt aus `send-news-alerts-index-v26.ts` einsetzen und deployen.
+
+Zusätzlich erforderlich:
+
+- `TELEGRAM_BOT_TOKEN`
+
+Die vorhandene Telegram-Verbindung aus `notification_settings` wird weiterverwendet.
+
+## 5. Zeitpläne einrichten
+
+`setup-v26-news-cron.sql` öffnen, `DEIN_CRON_SECRET` durch den tatsächlichen Wert ersetzen und im SQL Editor ausführen.
+
+Ablauf:
+
+- Minute 07 jeder Stunde: Portfolio- und Markt-News synchronisieren.
+- Minute 17 jeder Stunde: neue relevante Portfolio-News per Telegram versenden.
+
+## 6. GitHub Pages aktualisieren
+
+Aus dem GitHub-Paket folgende Dateien in das Repository-Hauptverzeichnis laden und vorhandene Dateien ersetzen:
 
 - `index.html`
 - `app.js`
@@ -32,90 +67,33 @@ Direkt im Hauptverzeichnis des GitHub-Repositorys ersetzen:
 - `decision.js`
 - `service-worker.js`
 - `reset.html`
-- `README.md`
-
-Diese Dateien können unverändert bleiben:
-
 - `supabase.js`
 - `startdaten.json`
 - `.nojekyll`
 
-SQL- und TypeScript-Dateien gehören nicht nach GitHub.
+Danach committen.
 
-## Supabase einstellen
+## 7. Cache zurücksetzen
 
-Das bestehende Konto bleibt erhalten. Das Konto darf nicht gelöscht werden, weil zugehörige Cloud-Daten über Fremdschlüssel mitgelöscht werden könnten.
+Auf dem iPhone öffnen:
 
-In Supabase die Registrierung neuer Benutzer deaktivieren. Damit kann sich nur ein bereits vorhandener Benutzer anmelden. Der genaue Schalter befindet sich in der E-Mail-/Auth-Konfiguration und heißt sinngemäß `Allow new users to sign up`.
+`https://schuelo.github.io/investition-dashboard/reset.html?v=26.0`
 
-Erforderlich:
+Anschließend:
 
-- E-Mail-Provider aktiviert
-- bestehender Benutzer besitzt ein Passwort
-- neue Registrierungen deaktiviert
-- Row Level Security auf allen persönlichen Tabellen aktiviert
-- kein `service_role`-, `sb_secret_...`- oder sonstiger Server-Key in GitHub
+`https://schuelo.github.io/investition-dashboard/?v=26.0`
 
-## Cache zurücksetzen
+## Bedienung
 
-Nach dem GitHub-Commit in Safari öffnen:
+Im News-Bereich zeigen die vier Kacheln die Anzahl der Meldungen für:
 
-`https://schuelo.github.io/investition-dashboard/reset.html?v=25.2`
+1. Portfolio
+2. Watchlist
+3. Branche und Themen
+4. Markt und Makro
 
-Dann `Jetzt zurücksetzen` drücken und anschließend öffnen:
+Ein Tippen auf eine Kachel aktiviert oder entfernt den Filter. Innerhalb jeder Gruppe werden Meldungen nach Relevanz und danach nach Veröffentlichungszeit sortiert.
 
-`https://schuelo.github.io/investition-dashboard/?v=25.2`
+## Wichtige fachliche Grenze
 
-Bei einer bereits installierten Home-Screen-App kann es erforderlich sein, das alte Symbol zu entfernen und die Seite erneut zum Home-Bildschirm hinzuzufügen.
-
-## Anmeldung
-
-Die Login-Wall zeigt nur:
-
-- E-Mail
-- Passwort
-- Anmelden
-- Zugang wiederherstellen / Passwort einrichten
-
-Die regelmäßige Anmeldung erfolgt mit E-Mail und Passwort. Ein Wiederherstellungslink wird nur benötigt, wenn das Passwort fehlt oder geändert werden muss.
-
-## Sperrverhalten
-
-Die Sitzung wird gesperrt:
-
-- nach 30 Minuten ohne Touch-, Tastatur- oder Zeigereingabe
-- nach `Sperren`
-- nach `Abmelden`
-- nach einem Neuladen
-- nach vollständigem Beenden und erneutem Starten der App
-
-Nach der Sperre werden Trade-Pläne aus dem Arbeitsspeicher entfernt und die Dashboard-Oberfläche wird wieder vollständig verdeckt.
-
-## Cloud-only-Betrieb
-
-Neue und geänderte Trade-Pläne werden direkt in Supabase geschrieben. JSON-Importe werden ebenfalls direkt in die Cloud übernommen. Bei einem Cloud-Fehler ist die Änderung nicht dauerhaft gespeichert.
-
-Die folgenden Daten werden nicht mehr lokal persistiert:
-
-- Trade-Pläne
-- Depotpositionen
-- Investmentthesen
-- Szenarien
-- Ereignisse
-- Benachrichtigungspräferenzen
-- Signalauswertungen
-- News-Feed
-
-Unkritische Oberflächenpräferenzen wie Chartmodus oder Zeitraum können weiterhin lokal gespeichert werden.
-
-## Keine Backend-Migration erforderlich
-
-Für Version 25.2 müssen nicht geändert werden:
-
-- Datenbankschema 25.1
-- `sync-news`
-- `check-alerts`
-- `send-digest`
-- `evaluate-signals`
-
-Die funktionierende News-Function kann unverändert bleiben.
+Die automatische Auswirkungs-, Einpreisungs- und Analystenbewertung ist eine Vorbewertung auf Basis des Newsfeeds. Sie ersetzt keine Prüfung der Originalquelle, Kursreaktion, Unternehmensmeldung und aktuellen Analystendaten.

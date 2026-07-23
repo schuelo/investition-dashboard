@@ -289,9 +289,23 @@
     .news-hero h2 { margin:0; font-size:22px; letter-spacing:-.03em; }
     .news-hero p { margin:5px 0 0; color:var(--muted); max-width:820px; }
     .news-toolbar {
-      display:grid; grid-template-columns:minmax(220px,1.3fr) repeat(3,minmax(130px,.5fr));
+      display:grid; grid-template-columns:minmax(220px,1.3fr) repeat(4,minmax(125px,.5fr));
       gap:9px; padding:12px 14px; border-bottom:1px solid var(--border);
     }
+
+    .news-priority-strip { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:9px; margin-bottom:16px; }
+    .news-priority-card { padding:13px 14px; border:1px solid var(--border); border-radius:12px; background:#08131e; cursor:pointer; text-align:left; color:var(--text); }
+    .news-priority-card.active { border-color:var(--accent); box-shadow:0 0 0 1px rgba(80,210,194,.22) inset; }
+    .news-priority-card .label { color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:.08em; }
+    .news-priority-card .value { margin-top:5px; font-size:20px; font-weight:850; }
+    .news-scope { font-size:10px; font-weight:850; text-transform:uppercase; letter-spacing:.08em; }
+    .news-scope.portfolio { color:var(--bad); }
+    .news-scope.watchlist { color:var(--warn); }
+    .news-scope.sector { color:var(--accent); }
+    .news-scope.market { color:var(--muted); }
+    .news-stars { letter-spacing:1px; font-size:11px; color:var(--warn); }
+    @media (max-width:760px) { .news-priority-strip { grid-template-columns:1fr 1fr; } }
+    @media (max-width:480px) { .news-priority-strip { grid-template-columns:1fr; } }
     .news-layout {
       display:grid; grid-template-columns:minmax(330px,.72fr) minmax(0,1.28fr);
       gap:16px; align-items:start;
@@ -396,7 +410,7 @@
     }
     @media (max-width:480px) { .news-health { grid-template-columns:1fr; } }
 
-    /* Dashboard 25.2.1: Entscheidungszentrale (Ausbaustufen 18–23 und 25) */
+    /* Dashboard 26.0: Entscheidungszentrale (Ausbaustufen 18–23 und 25) */
     .decision-hero { padding:18px 20px; margin-bottom:10px; overflow:hidden; position:relative; }
     .decision-hero::after {
       content:""; position:absolute; width:260px; height:260px; right:-110px; top:-150px;
@@ -548,7 +562,7 @@
     }
 
 
-    /* Version 25.2.1: vollständige Login-Wall und Cloud-only-Betrieb */
+    /* Version 26.0: vollständige Login-Wall und Cloud-only-Betrieb */
     body.auth-locked { overflow: hidden; }
     body.auth-locked .app-shell {
       visibility: hidden;
@@ -642,7 +656,7 @@ setTimeout(function(){
       <div class="brand-mark">I</div>
       <div>
         <h2 id="authGateTitle">Investition Dashboard</h2>
-        <p class="auth-subtitle">Geschützter Cloud-Zugang · Version 25.2.1</p>
+        <p class="auth-subtitle">Geschützter Cloud-Zugang · Version 26.0</p>
       </div>
     </div>
     <p style="margin:0;color:#c3d1de">Melde dich mit deinem bestehenden Supabase-Konto an. Ohne erfolgreiche Anmeldung bleiben Dashboard, Analysen, Depotpositionen, News und Benachrichtigungen gesperrt.</p>
@@ -700,7 +714,7 @@ setTimeout(function(){
           <p>Priorisierte Signale, Investmentthesen, Ereignisse, Szenarien, Portfoliorisiken, Signalvalidierung und Systemgesundheit in einer gemeinsamen Entscheidungskette.</p>
         </div>
         <div class="decision-version">
-          <span class="chip good">Dashboard 25.2.1</span>
+          <span class="chip good">Dashboard 26.0</span>
           <span class="chip neutral">Ausbaustufen 18–23 + 25</span>
           <button class="btn small" id="decisionRefreshBtn" type="button">↻ Aktualisieren</button>
         </div>
@@ -804,8 +818,8 @@ setTimeout(function(){
   <main class="page app-page" id="newsPage" hidden>
     <section class="card news-hero">
       <div>
-        <h2>News Feed · Wöchentlicher Marktausblick</h2>
-        <p>Marktrelevante Meldungen zu KI, Energie, Halbleitern, Makro, EUR/USD und beobachteten Unternehmen. Zeitstempel und Thema erscheinen in der Liste; ein Klick öffnet den vollständigen Inhalt.</p>
+        <h2>News Intelligence · Portfolio, Watchlist & Markt</h2>
+        <p>Priorisierte Nachrichten zu tatsächlich gehaltenen Depotpositionen, beobachteten Wertpapieren und relevanten Branchen. Portfolio-Meldungen werden zuerst angezeigt und für Telegram-Benachrichtigungen besonders gewichtet.</p>
       </div>
       <div class="actions">
         <button class="btn" id="newsImportBtn">⇧ News importieren</button>
@@ -818,12 +832,26 @@ setTimeout(function(){
       <div class="news-health-item" id="newsCloudHealth"><div class="label">Cloud-Anmeldung</div><div class="value">wird geprüft …</div></div>
       <div class="news-health-item" id="newsTableHealth"><div class="label">Supabase-Tabelle</div><div class="value">wird geprüft …</div></div>
       <div class="news-health-item" id="newsFunctionHealth"><div class="label">Sync-Function</div><div class="value">noch nicht aufgerufen</div></div>
-      <div class="news-health-item" id="newsProviderHealth"><div class="label">News-Quelle</div><div class="value">Direkte RSS-Quellen · Symbolverknüpfung aktiv</div></div>
+      <div class="news-health-item" id="newsProviderHealth"><div class="label">News-Quelle</div><div class="value">EODHD Unternehmens-News + direkte RSS-Quellen</div></div>
+    </section>
+
+    <section class="news-priority-strip" id="newsPriorityStrip">
+      <button class="news-priority-card" data-scope="portfolio"><div class="label">Portfolio-News</div><div class="value" id="portfolioNewsCount">0</div></button>
+      <button class="news-priority-card" data-scope="watchlist"><div class="label">Watchlist-News</div><div class="value" id="watchlistNewsCount">0</div></button>
+      <button class="news-priority-card" data-scope="sector"><div class="label">Branche & Themen</div><div class="value" id="sectorNewsCount">0</div></button>
+      <button class="news-priority-card" data-scope="market"><div class="label">Markt & Makro</div><div class="value" id="marketNewsCount">0</div></button>
     </section>
 
     <section class="card" style="margin-bottom:16px">
       <div class="news-toolbar">
         <input id="newsSearchInput" type="search" placeholder="Thema, Titel, Symbol, Inhalt …" />
+        <select id="newsScopeFilter">
+          <option value="">Alle Prioritäten</option>
+          <option value="portfolio">Portfolio</option>
+          <option value="watchlist">Watchlist</option>
+          <option value="sector">Branche & Themen</option>
+          <option value="market">Markt & Makro</option>
+        </select>
         <select id="newsTopicFilter">
           <option value="">Alle Themen</option>
           <option>KI</option><option>Energie</option><option>Halbleiter</option><option>Makro</option><option>EUR/USD</option><option>Unternehmen</option><option>Sonstiges</option>
@@ -993,7 +1021,7 @@ setTimeout(function(){
     <div class="modal-body">
       <div class="cloud-box" id="loggedOutBox">
         <h4>Sitzung gesperrt</h4>
-        <p>Die vollständige Anmeldung erfolgt über die vorgeschaltete Login-Wall. Kontoerstellung und lokaler Betriebsmodus sind in Version 25.2.1 deaktiviert.</p>
+        <p>Die vollständige Anmeldung erfolgt über die vorgeschaltete Login-Wall. Kontoerstellung und lokaler Betriebsmodus sind in Version 26.0 deaktiviert.</p>
       </div>
       <div class="cloud-box hidden" id="loggedInBox">
         <h4>Cloud verbunden</h4>
@@ -1030,10 +1058,10 @@ setTimeout(function(){
   </div>
 </div>
 
-<script defer src="./supabase.js?v=25.2.1"></script>
-<script defer src="./app.js?v=25.2.1"></script>
-<script defer src="./news.js?v=25.2.1"></script>
-<script defer src="./decision.js?v=25.2.1"></script>
+<script defer src="./supabase.js?v=26.0"></script>
+<script defer src="./app.js?v=26.0"></script>
+<script defer src="./news.js?v=26.0"></script>
+<script defer src="./decision.js?v=26.0"></script>
 
 </body>
 </html>
