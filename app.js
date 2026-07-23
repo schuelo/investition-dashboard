@@ -153,7 +153,7 @@
       };
     }
     function saveLocal() {
-      // Version 26.0 arbeitet ausschließlich in der Cloud. Persönliche Daten
+      // Version 28.0 arbeitet ausschließlich in der Cloud. Persönliche Daten
       // bleiben nur für die laufende Sitzung im Arbeitsspeicher.
       emitDashboardEvent("investition:data-changed", { trades: trades.map((trade) => ({ ...trade })) });
     }
@@ -475,7 +475,7 @@
       }) || null;
     }
     window.InvestitionDashboard = Object.assign(window.InvestitionDashboard || {}, {
-      version: "26.0",
+      version: "28.0",
       openAnalysisBySymbol(symbol) {
         const trade = findTradeBySymbol(symbol);
         if (!trade) return { ok: false, symbol, message: "Keine zugehörige Analyse gefunden." };
@@ -1077,7 +1077,7 @@
     });
     renderAll();
     initCloud();
-    emitDashboardEvent("investition:ready", { version: "26.0", trades: trades.map((trade) => ({ ...trade })) });
+    emitDashboardEvent("investition:ready", { version: "28.0", trades: trades.map((trade) => ({ ...trade })) });
     chartAutoRefreshTimer = window.setInterval(() => {
       if (!document.hidden && Date.now() - lastChartReloadAt > 300000) renderChart(true);
     }, 60000);
@@ -1086,7 +1086,7 @@
     });
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", function() {
-        navigator.serviceWorker.register("./service-worker.js?v=26.0").catch(function(err) {
+        navigator.serviceWorker.register("./service-worker.js?v=28.0").catch(function(err) {
           console.warn("Service Worker konnte nicht registriert werden.", err);
         });
       });

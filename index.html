@@ -410,7 +410,7 @@
     }
     @media (max-width:480px) { .news-health { grid-template-columns:1fr; } }
 
-    /* Dashboard 27.1: Entscheidungszentrale (Ausbaustufen 18–23 und 25) */
+    /* Dashboard 28.0: Entscheidungszentrale (Ausbaustufen 18–23 und 25) */
     .decision-hero { padding:18px 20px; margin-bottom:10px; overflow:hidden; position:relative; }
     .decision-hero::after {
       content:""; position:absolute; width:260px; height:260px; right:-110px; top:-150px;
@@ -562,7 +562,7 @@
     }
 
 
-    /* Version 27.1: vollständige Login-Wall und Cloud-only-Betrieb */
+    /* Version 28.0: vollständige Login-Wall und Cloud-only-Betrieb */
     body.auth-locked { overflow: hidden; }
     body.auth-locked .app-shell {
       visibility: hidden;
@@ -611,7 +611,7 @@
     }
 
 
-    /* Version 27.1 – Professional Dark Design System */
+    /* Version 28.0 – Professional Dark Design System */
     :root {
       --bg:#080d12; --panel:#10171f; --panel-2:#151e28; --panel-3:#1a2632;
       --border:#263440; --text:#f0f5f8; --muted:#8796a5; --accent:#42d6c3;
@@ -630,7 +630,7 @@
     .ticker-wrap { position:absolute; left:0; right:0; top:100%; background:#0b1219; border-bottom:1px solid var(--border); }
     .main-nav { position:fixed; z-index:40; left:0; top:0; bottom:0; width:var(--sidebar); padding:92px 14px 18px; display:flex; flex-direction:column; gap:7px; overflow:visible; background:linear-gradient(180deg,#0c131a,#091016); border-right:1px solid rgba(255,255,255,.07); box-shadow:14px 0 40px rgba(0,0,0,.18); }
     .main-nav::before { content:"INVESTITION"; position:absolute; top:25px; left:20px; color:#f2f6f8; font-size:14px; font-weight:900; letter-spacing:.13em; }
-    .main-nav::after { content:"V27.1 · PROFESSIONAL DARK"; position:absolute; bottom:20px; left:20px; color:#536575; font-size:9px; letter-spacing:.1em; }
+    .main-nav::after { content:"V28.0 · PORTFOLIO INTELLIGENCE"; position:absolute; bottom:20px; left:20px; color:#536575; font-size:9px; letter-spacing:.1em; }
     .nav-btn { width:100%; min-height:44px; justify-content:flex-start; border:1px solid transparent; border-radius:9px; padding:10px 12px; background:transparent; color:#8d9caa; font-weight:720; text-align:left; }
     .nav-btn:hover { color:#eef4f7; background:rgba(255,255,255,.035); border-color:rgba(255,255,255,.055); }
     .nav-btn.active { color:#eafffb; background:linear-gradient(90deg,rgba(66,214,195,.18),rgba(66,214,195,.04)); border-color:rgba(66,214,195,.22); box-shadow:inset 3px 0 0 var(--accent); }
@@ -696,7 +696,7 @@
     }
 
 
-    /* Version 27.1 – stabiler Desktop-Rahmen */
+    /* Version 28.0 – stabiler Desktop-Rahmen */
     @media (min-width:901px) {
       html, body { min-width:1024px; }
       .app-shell { min-height:100vh; }
@@ -719,6 +719,156 @@
         padding-top:70px;
       }
       .nav-btn { position:relative; z-index:2; flex:0 0 auto; }
+    }
+
+
+    /* Version 28.0 – Portfolio Intelligence */
+    .analytics-hero {
+      display:flex; align-items:flex-start; justify-content:space-between; gap:18px;
+      padding:20px; margin-bottom:10px; overflow:hidden; position:relative;
+      border-color:rgba(66,214,195,.22);
+      background:linear-gradient(120deg,rgba(20,35,44,.98),rgba(10,20,28,.98));
+    }
+    .analytics-hero::after { content:""; position:absolute; right:-80px; top:-120px; width:320px; height:320px; border-radius:50%; background:radial-gradient(circle,rgba(79,140,255,.18),transparent 68%); pointer-events:none; }
+    .analytics-hero > * { position:relative; z-index:1; }
+    .analytics-hero h2 { margin:4px 0 6px; font-size:25px; letter-spacing:-.04em; }
+    .analytics-hero p { margin:0; max-width:930px; color:var(--muted); }
+    .analytics-eyebrow { color:var(--accent); font-size:10px; font-weight:900; letter-spacing:.12em; }
+    .analytics-status { min-height:22px; margin:0 2px 10px; color:var(--muted); font-size:12px; }
+    .analytics-status.good { color:var(--good); }
+    .analytics-status.warn { color:var(--warn); }
+    .analytics-status.bad { color:var(--bad); }
+    .analytics-kpis { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:10px; margin-bottom:14px; }
+    .analytics-kpi { padding:15px 16px; min-height:98px; position:relative; overflow:hidden; }
+    .analytics-kpi::after { content:""; position:absolute; left:0; right:0; bottom:0; height:2px; background:linear-gradient(90deg,var(--accent),transparent 72%); opacity:.7; }
+    .analytics-kpi span { display:block; color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:.08em; }
+    .analytics-kpi strong { display:block; margin-top:8px; font-size:23px; letter-spacing:-.035em; }
+    .analytics-kpi small { display:block; margin-top:2px; color:var(--muted); }
+    .analytics-grid { display:grid; grid-template-columns:repeat(12,minmax(0,1fr)); gap:14px; align-items:start; }
+    .analytics-panel { min-width:0; padding:15px; }
+    .analytics-panel.span-12 { grid-column:span 12; }
+    .analytics-panel.span-8 { grid-column:span 8; }
+    .analytics-panel.span-7 { grid-column:span 7; }
+    .analytics-panel.span-6 { grid-column:span 6; }
+    .analytics-panel.span-5 { grid-column:span 5; }
+    .analytics-panel.span-4 { grid-column:span 4; }
+    .analytics-panel-head { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:13px; }
+    .analytics-panel-head h3 { margin:0; font-size:15px; letter-spacing:-.02em; }
+    .analytics-panel-head p { margin:3px 0 0; color:var(--muted); font-size:11px; }
+    .analytics-empty { min-height:120px; display:grid; place-items:center; text-align:center; padding:22px; color:var(--muted); border:1px dashed #304556; border-radius:10px; }
+    .analytics-line-chart { width:100%; height:auto; min-height:220px; display:block; overflow:visible; }
+    .analytics-line-chart .chart-axis { stroke:#2a3c4b; stroke-width:1; }
+    .analytics-line-chart .chart-line { fill:none; stroke:var(--accent); stroke-width:3; stroke-linecap:round; stroke-linejoin:round; }
+    .analytics-line-chart .chart-dot { fill:#071019; stroke:var(--accent); stroke-width:3; }
+    .analytics-line-chart .chart-label { fill:var(--muted); font-size:10px; }
+    .analytics-line-chart .chart-value { fill:var(--text); font-size:12px; font-weight:800; }
+    .analytics-donut-wrap { display:grid; grid-template-columns:minmax(150px,210px) 1fr; gap:16px; align-items:center; min-height:240px; }
+    .analytics-donut { width:min(190px,100%); aspect-ratio:1; margin:auto; border-radius:50%; display:grid; place-items:center; box-shadow:inset 0 0 0 1px rgba(255,255,255,.06),0 16px 35px rgba(0,0,0,.25); }
+    .analytics-donut > div { width:56%; aspect-ratio:1; border-radius:50%; display:grid; place-items:center; align-content:center; background:#10171f; border:1px solid #2a3946; text-align:center; }
+    .analytics-donut strong { font-size:25px; }
+    .analytics-donut span { color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:.08em; }
+    .analytics-legend { display:grid; gap:8px; }
+    .analytics-legend > div { display:grid; grid-template-columns:10px 1fr auto; gap:8px; align-items:center; font-size:11px; }
+    .analytics-legend i { width:9px; height:9px; border-radius:3px; }
+    .analytics-legend span { color:#c3d0db; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .analytics-legend b { font-variant-numeric:tabular-nums; }
+    .position-bars { display:grid; gap:10px; }
+    .position-bar-row { display:grid; grid-template-columns:minmax(120px,180px) 1fr minmax(120px,170px); gap:12px; align-items:center; width:100%; padding:8px 0; border:0; border-bottom:1px solid rgba(145,168,186,.11); background:transparent; color:inherit; text-align:left; }
+    .position-bar-row:hover { background:rgba(66,214,195,.035); }
+    .position-bar-label strong,.position-bar-label span { display:block; }
+    .position-bar-label span { color:var(--muted); font-size:10px; }
+    .position-bar-track { position:relative; height:18px; border-radius:5px; background:#0a1219; overflow:hidden; border:1px solid #243441; }
+    .position-bar-track span { position:absolute; left:0; top:0; bottom:0; border-radius:4px; }
+    .bar-invested { background:#344553; opacity:.8; }
+    .bar-current { height:7px; top:5px !important; bottom:auto !important; background:var(--accent); box-shadow:0 0 12px rgba(66,214,195,.3); }
+    .bar-current.negative { background:var(--bad); box-shadow:0 0 12px rgba(255,102,120,.25); }
+    .position-bar-values { text-align:right; }
+    .position-bar-values span,.position-bar-values b { display:block; }
+    .bar-legend { display:flex; gap:16px; justify-content:flex-end; color:var(--muted); font-size:10px; }
+    .bar-legend span { display:flex; gap:6px; align-items:center; }
+    .bar-legend i { width:18px; height:6px; border-radius:2px; }
+    .bar-legend i.invested { background:#344553; }
+    .bar-legend i.current { background:var(--accent); }
+    .risk-heatmap { display:grid; grid-template-columns:repeat(auto-fit,minmax(175px,1fr)); gap:10px; }
+    .heat-cell { min-height:132px; padding:13px; display:flex; flex-direction:column; gap:4px; justify-content:flex-start; text-align:left; border:1px solid #2a3a47; border-radius:10px; color:inherit; background:#0c151d; }
+    .heat-cell:hover { transform:translateY(-1px); border-color:#4b6172; }
+    .heat-cell.good { background:linear-gradient(145deg,rgba(59,213,155,.11),#0c151d 55%); border-color:rgba(59,213,155,.22); }
+    .heat-cell.warn { background:linear-gradient(145deg,rgba(243,170,69,.14),#0c151d 55%); border-color:rgba(243,170,69,.3); }
+    .heat-cell.bad { background:linear-gradient(145deg,rgba(255,102,120,.15),#0c151d 55%); border-color:rgba(255,102,120,.32); }
+    .heat-cell strong { font-size:13px; margin-bottom:4px; }
+    .heat-cell span { color:#9cafbd; font-size:10px; }
+    .positive-text { color:var(--good) !important; }
+    .negative-text { color:var(--bad) !important; }
+    .recommendation-list { display:grid; gap:8px; max-height:420px; overflow:auto; }
+    .recommendation { display:grid; grid-template-columns:42px 1fr; gap:10px; width:100%; padding:11px; border:1px solid #2a3946; border-radius:9px; background:#0c151d; color:inherit; text-align:left; }
+    .recommendation:hover { border-color:#4b6172; }
+    .recommendation.bad { border-left:3px solid var(--bad); }
+    .recommendation.warn { border-left:3px solid var(--warn); }
+    .recommendation.neutral { border-left:3px solid var(--accent-2); }
+    .recommendation-score { width:34px; height:34px; border-radius:9px; display:grid; place-items:center; background:#101f2a; font-weight:900; }
+    .recommendation strong { display:block; }
+    .recommendation p { margin:3px 0; color:#b5c3cf; font-size:11px; }
+    .recommendation small { color:var(--muted); }
+    .event-radar { display:grid; gap:8px; }
+    .event-radar-row { display:grid; grid-template-columns:96px 1fr; gap:12px; align-items:start; padding:10px; border:1px solid #273744; border-radius:9px; background:#0c151d; }
+    .event-radar-row.soon { border-left:3px solid var(--warn); }
+    .event-radar-row.urgent { border-left:3px solid var(--bad); }
+    .event-day strong,.event-day span,.event-radar-row > div:last-child strong,.event-radar-row > div:last-child span,.event-radar-row small { display:block; }
+    .event-day strong { color:var(--accent); font-size:10px; letter-spacing:.07em; }
+    .event-day span,.event-radar-row > div:last-child span,.event-radar-row small { color:var(--muted); font-size:10px; }
+    .table-shell-v28 { overflow:auto; border:1px solid #263642; border-radius:10px; }
+    .table-shell-v28 table { min-width:720px; }
+    .table-shell-v28 th { top:0; }
+    .link-button { padding:0; border:0; background:transparent; color:var(--accent); font-weight:800; text-align:left; }
+    .signal-lab-grid { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+    .signal-lab-grid > div { padding:12px; border:1px solid #273744; border-radius:9px; background:#0c151d; }
+    .signal-lab-grid span,.signal-lab-grid strong { display:block; }
+    .signal-lab-grid span { color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:.07em; }
+    .signal-lab-grid strong { margin-top:5px; font-size:20px; }
+    .analytics-note { color:var(--muted); font-size:11px; }
+    .analyst-layout { display:grid; gap:14px; }
+    .analyst-form { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:9px; padding:12px; border:1px solid #273744; border-radius:10px; background:#0c151d; }
+    .analyst-form .span-2 { grid-column:span 2; }
+    .analyst-form .span-4 { grid-column:span 4; }
+    .analyst-form .form-actions { display:flex; align-items:center; gap:10px; }
+    .exposure-list-v28 { display:grid; gap:10px; }
+    .exposure-list-v28 > div { display:grid; grid-template-columns:minmax(110px,180px) 1fr 70px; gap:10px; align-items:center; }
+    .exposure-list-v28 > div > div { height:8px; border-radius:4px; background:#0a1219; overflow:hidden; }
+    .exposure-list-v28 i { display:block; height:100%; background:linear-gradient(90deg,var(--accent),var(--accent-2)); border-radius:4px; }
+    .exposure-list-v28 b { text-align:right; }
+    .quality-list { display:grid; gap:8px; }
+    .quality-list > div { display:flex; justify-content:space-between; gap:12px; padding:8px 0; border-bottom:1px solid rgba(145,168,186,.11); }
+    .quality-list span { color:var(--muted); }
+    .analytics-errors { margin-top:12px; color:var(--warn); font-size:11px; }
+    .analytics-errors p { margin:5px 0; overflow-wrap:anywhere; }
+
+    @media (max-width:1250px) {
+      .analytics-kpis { grid-template-columns:repeat(3,minmax(0,1fr)); }
+      .analytics-panel.span-8,.analytics-panel.span-7,.analytics-panel.span-5,.analytics-panel.span-4 { grid-column:span 6; }
+    }
+    @media (max-width:900px) {
+      .analytics-hero { flex-direction:column; padding:16px; }
+      .analytics-hero h2 { font-size:22px; }
+      .analytics-kpis { grid-template-columns:1fr 1fr; }
+      .analytics-grid { gap:10px; }
+      .analytics-panel.span-4,.analytics-panel.span-5,.analytics-panel.span-6,.analytics-panel.span-7,.analytics-panel.span-8,.analytics-panel.span-12 { grid-column:span 12; }
+      .analytics-donut-wrap { grid-template-columns:1fr; }
+      .position-bar-row { grid-template-columns:1fr; gap:6px; }
+      .position-bar-values { display:flex; justify-content:space-between; text-align:left; }
+      .analyst-form { grid-template-columns:1fr 1fr; }
+      .analyst-form .span-4 { grid-column:span 2; }
+      .main-nav .nav-btn { font-size:10px; }
+    }
+    @media (max-width:520px) {
+      .analytics-kpis { grid-template-columns:1fr 1fr; gap:8px; }
+      .analytics-kpi { padding:12px; min-height:90px; }
+      .analytics-kpi strong { font-size:19px; }
+      .analytics-panel { padding:12px; }
+      .analyst-form { grid-template-columns:1fr; }
+      .analyst-form .span-2,.analyst-form .span-4 { grid-column:span 1; }
+      .event-radar-row { grid-template-columns:78px 1fr; }
+      .risk-heatmap { grid-template-columns:1fr 1fr; }
+      .heat-cell { min-height:120px; padding:10px; }
     }
 
 </style>
@@ -767,7 +917,7 @@ setTimeout(function(){
       <div class="brand-mark">I</div>
       <div>
         <h2 id="authGateTitle">Investition Dashboard</h2>
-        <p class="auth-subtitle">Geschützter Cloud-Zugang · Version 27.1</p>
+        <p class="auth-subtitle">Geschützter Cloud-Zugang · Version 28.0</p>
       </div>
     </div>
     <p style="margin:0;color:#c3d1de">Melde dich mit deinem bestehenden Supabase-Konto an. Ohne erfolgreiche Anmeldung bleiben Dashboard, Analysen, Depotpositionen, News und Benachrichtigungen gesperrt.</p>
@@ -793,6 +943,7 @@ setTimeout(function(){
     <nav class="main-nav" aria-label="Dashboard-Bereiche">
       <button class="nav-btn active" id="navDecisionBtn" data-page="decision">◆ Entscheidungszentrale</button>
       <button class="nav-btn" id="navTradingBtn" data-page="trading">▦ Trading & Analysen</button>
+      <button class="nav-btn" id="navAnalyticsBtn" data-page="analytics">▤ Portfolio Intelligence</button>
       <button class="nav-btn" id="navNewsBtn" data-page="news">◉ News Feed</button>
     </nav>
   <header class="topbar">
@@ -825,7 +976,7 @@ setTimeout(function(){
           <p>Priorisierte Signale, Investmentthesen, Ereignisse, Szenarien, Portfoliorisiken, Signalvalidierung und Systemgesundheit in einer gemeinsamen Entscheidungskette.</p>
         </div>
         <div class="decision-version">
-          <span class="chip good">Dashboard 27.1</span>
+          <span class="chip good">Dashboard 28.0</span>
           <span class="chip neutral">Ausbaustufen 18–23 + 25</span>
           <button class="btn small" id="decisionRefreshBtn" type="button">↻ Aktualisieren</button>
         </div>
@@ -996,6 +1147,22 @@ setTimeout(function(){
     <div class="news-status" id="newsStatus"></div>
   </main>
 
+  <main class="page app-page" id="analyticsPage" hidden>
+    <section class="card analytics-hero">
+      <div>
+        <span class="analytics-eyebrow">V28 · PORTFOLIO INTELLIGENCE</span>
+        <h2>Portfolio Analytics & Market Intelligence</h2>
+        <p>Depotbasierte Performance, Risiko-Heatmap, Ereignisradar, News-Auswirkung, Szenario-Bewertung und Analystenrevisionen in einer gemeinsamen Analyseebene.</p>
+      </div>
+      <div class="actions">
+        <button class="btn" id="analyticsSnapshotBtn" type="button">◫ Snapshot speichern</button>
+        <button class="btn primary" id="analyticsRefreshBtn" type="button">↻ Analytics aktualisieren</button>
+      </div>
+    </section>
+    <div class="analytics-status" id="analyticsStatus">Portfolio Intelligence wird vorbereitet …</div>
+    <section id="analyticsContent"></section>
+  </main>
+
 </div>
 
 <div class="modal-backdrop" id="modalBackdrop" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
@@ -1132,7 +1299,7 @@ setTimeout(function(){
     <div class="modal-body">
       <div class="cloud-box" id="loggedOutBox">
         <h4>Sitzung gesperrt</h4>
-        <p>Die vollständige Anmeldung erfolgt über die vorgeschaltete Login-Wall. Kontoerstellung und lokaler Betriebsmodus sind in Version 27.1 deaktiviert.</p>
+        <p>Die vollständige Anmeldung erfolgt über die vorgeschaltete Login-Wall. Kontoerstellung und lokaler Betriebsmodus sind in Version 28.0 deaktiviert.</p>
       </div>
       <div class="cloud-box hidden" id="loggedInBox">
         <h4>Cloud verbunden</h4>
@@ -1169,10 +1336,11 @@ setTimeout(function(){
   </div>
 </div>
 
-<script defer src="./supabase.js?v=26.0"></script>
-<script defer src="./app.js?v=26.0"></script>
-<script defer src="./news.js?v=26.0"></script>
-<script defer src="./decision.js?v=26.0"></script>
+<script defer src="./supabase.js?v=28.0"></script>
+<script defer src="./app.js?v=28.0"></script>
+<script defer src="./news.js?v=28.0"></script>
+<script defer src="./decision.js?v=28.0"></script>
+<script defer src="./analytics.js?v=28.0"></script>
 
 </body>
 </html>

@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const VERSION = '26.0';
+  const VERSION = '28.0';
   const LOCAL_PREFIX = 'investition-decision-v25-';
   const DEFAULT_PREFS = {
     portfolio_value: 100000,
@@ -47,6 +47,7 @@
     preferences: {...DEFAULT_PREFS, ...loadLocal('preferences', {})},
     signalStates: loadLocal('signal-states', []),
     outcomes: loadLocal('outcomes', []),
+    depotPositions: [],
     healthRows: loadLocal('health', []),
     alertEvents: [],
     news: loadNewsLocal(),
@@ -204,18 +205,56 @@
     const price = currentPrice(trade), barrier = num(trade.koBarrier);
     return price && barrier !== null ? Math.abs((price - barrier) / price) * 100 : null;
   }
+  function depotPositionMetrics(position) {
+    const trade = tradeById(position.trade_id);
+    const thesis = thesisFor(position.trade_id);
+    const quantity = Math.abs(num(position.quantity, 0));
+    const fx = num(position.fx_rate_to_eur, 1) || 1;
+    const entry = num(position.average_entry_price, 0);
+    const fees = num(position.fees, 0);
+    const current = num(position.current_price_override, currentPrice(trade));
+    const direction = String(position.direction || trade?.direction || 'Long').toLowerCase();
+    const invested = (quantity * entry + fees) * fx;
+    const value = current === null ? 0 : quantity * current * fx;
+    const pnl = direction === 'short' ? invested - value : value - invested;
+    const stop = num(position.stop_price, num(trade?.stop));
+    let risk = 0;
+    if (current !== null && stop !== null) {
+      risk = direction === 'short'
+        ? Math.max(0, (stop - current) * quantity * fx)
+        : Math.max(0, (current - stop) * quantity * fx);
+    }
+    return {
+      position,
+      trade: trade || {id:position.trade_id, name:position.name, symbol:position.symbol, currency:position.currency, type:position.instrument_type, direction:position.direction},
+      thesis,
+      value,
+      invested,
+      pnl,
+      risk,
+      current,
+      stop,
+      currency:String(position.currency || trade?.currency || 'EUR').toUpperCase(),
+      sector:position.sector || thesis.sector || 'Nicht zugeordnet',
+      region:position.region || thesis.region || 'Nicht zugeordnet',
+      currencyExposure:thesis.currency_exposure || position.currency || trade?.currency || 'EUR'
+    };
+  }
   function computeExposures() {
-    const positions = trades().map(trade => ({trade, value:positionValue(trade), thesis:thesisFor(trade.id)})).filter(item => item.value > 0);
+    const positions = state.depotPositions.map(depotPositionMetrics).filter(item => item.position?.is_open !== false);
     const invested = positions.reduce((sum, item) => sum + item.value, 0);
+    const investedCapital = positions.reduce((sum, item) => sum + item.invested, 0);
+    const pnl = positions.reduce((sum, item) => sum + item.pnl, 0);
+    const totalRisk = positions.reduce((sum, item) => sum + item.risk, 0);
     const group = key => {
       const map = new Map();
       positions.forEach(item => {
-        const label = item.thesis[key] || (key === 'currency_exposure' ? item.trade.currency : '') || 'Nicht zugeordnet';
-        map.set(label, (map.get(label) || 0) + item.value);
+        const label = key === 'sector' ? item.sector : key === 'region' ? item.region : item.currencyExposure;
+        map.set(label || 'Nicht zugeordnet', (map.get(label || 'Nicht zugeordnet') || 0) + item.value);
       });
       return [...map.entries()].map(([label, value]) => ({label, value, pct: invested > 0 ? value / invested * 100 : 0})).sort((a,b) => b.value - a.value);
     };
-    return {positions, invested, sectors:group('sector'), regions:group('region'), currencies:group('currency_exposure')};
+    return {positions, invested, investedCapital, pnl, totalRisk, sectors:group('sector'), regions:group('region'), currencies:group('currency_exposure')};
   }
   function computeHealth() {
     const list = trades();
@@ -227,10 +266,10 @@
     const health = [
       {name:'Browser / Netzwerk', status:navigator.onLine ? 'good' : 'bad', value:navigator.onLine ? 'Online' : 'Offline', detail:'Direkter Verbindungsstatus dieses Geräts'},
       {name:'Cloud-Anmeldung', status:state.session ? 'good' : 'warn', value:state.session ? 'Verbunden' : 'Nicht angemeldet', detail:state.session?.user?.email || 'Lokaler Betrieb bleibt möglich'},
-      {name:'Entscheidungsschema', status:schemaMissing ? 'warn' : 'good', value:schemaMissing ? 'Lokaler Modus' : 'Cloud aktiv', detail:schemaMissing ? 'version25-schema.sql noch nicht vollständig erreichbar' : 'Thesen, Szenarien und Ereignisse werden synchronisiert'},
+      {name:'Entscheidungsschema', status:schemaMissing ? 'warn' : 'good', value:schemaMissing ? 'Schema prüfen' : 'Cloud aktiv', detail:schemaMissing ? 'version25-schema.sql noch nicht vollständig erreichbar; betroffene Module bleiben eingeschränkt' : 'Thesen, Szenarien und Ereignisse werden synchronisiert'},
       {name:'Kursdaten', status:!latestQuote ? 'warn' : ageHours(latestQuote) > 24 ? 'bad' : ageHours(latestQuote) > 6 ? 'warn' : 'good', value:latestQuote ? formatDate(latestQuote, true) : 'Keine Daten', detail:latestQuote ? `Alter ${formatNumber(ageHours(latestQuote),1)} Stunden` : 'Alarmprüfung oder Referenzkurs fehlt'},
       {name:'Alarmprüfung', status:alertErrors ? 'bad' : !latestCheck ? 'warn' : ageHours(latestCheck) > 4 ? 'warn' : 'good', value:latestCheck ? formatDate(latestCheck, true) : 'Noch nicht gelaufen', detail:alertErrors ? `${alertErrors} Pläne mit Fehler` : 'Keine gemeldeten Planfehler'},
-      {name:'News Feed', status:!latestNews ? 'warn' : ageHours(latestNews) > 48 ? 'warn' : 'good', value:latestNews ? formatDate(latestNews, true) : 'Leer', detail:`${state.news.length} lokal geladene Meldungen`},
+      {name:'News Feed', status:!latestNews ? 'warn' : ageHours(latestNews) > 48 ? 'warn' : 'good', value:latestNews ? formatDate(latestNews, true) : 'Leer', detail:`${state.news.length} geladene Meldungen`},
       {name:'Telegram', status:state.notificationSettings?.telegram_chat_id ? 'good' : 'warn', value:state.notificationSettings?.telegram_chat_id ? 'Verbunden' : 'Nicht verbunden', detail:state.notificationSettings?.telegram_enabled === false ? 'Benachrichtigungen deaktiviert' : 'Verbindung in Cloud-Einstellungen prüfen'},
       {name:'Service Worker', status:'serviceWorker' in navigator ? (navigator.serviceWorker.controller ? 'good' : 'warn') : 'warn', value:navigator.serviceWorker?.controller ? 'Aktiv' : 'Nicht aktiv', detail:`Dashboard ${VERSION}`},
       {name:'Datenkonsistenz', status:list.some(item => !item.symbol || !item.marketSymbol) ? 'warn' : 'good', value:list.some(item => !item.symbol || !item.marketSymbol) ? 'Prüfung nötig' : 'Symbole vollständig', detail:`${list.length} Trade-Pläne geprüft`}
@@ -361,18 +400,19 @@
     if (!state.cloudReady) {
       state.schemaReady = false;
       state.lastLoadedAt = new Date().toISOString();
-      setStatus('Lokaler Modus: Für geräteübergreifende Thesen, Ereignisse und Präferenzen in der Cloud anmelden.', 'warn');
+      setStatus('Keine aktive Cloud-Sitzung. Die Entscheidungsdaten bleiben gesperrt.', 'warn');
       return;
     }
 
     const uid = state.session.user.id;
-    const [theses, scenarios, events, preferences, signalStates, outcomes, alertEvents, news, notificationSettings, healthRows] = await Promise.all([
+    const [theses, scenarios, events, preferences, signalStates, outcomes, depotPositions, alertEvents, news, notificationSettings, healthRows] = await Promise.all([
       safeSelect('investment_theses', q => q.select('*').eq('user_id', uid), state.theses),
       safeSelect('valuation_scenarios', q => q.select('*').eq('user_id', uid), state.scenarios),
       safeSelect('market_events', q => q.select('*').eq('user_id', uid).order('event_at', {ascending:true}), state.events),
       safeSelect('notification_policies', q => q.select('*').eq('user_id', uid).maybeSingle(), null),
       safeSelect('decision_signal_state', q => q.select('*').eq('user_id', uid), state.signalStates),
       safeSelect('signal_outcomes', q => q.select('*').eq('user_id', uid), state.outcomes),
+      safeSelect('depot_positions', q => q.select('*').eq('user_id', uid).eq('is_open', true).order('updated_at', {ascending:false}), state.depotPositions),
       safeSelect('alert_events', q => q.select('*').eq('user_id', uid).order('created_at', {ascending:false}).limit(200), []),
       safeSelect('market_news', q => q.select('*').eq('is_published', true).order('published_at', {ascending:false}).limit(300), state.news),
       safeSelect('notification_settings', q => q.select('*').eq('user_id', uid).maybeSingle(), null),
@@ -385,6 +425,7 @@
     if (preferences && !Array.isArray(preferences)) state.preferences = {...DEFAULT_PREFS, ...preferences};
     if (Array.isArray(signalStates)) state.signalStates = signalStates;
     if (Array.isArray(outcomes)) state.outcomes = outcomes;
+    if (Array.isArray(depotPositions)) state.depotPositions = depotPositions;
     if (Array.isArray(alertEvents)) state.alertEvents = alertEvents;
     if (Array.isArray(news)) state.news = news;
     if (notificationSettings && !Array.isArray(notificationSettings)) state.notificationSettings = notificationSettings;
@@ -394,7 +435,7 @@
     state.lastLoadedAt = new Date().toISOString();
     saveAllLocal();
     setStatus(state.errors.length
-      ? `Cloud teilweise geladen. ${state.errors.length} Tabellenhinweis(e); fehlende Version-25-Tabellen arbeiten lokal.`
+      ? `Cloud teilweise geladen. ${state.errors.length} Tabellenhinweis(e); betroffene Module sind eingeschränkt.`
       : `Cloud-Entscheidungsdaten geladen · ${formatDate(state.lastLoadedAt, true)}.`, state.errors.length ? 'warn' : 'good');
   }
 
@@ -432,7 +473,7 @@
     return `<div class="decision-panel-head"><div><h3>${escapeHtml(title)}</h3><p>${escapeHtml(subtitle)}</p></div>${right}</div>`;
   }
   function renderExposure(title, items) {
-    return `<div class="card decision-panel">${sectionHeader(title, 'Anteil am investierten Positionswert')}<div class="exposure-bars">${items.length ? items.map(item => `<div class="exposure-row"><div class="exposure-label">${escapeHtml(item.label)}</div><div class="exposure-track"><div class="exposure-fill" style="width:${Math.min(100,item.pct)}%"></div></div><div class="exposure-value">${formatPct(item.pct)}</div></div>`).join('') : '<div class="decision-empty">Keine Positionswerte vorhanden.</div>'}</div></div>`;
+    return `<div class="card decision-panel">${sectionHeader(title, 'Anteil am aktuellen Depotwert')}<div class="exposure-bars">${items.length ? items.map(item => `<div class="exposure-row"><div class="exposure-label">${escapeHtml(item.label)}</div><div class="exposure-track"><div class="exposure-fill" style="width:${Math.min(100,item.pct)}%"></div></div><div class="exposure-value">${formatPct(item.pct)}</div></div>`).join('') : '<div class="decision-empty">Keine Positionswerte vorhanden.</div>'}</div></div>`;
   }
 
   function renderToday() {
@@ -444,12 +485,12 @@
       {key:'info', title:'Wochenbericht', subtitle:'Niedrigere Dringlichkeit', filter:item => item.severity === 'info'}
     ];
     const exposure = computeExposures();
-    const activeRisk = trades().reduce((sum, trade) => sum + riskToStop(trade), 0);
+    const activeRisk = exposure.totalRisk;
     const kpis = [
       {label:'Sofort prüfen', value:signals.filter(groups[0].filter).length, sub:'kritische Zustände'},
       {label:'Heute prüfen', value:signals.filter(groups[1].filter).length, sub:'priorisierte Aufgaben'},
       {label:'Kapital im Risiko', value:formatMoney(activeRisk), sub:'bis Stop / Risikobudget'},
-      {label:'Investiert', value:formatMoney(exposure.invested), sub:`${exposure.positions.length} Positionen`}
+      {label:'Depotwert', value:formatMoney(exposure.invested), sub:`${exposure.positions.length} tatsächliche Positionen`}
     ];
     content.innerHTML = `<div class="decision-grid">
       <div class="card decision-panel decision-span-12"><div class="decision-kpis">${kpis.map(item => `<div class="decision-kpi"><div class="label">${escapeHtml(item.label)}</div><div class="value">${escapeHtml(item.value)}</div><div class="sub">${escapeHtml(item.sub)}</div></div>`).join('')}</div></div>
@@ -631,27 +672,27 @@
   function renderPortfolio() {
     const exposure = computeExposures();
     const prefs = state.preferences;
-    const totalRisk = trades().reduce((sum,trade) => sum+riskToStop(trade),0);
-    const portfolioValue = num(prefs.portfolio_value,0);
+    const totalRisk = exposure.totalRisk;
+    const cashValue = num(prefs.cash_value,0);
+    const portfolioValue = exposure.invested + cashValue;
     const riskPct = portfolioValue > 0 ? totalRisk/portfolioValue*100 : 0;
-    const koTrades = trades().filter(trade => trade.type === 'Knock-out' || num(trade.koBarrier) !== null);
+    const koTrades = exposure.positions.filter(item => item.position.instrument_type === 'Knock-out' || item.trade.type === 'Knock-out' || num(item.trade.koBarrier) !== null);
     const warnings = [];
-    const activeCurrencies = [...new Set(exposure.positions.map(item => String(item.trade.currency || 'EUR').toUpperCase()))];
-    if (activeCurrencies.length > 1) warnings.push(`Mehrere Währungen (${activeCurrencies.join(', ')}): Positionswerte werden ohne automatische FX-Umrechnung als Näherung addiert.`);
+    exposure.positions.filter(item => item.currency !== 'EUR' && num(item.position.fx_rate_to_eur,1) === 1).forEach(item => warnings.push(`${item.position.name || item.trade.name}: FX-Faktor steht trotz Fremdwährung auf 1,0.`));
     exposure.positions.forEach(item => { const pct=exposure.invested?item.value/exposure.invested*100:0; if(pct>num(prefs.max_single_weight_pct,20)) warnings.push(`${item.trade.name}: ${formatPct(pct)} Einzeltitelgewicht`); });
     exposure.sectors.forEach(item => { if(item.pct>num(prefs.max_sector_weight_pct,35)) warnings.push(`${item.label}: ${formatPct(item.pct)} Sektoranteil`); });
     if (riskPct > num(prefs.max_total_risk_pct,8)) warnings.push(`Gesamtrisiko ${formatPct(riskPct)} über Grenzwert`);
     const broadLoss = exposure.invested * .10;
-    const semiLoss = exposure.positions.filter(item => /halb|semi|chip|memory/i.test(item.thesis.sector || '')).reduce((sum,item)=>sum+item.value*.15,0);
-    const fxLoss = exposure.positions.filter(item => String(item.thesis.currency_exposure || item.trade.currency || 'EUR').toUpperCase() !== 'EUR').reduce((sum,item)=>sum+item.value*.08,0);
+    const semiLoss = exposure.positions.filter(item => /halb|semi|chip|memory/i.test(item.sector || '')).reduce((sum,item)=>sum+item.value*.15,0);
+    const fxLoss = exposure.positions.filter(item => String(item.currencyExposure || item.currency || 'EUR').toUpperCase() !== 'EUR').reduce((sum,item)=>sum+item.value*.08,0);
     content.innerHTML = `<div class="decision-grid">
-      <div class="card decision-panel decision-span-12"><div class="decision-kpis"><div class="decision-kpi"><div class="label">Portfoliowert</div><div class="value">${formatMoney(portfolioValue)}</div><div class="sub">inkl. Cash gemäß Einstellung</div></div><div class="decision-kpi"><div class="label">Investiert (Näherung)</div><div class="value">${formatMoney(exposure.invested)}</div><div class="sub">ohne automatische FX-Umrechnung</div></div><div class="decision-kpi"><div class="label">Risiko bis Stop (Näherung)</div><div class="value">${formatMoney(totalRisk)}</div><div class="sub">${formatPct(riskPct)} des Portfolios</div></div><div class="decision-kpi"><div class="label">Warnungen</div><div class="value">${warnings.length}</div><div class="sub">Konzentration und Risiko</div></div></div></div>
+      <div class="card decision-panel decision-span-12"><div class="decision-kpis"><div class="decision-kpi"><div class="label">Portfoliowert</div><div class="value">${formatMoney(portfolioValue)}</div><div class="sub">Depotwert plus Cash</div></div><div class="decision-kpi"><div class="label">Investiertes Kapital</div><div class="value">${formatMoney(exposure.investedCapital)}</div><div class="sub">Einstieg inklusive Gebühren und FX</div></div><div class="decision-kpi"><div class="label">Unrealisierter P/L</div><div class="value">${formatMoney(exposure.pnl)}</div><div class="sub">aus tatsächlichen Depotpositionen</div></div><div class="decision-kpi"><div class="label">Risiko bis Stop</div><div class="value">${formatMoney(totalRisk)}</div><div class="sub">${formatPct(riskPct)} des Portfolios · ${warnings.length} Hinweise</div></div></div></div>
       <div class="card decision-panel decision-span-5">${sectionHeader('Portfolio-Grenzwerte', 'Grundlage für Positions- und Konzentrationsentscheidungen')}<form id="portfolioPrefsForm"><div class="decision-form-grid"><div class="span-2"><label>Portfoliowert EUR</label><input name="portfolio_value" type="number" step="0.01" value="${escapeHtml(prefs.portfolio_value)}"></div><div class="span-2"><label>Cash EUR</label><input name="cash_value" type="number" step="0.01" value="${escapeHtml(prefs.cash_value)}"></div><div><label>Max. Einzeltitel %</label><input name="max_single_weight_pct" type="number" value="${escapeHtml(prefs.max_single_weight_pct)}"></div><div><label>Max. Sektor %</label><input name="max_sector_weight_pct" type="number" value="${escapeHtml(prefs.max_sector_weight_pct)}"></div><div><label>Max. Gesamtrisiko %</label><input name="max_total_risk_pct" type="number" value="${escapeHtml(prefs.max_total_risk_pct)}"></div><div><label>KO gelb %</label><input name="ko_yellow_pct" type="number" value="${escapeHtml(prefs.ko_yellow_pct)}"></div><div><label>KO orange %</label><input name="ko_orange_pct" type="number" value="${escapeHtml(prefs.ko_orange_pct)}"></div><div><label>KO rot %</label><input name="ko_red_pct" type="number" value="${escapeHtml(prefs.ko_red_pct)}"></div></div><div class="signal-actions"><button class="btn primary" type="submit">Grenzwerte speichern</button></div></form></div>
-      <div class="card decision-panel decision-span-7">${sectionHeader('Risikohinweise', 'Regelbasiert aus Positionen und Grenzwerten')}<div class="signal-list-v25">${warnings.length ? warnings.map(text=>`<div class="risk-warning bad">${escapeHtml(text)}</div>`).join('') : '<div class="risk-warning">Keine hinterlegten Grenzwerte überschritten.</div>'}</div><div class="decision-kpis" style="margin-top:12px"><div class="decision-kpi"><div class="label">Breitmarkt −10 %</div><div class="value">−${formatMoney(broadLoss)}</div><div class="sub">vereinfachte Schätzung</div></div><div class="decision-kpi"><div class="label">Halbleiter −15 %</div><div class="value">−${formatMoney(semiLoss)}</div><div class="sub">nach Sektorzuordnung</div></div><div class="decision-kpi"><div class="label">Fremdwährung −8 %</div><div class="value">−${formatMoney(fxLoss)}</div><div class="sub">nicht-EUR Exponierung</div></div><div class="decision-kpi"><div class="label">Cashquote</div><div class="value">${portfolioValue>0?formatPct(num(prefs.cash_value,0)/portfolioValue*100):'—'}</div><div class="sub">Liquiditätspuffer</div></div></div></div>
+      <div class="card decision-panel decision-span-7">${sectionHeader('Risikohinweise', 'Regelbasiert aus Positionen und Grenzwerten')}<div class="signal-list-v25">${warnings.length ? warnings.map(text=>`<div class="risk-warning bad">${escapeHtml(text)}</div>`).join('') : '<div class="risk-warning">Keine hinterlegten Grenzwerte überschritten.</div>'}</div><div class="decision-kpis" style="margin-top:12px"><div class="decision-kpi"><div class="label">Breitmarkt −10 %</div><div class="value">−${formatMoney(broadLoss)}</div><div class="sub">vereinfachte Schätzung</div></div><div class="decision-kpi"><div class="label">Halbleiter −15 %</div><div class="value">−${formatMoney(semiLoss)}</div><div class="sub">nach Sektorzuordnung</div></div><div class="decision-kpi"><div class="label">Fremdwährung −8 %</div><div class="value">−${formatMoney(fxLoss)}</div><div class="sub">nicht-EUR Exponierung</div></div><div class="decision-kpi"><div class="label">Cashquote</div><div class="value">${portfolioValue>0?formatPct(cashValue/portfolioValue*100):'—'}</div><div class="sub">Liquiditätspuffer</div></div></div></div>
       <div class="decision-span-4">${renderExposure('Sektoren', exposure.sectors)}</div><div class="decision-span-4">${renderExposure('Regionen', exposure.regions)}</div><div class="decision-span-4">${renderExposure('Währungen', exposure.currencies)}</div>
-      <div class="card decision-panel decision-span-12">${sectionHeader('KO-Risikocockpit', 'Abstand, Hebel, Barriere und Kursalter getrennt vom Aktienrisiko')}<div class="ko-grid">${koTrades.length ? koTrades.map(trade => { const distance=koDistance(trade); const level=distance===null?'':distance<=num(prefs.ko_red_pct,5)?'red':distance<=num(prefs.ko_orange_pct,10)?'orange':distance<=num(prefs.ko_yellow_pct,15)?'yellow':''; return `<div class="ko-card ${level}"><strong>${escapeHtml(trade.name)}</strong><div class="cell-sub">${escapeHtml(trade.wkn || trade.symbol || '')}</div><div class="ko-distance">${formatPct(distance)}</div><div class="cell-sub">KO ${formatNumber(trade.koBarrier)} · Hebel ${formatNumber(trade.leverage,1)}</div><div class="cell-sub">Kurs ${formatNumber(trade.currentPrice)} · ${formatDate(trade.currentPriceAt,true)}</div><div class="signal-actions"><button class="btn small" data-open-trade="${escapeHtml(trade.id)}">Analyse öffnen</button></div></div>`; }).join('') : '<div class="decision-empty">Keine Knock-out-Produkte oder KO-Barrieren hinterlegt.</div>'}</div></div>
+      <div class="card decision-panel decision-span-12">${sectionHeader('KO-Risikocockpit', 'Abstand, Hebel, Barriere und Kursalter getrennt vom Aktienrisiko')}<div class="ko-grid">${koTrades.length ? koTrades.map(item => { const trade=item.trade; const distance=koDistance(trade); const level=distance===null?'':distance<=num(prefs.ko_red_pct,5)?'red':distance<=num(prefs.ko_orange_pct,10)?'orange':distance<=num(prefs.ko_yellow_pct,15)?'yellow':''; return `<div class="ko-card ${level}"><strong>${escapeHtml(item.position.name || trade.name)}</strong><div class="cell-sub">${escapeHtml(trade.wkn || item.position.symbol || trade.symbol || '')}</div><div class="ko-distance">${formatPct(distance)}</div><div class="cell-sub">KO ${formatNumber(trade.koBarrier)} · Hebel ${formatNumber(trade.leverage,1)}</div><div class="cell-sub">Depotwert ${formatMoney(item.value)} · Risiko ${formatMoney(item.risk)}</div><div class="signal-actions"><button class="btn small" data-open-trade="${escapeHtml(trade.id)}">Analyse öffnen</button></div></div>`; }).join('') : '<div class="decision-empty">Keine Knock-out-Produkte oder KO-Barrieren hinterlegt.</div>'}</div></div>
       <div class="card decision-panel decision-span-6">${sectionHeader('Positionsgrößenrechner', 'Maximalverlust statt Bauchgefühl')}<div class="decision-form-grid" id="positionSizeCalc"><div><label>Maximalverlust EUR</label><input id="calcLoss" type="number" value="300"></div><div><label>Einstieg</label><input id="calcEntry" type="number" step="0.01" value="100"></div><div><label>Stop</label><input id="calcStop" type="number" step="0.01" value="94"></div><div><label>Ergebnis</label><div class="scenario-result"><div class="big" id="calcQuantity">50 Stück</div><div class="cell-sub" id="calcValue">5.000 EUR</div></div></div></div></div>
-      <div class="card decision-panel decision-span-6">${sectionHeader('Positionen', 'Wert, Gewicht und Risiko bis Stop')}<div class="table-shell-v25"><table class="portfolio-table"><thead><tr><th>Instrument</th><th>Wert</th><th>Gewicht</th><th>Risiko</th><th>Sektor</th></tr></thead><tbody>${exposure.positions.length ? exposure.positions.map(item=>`<tr><td><strong>${escapeHtml(item.trade.name)}</strong><div class="cell-sub">${escapeHtml(item.trade.symbol||'')}</div></td><td>${formatMoney(item.value,item.trade.currency||'EUR')}</td><td>${formatPct(exposure.invested?item.value/exposure.invested*100:0)}</td><td>${formatMoney(riskToStop(item.trade),item.trade.currency||'EUR')}</td><td>${escapeHtml(item.thesis.sector||'—')}</td></tr>`).join('') : '<tr><td colspan="5" class="empty-table">Keine Positionswerte vorhanden.</td></tr>'}</tbody></table></div></div>
+      <div class="card decision-panel decision-span-6">${sectionHeader('Positionen', 'Wert, Gewicht und Risiko bis Stop')}<div class="table-shell-v25"><table class="portfolio-table"><thead><tr><th>Instrument</th><th>Wert</th><th>Gewicht</th><th>Risiko</th><th>Sektor</th></tr></thead><tbody>${exposure.positions.length ? exposure.positions.map(item=>`<tr><td><strong>${escapeHtml(item.position.name || item.trade.name)}</strong><div class="cell-sub">${escapeHtml(item.position.symbol || item.trade.symbol||'')}</div></td><td>${formatMoney(item.value)}</td><td>${formatPct(exposure.invested?item.value/exposure.invested*100:0)}</td><td>${formatMoney(item.risk)}</td><td>${escapeHtml(item.sector||'—')}</td></tr>`).join('') : '<tr><td colspan="5" class="empty-table">Keine Positionswerte vorhanden.</td></tr>'}</tbody></table></div></div>
     </div>`;
     $('#portfolioPrefsForm').onsubmit = savePortfolioPrefs;
     $$('[data-open-trade]', content).forEach(button => button.onclick = () => { dashboard()?.selectTradeById?.(button.dataset.openTrade); window.InvestitionNavigation?.showPage?.('trading'); });
@@ -746,7 +787,7 @@ Regel: gleiche Zustandsstufe nicht wiederholen; erst Eskalation oder Entwarnung 
       <div class="card decision-panel decision-span-7">${sectionHeader('Diagnosehinweise', 'Konkrete nächste Schritte bei Warnungen')}<div class="signal-list-v25">${health.filter(item=>item.status!=='good').map(item=>`<div class="risk-warning ${item.status==='bad'?'bad':''}"><strong>${escapeHtml(item.name)}:</strong> ${escapeHtml(item.detail)}</div>`).join('')||'<div class="risk-warning">Alle prüfbaren Komponenten melden einen guten Status.</div>'}</div><div class="notification-preview" style="margin-top:12px">Datenqualitätsregel:
 Kein Kauf-, Stop- oder KO-Entscheid auf Basis eines veralteten oder fehlgeschlagenen Kursabrufs. Der Zeitpunkt und die Quelle müssen sichtbar sein.</div></div>
       <div class="card decision-panel decision-span-5">${sectionHeader('Cloud-/Function-Protokoll', 'Letzte gespeicherte Systemprüfungen')}<div class="system-log">${state.healthRows.length?state.healthRows.slice(0,25).map(row=>`<div class="system-log-row"><strong>${escapeHtml(row.component||'System')} · ${escapeHtml(row.status||'')}</strong><span>${formatDate(row.checked_at,true)} · ${escapeHtml(row.message||row.details||'')}</span></div>`).join(''):'<div class="decision-empty">Noch keine serverseitigen Health-Einträge. Die Oberfläche leitet den Status derzeit direkt aus den vorhandenen Daten ab.</div>'}</div></div>
-      <div class="card decision-panel decision-span-12">${sectionHeader('Installationsstand', 'Für den vollständigen Funktionsumfang')}<div class="table-shell-v25"><table><thead><tr><th>Baustein</th><th>Status</th><th>Erforderlich</th></tr></thead><tbody><tr><td>GitHub Dashboard</td><td><span class="chip good">26.0</span></td><td>index.html, app.js, news.js, decision.js, service-worker.js, reset.html</td></tr><tr><td>Supabase Schema</td><td><span class="chip ${state.schemaReady?'good':'warn'}">${state.schemaReady?'erreichbar':'prüfen'}</span></td><td>version25-schema.sql</td></tr><tr><td>Alarm-Function</td><td><span class="chip neutral">optional aktualisieren</span></td><td>check-alerts-index.ts für Eskalationsstufen</td></tr><tr><td>Digest-Function</td><td><span class="chip neutral">optional</span></td><td>send-digest-index.ts + setup-v25-cron.sql</td></tr><tr><td>Signalauswertung</td><td><span class="chip neutral">optional</span></td><td>evaluate-signals-index.ts</td></tr></tbody></table></div></div></div>`;
+      <div class="card decision-panel decision-span-12">${sectionHeader('Installationsstand', 'Für den vollständigen Funktionsumfang')}<div class="table-shell-v25"><table><thead><tr><th>Baustein</th><th>Status</th><th>Erforderlich</th></tr></thead><tbody><tr><td>GitHub Dashboard</td><td><span class="chip good">28.0</span></td><td>index.html, app.js, news.js, decision.js, analytics.js, service-worker.js, reset.html</td></tr><tr><td>Supabase Schema</td><td><span class="chip ${state.schemaReady?'good':'warn'}">${state.schemaReady?'erreichbar':'prüfen'}</span></td><td>version25-schema.sql</td></tr><tr><td>V28 Analytics-Schema</td><td><span class="chip neutral">separat prüfen</span></td><td>version28-analytics-schema.sql</td></tr><tr><td>Alarm-Function</td><td><span class="chip neutral">optional aktualisieren</span></td><td>check-alerts-index.ts für Eskalationsstufen</td></tr><tr><td>Digest-Function</td><td><span class="chip neutral">optional</span></td><td>send-digest-index.ts + setup-v25-cron.sql</td></tr><tr><td>Signalauswertung</td><td><span class="chip neutral">optional</span></td><td>evaluate-signals-index.ts</td></tr></tbody></table></div></div></div>`;
     $('#exportDecisionData').onclick=exportDecisionData;
   }
   function exportDecisionData() {

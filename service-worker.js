@@ -1,11 +1,12 @@
-const CACHE_NAME = 'investition-dashboard-v27-1-professional-dark';
+const CACHE_NAME = 'investition-dashboard-v28-portfolio-intelligence';
 const CORE = [
   './',
   './index.html',
-  './app.js?v=27.1',
-  './supabase.js?v=27.1',
-  './news.js?v=27.1',
-  './decision.js?v=27.1'
+  './app.js?v=28.0',
+  './supabase.js?v=28.0',
+  './news.js?v=28.0',
+  './decision.js?v=28.0',
+  './analytics.js?v=28.0'
 ];
 
 self.addEventListener('install', event => {
@@ -28,13 +29,12 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const request = event.request;
   if (request.method !== 'GET') return;
-
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
 
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request, { cache: 'no-store' })
+      fetch(request, {cache:'no-store'})
         .then(response => {
           const copy = response.clone();
           caches.open(CACHE_NAME).then(cache => cache.put('./index.html', copy));
@@ -47,7 +47,7 @@ self.addEventListener('fetch', event => {
 
   event.respondWith(
     caches.match(request).then(cached => {
-      const fresh = fetch(request, { cache: 'no-cache' }).then(response => {
+      const fresh = fetch(request, {cache:'no-cache'}).then(response => {
         if (response.ok) {
           const copy = response.clone();
           caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
