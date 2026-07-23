@@ -1,12 +1,12 @@
-const CACHE_NAME = 'investition-dashboard-v28-portfolio-intelligence';
+const CACHE_NAME = 'investition-dashboard-v28-1-news-and-modal-fix';
 const CORE = [
   './',
   './index.html',
-  './app.js?v=28.0',
-  './supabase.js?v=28.0',
-  './news.js?v=28.0',
-  './decision.js?v=28.0',
-  './analytics.js?v=28.0'
+  './app.js?v=28.1',
+  './supabase.js?v=28.1',
+  './news.js?v=28.1',
+  './decision.js?v=28.1',
+  './analytics.js?v=28.1'
 ];
 
 self.addEventListener('install', event => {

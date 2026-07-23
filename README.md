@@ -1,65 +1,31 @@
-# Investition Dashboard V28.0 – Portfolio Intelligence
+# Investition Dashboard V28.1 – Stabilitätsupdate
 
-V28 erweitert das Professional-Dark-Dashboard um eine eigenständige Analyseebene für das tatsächliche Depot. Die neue Seite **Portfolio Intelligence** wertet ausschließlich offene Datensätze aus `depot_positions` aus; geplante Stückzahlen aus Trade-Setups werden nicht als Investment gezählt.
+V28.1 behebt zwei Fehler aus V28.0:
 
-## Neue Funktionen
-
-- Portfolioentwicklung über speicherbare Cloud-Snapshots
-- aktueller Depotwert, investiertes Kapital, unrealisierter Gewinn/Verlust und Risiko bis Stop
-- Investiert-vs.-Marktwert-Diagramm je Position
-- Sektor- und Regionsallokation
-- Risiko-Heatmap mit Gewicht, P/L, Stop-Risiko und News-Lage
-- Ereignis- und Earnings-Radar aus dem vorhandenen Kalender
-- News-Impact-Matrix für Depotpositionen
-- wahrscheinlichkeitsgewichtete Szenario-Zielwerte
-- Signal-Labor aus `signal_outcomes`
-- Analysten-Rating- und Kurszielhistorie
-- regelbasierter Portfolio-Check mit priorisierten nächsten Schritten
-- Korrektur der Portfolioauswertung in der Entscheidungszentrale: tatsächliche Depotpositionen statt geplanter Trade-Setup-Werte
+1. Modalfenster wie **Cloud & Benachrichtigungen** liegen jetzt zuverlässig über Header, Marktticker und Seitenleiste.
+2. Der News Feed verwendet nun dieselbe authentifizierte Supabase-Sitzung wie das Hauptdashboard. Dadurch funktioniert **Feed aktualisieren** wieder und der Aufruf der Edge Function `sync-news` erhält den Benutzer-Token.
 
 ## Installation
 
-### 1. Supabase-Schema ergänzen
+Die Dateien aus dem GitHub-Paket in das Hauptverzeichnis des Repositories laden und vorhandene Dateien ersetzen. Für dieses Update sind keine Änderungen an Tabellen, Edge Functions, Secrets oder Cronjobs erforderlich.
 
-Im Supabase SQL Editor ausführen:
+Danach Cache zurücksetzen:
 
-`version28-analytics-schema.sql`
+`https://schuelo.github.io/investition-dashboard/reset.html?v=28.1`
 
-Das Script legt ausschließlich folgende neue Tabellen an:
+Anschließend öffnen:
 
-- `portfolio_snapshots`
-- `analyst_revisions`
+`https://schuelo.github.io/investition-dashboard/?v=28.1#news`
 
-Beide Tabellen besitzen Row Level Security und können nur vom jeweils angemeldeten Benutzer gelesen und verändert werden.
+## Funktionsprüfung
 
-### 2. GitHub-Dateien aktualisieren
-
-Den Inhalt des Pakets `investition-dashboard-v28-github.zip` in das Hauptverzeichnis des GitHub-Repositories hochladen und vorhandene Dateien ersetzen.
-
-Neu hinzugekommen ist:
-
-`analytics.js`
-
-### 3. Cache zurücksetzen
-
-Öffnen:
-
-`https://schuelo.github.io/investition-dashboard/reset.html?v=28.0`
-
-Danach „Jetzt zurücksetzen“ wählen und anschließend öffnen:
-
-`https://schuelo.github.io/investition-dashboard/?v=28.0#analytics`
-
-## Bedienung
-
-In der linken Navigation beziehungsweise in der mobilen Bottom-Navigation erscheint **Portfolio Intelligence**.
-
-Mit **Snapshot speichern** wird der aktuelle Depotstand in Supabase abgelegt. Erst mehrere Snapshots erzeugen eine Zeitreihe. Analystenänderungen können direkt im unteren Bereich der Analytics-Seite erfasst werden.
+- **Cloud** öffnen: Das Fenster muss vollständig vor dem Ticker liegen.
+- **News Feed → Feed aktualisieren**: Der Status wechselt zunächst auf „gezielte Suche läuft …“ und anschließend auf Erfolg oder zeigt eine konkrete Serverfehlermeldung.
+- Im Kopf bzw. in der Seitenleiste muss **V28.1** erscheinen.
 
 ## Unverändert
 
-Die vorhandenen V26-Edge-Functions, News-Cronjobs, Telegram-Funktionen und EODHD-Alarme bleiben unverändert. Für V28 ist keine neue Edge Function erforderlich.
-
-## Kontrolle
-
-`version28-diagnose.sql` prüft lesend, ob Tabellen, RLS und Policies vorhanden sind.
+- V28 Analytics-Schema
+- V26 News-Edge-Function `sync-news`
+- V26 Cron-Konfiguration
+- Supabase RLS und Login-Wall

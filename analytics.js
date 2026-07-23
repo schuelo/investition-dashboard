@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const VERSION = '28.0';
+  const VERSION = '28.1';
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
   const page = $('#analyticsPage');

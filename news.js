@@ -6,7 +6,9 @@
   const $$ = (q, el = document) => [...el.querySelectorAll(q)];
   const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]));
   const safeUrl = value => { try { const u = new URL(String(value)); return ['http:','https:'].includes(u.protocol) ? u.href : ''; } catch { return ''; } };
-  const sb = window.supabase?.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, { auth:{persistSession:false,autoRefreshToken:true,detectSessionInUrl:true} });
+  const dashboardApi = window.InvestitionDashboard || {};
+  const sharedClient = typeof dashboardApi.getSupabase === 'function' ? dashboardApi.getSupabase() : null;
+  const sb = sharedClient || window.supabase?.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, { auth:{persistSession:false,autoRefreshToken:true,detectSessionInUrl:true} });
 
   const els = {
     tradingPage:$('#tradingPage'), decisionPage:$('#decisionPage'), analyticsPage:$('#analyticsPage'), newsPage:$('#newsPage'), navTrading:$('#navTradingBtn'), navDecision:$('#navDecisionBtn'), navAnalytics:$('#navAnalyticsBtn'), navNews:$('#navNewsBtn'),
@@ -18,11 +20,23 @@
   };
   if (!els.newsPage) return;
 
-  let items = [], selectedId = null, session = null, realtimeChannel = null;
+  let items = [], selectedId = null, session = (typeof dashboardApi.getSession === 'function' ? dashboardApi.getSession() : null), realtimeChannel = null;
   let readIds = loadReadIds();
   let portfolio = [], watchlist = [];
 
   function loadReadIds(){ try { const x=JSON.parse(localStorage.getItem(READ_KEY)||'[]'); return new Set(Array.isArray(x)?x:[]); } catch { return new Set(); } }
+  function getActiveSession(){
+    if (typeof dashboardApi.getSession === 'function') session = dashboardApi.getSession() || null;
+    return session;
+  }
+  async function resolveSession(candidate = null){
+    session = candidate || getActiveSession();
+    if (!session && sb) {
+      const {data} = await sb.auth.getSession();
+      session = data?.session || null;
+    }
+    return session;
+  }
   function saveReadIds(){ try { localStorage.setItem(READ_KEY,JSON.stringify([...readIds])); } catch {} }
   function normalizeText(v){ return String(v||'').normalize('NFKD').toLowerCase().replace(/&/g,' and ').replace(/[^a-z0-9+/.:-]+/g,' ').replace(/\s+/g,' ').trim(); }
   function symbolTokens(v){ const x=String(v||'').toUpperCase().replace(/\s+/g,''); if(!x)return[]; const s=new Set([x]); if(x.includes(':'))s.add(x.split(':').pop()); if(x.includes('.'))s.add(x.split('.')[0]); return [...s].filter(Boolean); }
@@ -44,12 +58,68 @@
   function selectItem(id){ selectedId=id; readIds.add(id); saveReadIds(); renderList(); if(matchMedia('(max-width:980px)').matches)els.detailCard.scrollIntoView({behavior:'smooth',block:'start'}); }
   function showPage(name){ const page=['decision','trading','analytics','news'].includes(name)?name:'decision'; els.tradingPage.hidden=page!=='trading'; if(els.decisionPage)els.decisionPage.hidden=page!=='decision'; if(els.analyticsPage)els.analyticsPage.hidden=page!=='analytics'; els.newsPage.hidden=page!=='news'; els.navTrading?.classList.toggle('active',page==='trading'); els.navDecision?.classList.toggle('active',page==='decision'); els.navAnalytics?.classList.toggle('active',page==='analytics'); els.navNews?.classList.toggle('active',page==='news'); history.replaceState(null,'',`#${page}`); if(page==='news')renderList(); if(page==='decision')window.dispatchEvent(new CustomEvent('investition:decision-visible')); if(page==='analytics')window.dispatchEvent(new CustomEvent('investition:analytics-visible')); }
   function pageFromHash(){ const v=String(location.hash||'').replace('#',''); return ['decision','trading','analytics','news'].includes(v)?v:'decision'; }
-  async function loadReferences(){ if(!sb||!session)return; const [p,d]=await Promise.all([sb.from('trade_plans').select('id,name,symbol,market_symbol,status,type,wkn,isin').order('updated_at',{ascending:false}),sb.from('depot_positions').select('id,trade_id,name,symbol,instrument_type,is_open').eq('is_open',true)]); const plans=p.data||[]; const planById=new Map(plans.map(x=>[x.id,x])); portfolio=(d.data||[]).map(x=>({...planById.get(x.trade_id),...x,name:x.name||planById.get(x.trade_id)?.name||'Depotposition',market_symbol:planById.get(x.trade_id)?.market_symbol||null,wkn:planById.get(x.trade_id)?.wkn||null,isin:planById.get(x.trade_id)?.isin||null})); const heldTradeIds=new Set(portfolio.map(x=>x.trade_id).filter(Boolean)); watchlist=plans.filter(x=>!heldTradeIds.has(x.id)&&!['Geschlossen','Verworfen'].includes(x.status)); }
-  async function loadCloudNews(){ if(!sb||!session){ setHealth(els.cloudHealth,'nicht angemeldet','warn'); return; } setHealth(els.cloudHealth,session.user.email||'angemeldet','good'); setStatus('Portfolio- und Markt-News werden geladen …'); await loadReferences(); const {data,error}=await sb.from('market_news').select('*').eq('is_published',true).order('published_at',{ascending:false}).limit(500); if(error){ setHealth(els.tableHealth,error.message,'bad'); setStatus(`News konnten nicht geladen werden: ${error.message}`,'bad'); return; } items=(data||[]).map(normalize); selectedId=items.some(n=>n.id===selectedId)?selectedId:items[0]?.id||null; setHealth(els.tableHealth,`erreichbar · ${items.length} Zeilen`,items.length?'good':'warn'); els.lastUpdated.textContent=items[0]?`Neueste Meldung: ${dateTime(items[0].published_at)}`:'Noch keine Meldungen'; setStatus(`${items.length} Meldungen geladen · ${portfolio.length} Depotpositionen · ${watchlist.length} Watchlist-Werte.`,'good'); renderList(); window.dispatchEvent(new CustomEvent('investition:news-changed',{detail:{count:items.length}})); }
-  async function syncNews(){ if(!sb||!session){ setStatus('Bitte zuerst anmelden.','bad'); return; } els.sync.disabled=true; setHealth(els.functionHealth,'gezielte Suche läuft …','warn'); setStatus('Unternehmens-, Portfolio- und Branchen-News werden synchronisiert …'); const {data,error}=await sb.functions.invoke('sync-news',{body:{force:true,portfolio:true,relink:true}}); els.sync.disabled=false; if(error){ let detail=error.message||String(error); try{ if(error.context instanceof Response){ const body=await error.context.clone().json(); detail=body.error||detail; } }catch{} setHealth(els.functionHealth,detail,'bad'); setStatus(`Synchronisierung fehlgeschlagen: ${detail}`,'bad'); return; } setHealth(els.functionHealth,`erfolgreich · ${data?.inserted??0} gespeichert`,'good'); setHealth(els.providerHealth,data?.provider||'EODHD + RSS','good'); setStatus(`${data?.inserted??0} Meldungen gespeichert; ${data?.tracked_instruments??0} Wertpapiere gezielt geprüft.`,'good'); await loadCloudNews(); }
+  async function loadReferences(){ const active = await resolveSession(); if(!sb||!active)return; const [p,d]=await Promise.all([sb.from('trade_plans').select('id,name,symbol,market_symbol,status,type,wkn,isin').order('updated_at',{ascending:false}),sb.from('depot_positions').select('id,trade_id,name,symbol,instrument_type,is_open').eq('is_open',true)]); const plans=p.data||[]; const planById=new Map(plans.map(x=>[x.id,x])); portfolio=(d.data||[]).map(x=>({...planById.get(x.trade_id),...x,name:x.name||planById.get(x.trade_id)?.name||'Depotposition',market_symbol:planById.get(x.trade_id)?.market_symbol||null,wkn:planById.get(x.trade_id)?.wkn||null,isin:planById.get(x.trade_id)?.isin||null})); const heldTradeIds=new Set(portfolio.map(x=>x.trade_id).filter(Boolean)); watchlist=plans.filter(x=>!heldTradeIds.has(x.id)&&!['Geschlossen','Verworfen'].includes(x.status)); }
+  async function loadCloudNews(){ const active = await resolveSession(); if(!sb||!active){ setHealth(els.cloudHealth,'nicht angemeldet','warn'); setStatus('News können erst nach der Anmeldung geladen werden.','bad'); return; } setHealth(els.cloudHealth,active.user.email||'angemeldet','good'); setStatus('Portfolio- und Markt-News werden geladen …'); await loadReferences(); const {data,error}=await sb.from('market_news').select('*').eq('is_published',true).order('published_at',{ascending:false}).limit(500); if(error){ setHealth(els.tableHealth,error.message,'bad'); setStatus(`News konnten nicht geladen werden: ${error.message}`,'bad'); return; } items=(data||[]).map(normalize); selectedId=items.some(n=>n.id===selectedId)?selectedId:items[0]?.id||null; setHealth(els.tableHealth,`erreichbar · ${items.length} Zeilen`,items.length?'good':'warn'); els.lastUpdated.textContent=items[0]?`Neueste Meldung: ${dateTime(items[0].published_at)}`:'Noch keine Meldungen'; setStatus(`${items.length} Meldungen geladen · ${portfolio.length} Depotpositionen · ${watchlist.length} Watchlist-Werte.`,'good'); renderList(); window.dispatchEvent(new CustomEvent('investition:news-changed',{detail:{count:items.length}})); }
+  async function syncNews(){
+    const active = await resolveSession();
+    if(!sb||!active){ setStatus('Bitte zuerst anmelden.','bad'); return; }
+    els.sync.disabled=true;
+    setHealth(els.functionHealth,'gezielte Suche läuft …','warn');
+    setStatus('Unternehmens-, Portfolio- und Branchen-News werden synchronisiert …');
+    try {
+      const headers = active.access_token ? {Authorization:`Bearer ${active.access_token}`} : undefined;
+      const {data,error}=await sb.functions.invoke('sync-news',{body:{force:true,portfolio:true,relink:true},headers});
+      if(error){
+        let detail=error.message||String(error);
+        try{
+          if(error.context instanceof Response){
+            const raw=await error.context.clone().text();
+            try{ detail=JSON.parse(raw)?.error||detail; }catch{ if(raw) detail=raw.slice(0,500); }
+          }
+        }catch{}
+        setHealth(els.functionHealth,detail,'bad');
+        setStatus(`Synchronisierung fehlgeschlagen: ${detail}`,'bad');
+        return;
+      }
+      if(data?.ok===false){
+        const detail=data.error||'Die Sync-Function meldet einen Fehler.';
+        setHealth(els.functionHealth,detail,'bad');
+        setStatus(`Synchronisierung fehlgeschlagen: ${detail}`,'bad');
+        return;
+      }
+      setHealth(els.functionHealth,`erfolgreich · ${data?.inserted??0} gespeichert`,'good');
+      setHealth(els.providerHealth,data?.provider||'EODHD + RSS','good');
+      setStatus(`${data?.inserted??0} Meldungen gespeichert; ${data?.tracked_instruments??0} Wertpapiere gezielt geprüft.`,'good');
+      await loadCloudNews();
+    } catch (error) {
+      const detail=error instanceof Error?error.message:String(error);
+      setHealth(els.functionHealth,detail,'bad');
+      setStatus(`Synchronisierung fehlgeschlagen: ${detail}`,'bad');
+    } finally {
+      els.sync.disabled=false;
+    }
+  }
   async function importNews(file){ try{ const parsed=JSON.parse(await file.text()); const incoming=Array.isArray(parsed)?parsed:parsed.news; if(!Array.isArray(incoming))throw new Error('Kein gültiges News-Array.'); const rows=incoming.map(normalize).map(n=>({...n,is_published:true})); const {error}=await sb.from('market_news').upsert(rows,{onConflict:'external_id'}); if(error)throw error; setStatus(`${rows.length} Meldungen importiert.`,'good'); await loadCloudNews(); }catch(e){ setStatus(`Import fehlgeschlagen: ${e.message}`,'bad'); } }
-  function subscribeRealtime(){ if(!sb||!session)return; if(realtimeChannel)sb.removeChannel(realtimeChannel); realtimeChannel=sb.channel('market-news-v26').on('postgres_changes',{event:'*',schema:'public',table:'market_news'},()=>loadCloudNews()).subscribe(); }
-  async function initCloud(){ if(!sb){ setHealth(els.cloudHealth,'Supabase fehlt','bad'); return; } const {data}=await sb.auth.getSession(); session=data.session; if(session){ subscribeRealtime(); await loadCloudNews(); } sb.auth.onAuthStateChange((_e,s)=>{ session=s; setTimeout(()=>{ if(session){subscribeRealtime();loadCloudNews();} else {items=[];portfolio=[];watchlist=[];renderList();}},0); }); }
+  function subscribeRealtime(){ if(!sb||!getActiveSession())return; if(realtimeChannel)sb.removeChannel(realtimeChannel); realtimeChannel=sb.channel('market-news-v28-1').on('postgres_changes',{event:'*',schema:'public',table:'market_news'},()=>loadCloudNews()).subscribe(); }
+  function applySession(nextSession){
+    session=nextSession||null;
+    setTimeout(()=>{
+      if(session){ subscribeRealtime(); loadCloudNews(); }
+      else {
+        if(realtimeChannel){ sb?.removeChannel(realtimeChannel); realtimeChannel=null; }
+        items=[]; portfolio=[]; watchlist=[]; renderList();
+        setHealth(els.cloudHealth,'nicht angemeldet','warn');
+      }
+    },0);
+  }
+  async function initCloud(){
+    if(!sb){ setHealth(els.cloudHealth,'Supabase fehlt','bad'); return; }
+    const initial=await resolveSession();
+    if(initial){ subscribeRealtime(); await loadCloudNews(); }
+    window.addEventListener('investition:auth-changed',event=>applySession(event.detail?.session||null));
+    window.addEventListener('investition:ready',()=>{ const active=getActiveSession(); if(active)applySession(active); });
+    sb.auth.onAuthStateChange((_e,s)=>applySession(s));
+  }
 
   els.navTrading.onclick=()=>showPage('trading'); if(els.navDecision)els.navDecision.onclick=()=>showPage('decision'); if(els.navAnalytics)els.navAnalytics.onclick=()=>showPage('analytics'); els.navNews.onclick=()=>showPage('news');
   [els.search,els.scope,els.topic,els.impact,els.read].forEach(el=>el?.addEventListener('input',renderList));
