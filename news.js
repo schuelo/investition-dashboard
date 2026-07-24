@@ -44,6 +44,19 @@
   function dateTime(v){ const d=new Date(v); return Number.isNaN(d.getTime())?String(v||'—'):new Intl.DateTimeFormat('de-DE',{dateStyle:'short',timeStyle:'short',timeZone:'Europe/Berlin'}).format(d); }
   function setStatus(text,type=''){ els.status.textContent=text; els.status.className=`news-status ${type}`; }
   function setHealth(el,value,type=''){ if(!el)return; el.className=`news-health-item ${type}`; const t=$('.value',el); if(t)t.textContent=value; }
+  function explainFunctionError(value){
+    const detail=String(value||'Unbekannter Fehler').trim();
+    if(/failed to send|functionsfetcherror|fetch failed|load failed|networkerror/i.test(detail)){
+      return 'Sync-Function nicht erreichbar. V28.2-Function deployen und CORS-Konfiguration prüfen.';
+    }
+    if(/not found|404/i.test(detail)){
+      return 'Edge Function „sync-news“ ist nicht deployt oder falsch benannt.';
+    }
+    if(/unauthorized|401|invalid jwt/i.test(detail)){
+      return 'Anmeldung für die Sync-Function abgelehnt. Bitte neu anmelden und erneut versuchen.';
+    }
+    return detail;
+  }
   function impactClass(v){ return v==='hoch'?'bad':v==='niedrig'?'neutral':'warn'; }
   function relevanceScore(n,scope){ let score=scope==='portfolio'?5:scope==='watchlist'?4:scope==='sector'?3:2; if(n.impact==='hoch')score=Math.min(5,score+1); if(Math.abs(Number(n.sentiment||0))>.55)score=Math.min(5,score+1); return score; }
   function referenceAliases(ref){ const values=[ref.name,ref.symbol,ref.market_symbol,ref.isin,ref.wkn].filter(Boolean); const aliases=new Set(); for(const v of values){ const x=normalizeText(v); if(x.length>=3)aliases.add(x); for(const token of x.split(/[\s.:/]+/)) if(token.length>=4)aliases.add(token); } return [...aliases]; }
@@ -77,22 +90,24 @@
             try{ detail=JSON.parse(raw)?.error||detail; }catch{ if(raw) detail=raw.slice(0,500); }
           }
         }catch{}
+        detail=explainFunctionError(detail);
         setHealth(els.functionHealth,detail,'bad');
         setStatus(`Synchronisierung fehlgeschlagen: ${detail}`,'bad');
         return;
       }
       if(data?.ok===false){
-        const detail=data.error||'Die Sync-Function meldet einen Fehler.';
+        const detail=explainFunctionError(data.error||'Die Sync-Function meldet einen Fehler.');
         setHealth(els.functionHealth,detail,'bad');
         setStatus(`Synchronisierung fehlgeschlagen: ${detail}`,'bad');
         return;
       }
       setHealth(els.functionHealth,`erfolgreich · ${data?.inserted??0} gespeichert`,'good');
-      setHealth(els.providerHealth,data?.provider||'EODHD + RSS','good');
-      setStatus(`${data?.inserted??0} Meldungen gespeichert; ${data?.tracked_instruments??0} Wertpapiere gezielt geprüft.`,'good');
+      const providerErrors=Array.isArray(data?.source_errors)?data.source_errors.length:0;
+      setHealth(els.providerHealth,providerErrors?`${data?.provider||'EODHD'} · ${providerErrors} Teilfehler`:data?.provider||'EODHD Unternehmens-News',providerErrors?'warn':'good');
+      setStatus(`${data?.inserted??0} Meldungen gespeichert; ${data?.tracked_instruments??0} Wertpapiere gezielt geprüft.${providerErrors?` ${providerErrors} Quellenabfragen ohne Treffer/mit Fehler.`:''}`,'good');
       await loadCloudNews();
     } catch (error) {
-      const detail=error instanceof Error?error.message:String(error);
+      const detail=explainFunctionError(error instanceof Error?error.message:String(error));
       setHealth(els.functionHealth,detail,'bad');
       setStatus(`Synchronisierung fehlgeschlagen: ${detail}`,'bad');
     } finally {
@@ -100,7 +115,7 @@
     }
   }
   async function importNews(file){ try{ const parsed=JSON.parse(await file.text()); const incoming=Array.isArray(parsed)?parsed:parsed.news; if(!Array.isArray(incoming))throw new Error('Kein gültiges News-Array.'); const rows=incoming.map(normalize).map(n=>({...n,is_published:true})); const {error}=await sb.from('market_news').upsert(rows,{onConflict:'external_id'}); if(error)throw error; setStatus(`${rows.length} Meldungen importiert.`,'good'); await loadCloudNews(); }catch(e){ setStatus(`Import fehlgeschlagen: ${e.message}`,'bad'); } }
-  function subscribeRealtime(){ if(!sb||!getActiveSession())return; if(realtimeChannel)sb.removeChannel(realtimeChannel); realtimeChannel=sb.channel('market-news-v28-1').on('postgres_changes',{event:'*',schema:'public',table:'market_news'},()=>loadCloudNews()).subscribe(); }
+  function subscribeRealtime(){ if(!sb||!getActiveSession())return; if(realtimeChannel)sb.removeChannel(realtimeChannel); realtimeChannel=sb.channel('market-news-v28-2').on('postgres_changes',{event:'*',schema:'public',table:'market_news'},()=>loadCloudNews()).subscribe(); }
   function applySession(nextSession){
     session=nextSession||null;
     setTimeout(()=>{
