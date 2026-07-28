@@ -1,7 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2.49.8";
 import { corsHeaders, jsonHeaders } from "../_shared/cors.ts";
 
-const BUILD_VERSION = "29.1-portfolio-market-intelligence-alerts";
+const BUILD_VERSION = "29.2-hybrid-portfolio-market-intelligence-alerts";
 
 function env(name: string) {
   return Deno.env.get(name)?.trim() || null;
@@ -137,7 +137,10 @@ Deno.serve(async (req: Request) => {
     const admin = createClient(url, serverKey(), {
       auth: { persistSession: false, autoRefreshToken: false },
     });
-    const since = new Date(Date.now() - 3 * 3_600_000).toISOString();
+    // RSS-Aggregatoren können Meldungen verzögert ausliefern. Das längere
+    // Fenster verhindert verpasste Alarme; news_notification_log verhindert
+    // doppelte Telegram-Nachrichten.
+    const since = new Date(Date.now() - 8 * 3_600_000).toISOString();
     let settingsQuery = admin
       .from("notification_settings")
       .select("user_id,telegram_chat_id,telegram_enabled")
@@ -237,7 +240,12 @@ Deno.serve(async (req: Request) => {
             article.recommended_action ||
             "These, Kursreaktion und Risikobudget prüfen."
           }\n` +
-          `Datenqualität: ${article.data_quality || "nicht bewertet"}\n\n` +
+          `Datenqualität: ${article.data_quality || "nicht bewertet"}\n` +
+          `Quelle: ${article.source_name || "RSS-News"}${
+            article.tags?.includes("RSS")
+              ? " · Originalmeldung vor einer Handlung prüfen"
+              : ""
+          }\n\n` +
           `${article.source_url || ""}`;
 
         await telegram(
@@ -273,7 +281,7 @@ Deno.serve(async (req: Request) => {
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error("send-news-alerts-v29", { requestId, message });
+    console.error("send-news-alerts-v29-2", { requestId, message });
     return Response.json(
       {
         ok: false,
