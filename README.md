@@ -1,36 +1,56 @@
-# Investition Dashboard V28.2 – News-Sync-Fix
+# Investition Dashboard V29.0 – Market Intelligence
 
-V28.2 basiert vollständig auf V28.1 und korrigiert den nicht erreichbaren
-News-Sync.
+V29.0 basiert vollständig auf V28.2. Die Korrekturen für Modal-Überlagerung,
+gemeinsame Supabase-Sitzung, deployfähige Edge Functions und CORS bleiben
+erhalten.
 
-## Behobene Ursachen
+## Neu in V29
 
-- Der für Browser-Aufrufe nötige CORS-Header `x-client-info` ist jetzt erlaubt.
-- `sync-news` und `send-news-alerts` liegen in der von Supabase erwarteten
-  Struktur `supabase/functions/<name>/index.ts`.
-- `supabase/config.toml` enthält die für Cron-Aufrufe nötige
-  Function-Konfiguration. Die Functions prüfen danach selbst wahlweise den
-  angemeldeten Benutzer oder `CRON_SECRET`.
-- EODHD-Unternehmensabfragen verwenden jetzt korrekt den Ticker-Parameter `s`;
-  Themenabfragen verwenden `t`.
-- Ein manueller Sync verarbeitet nur das Portfolio und die Watchlist des
-  angemeldeten Benutzers. Der Cron-Lauf verarbeitet weiterhin alle Benutzer.
-- Das Dashboard zeigt bei fehlendem Deployment, Auth- oder Providerfehlern eine
-  konkrete Meldung.
+- nachvollziehbare Scores von 0 bis 100 für Relevanz, Vertrauen, Auswirkung und
+  Dringlichkeit;
+- persönlicher Relevanzaufschlag für Depot- und Watchlist-Bezug;
+- Einpreisungsindikation aus tatsächlicher Kursreaktion relativ zur üblichen
+  Tagesbewegung;
+- verzögerte Live-Kurse für sehr aktuelle Meldungen und End-of-Day-Reaktionen
+  für ältere Meldungen;
+- Ereignisklassifikation und Wirkungsrichtung;
+- Analystenbild aus erkannten Up-/Downgrades sowie verfügbarem
+  EODHD-Konsenskursziel;
+- konkrete, nach Portfolio/Watchlist und Wirkungsrichtung differenzierte
+  Handlung;
+- sichtbare Datenqualität, Bewertungszeitpunkt und Methodik;
+- V29-Scores in Entscheidungszentrale, Analytics und Telegram;
+- direkter Browser-Aufruf der `sync-news`-Function mit klaren HTTP-Fehlern;
+- Teilfehlertoleranz: News werden auch gespeichert, wenn einzelne Kurs- oder
+  Fundamentalendpunkte nicht verfügbar sind;
+- V28-Kompatibilitätsmodus, falls das neue SQL-Schema beim ersten Test noch
+  fehlt.
 
-Die V28.1-Korrektur für die Modal-Überlagerung bleibt vollständig erhalten.
+## Bewertungsprinzip
+
+Die Bewertung ist regel- und datenbasiert. Sie kombiniert:
+
+1. direkten Symbol-, Depot- oder Watchlist-Bezug;
+2. Ereignistyp und Schlüsselbegriffe;
+3. EODHD-News-Sentiment;
+4. Aktualität;
+5. beobachtete Kursreaktion und Normalbewegung;
+6. verfügbare Konsenskursziel- beziehungsweise Analystensignale.
+
+Einpreisung wird ausdrücklich als Indikation dargestellt, nicht als beweisbare
+Tatsache. Bei fehlender Datengrundlage erfindet das Dashboard keine Aussage,
+sondern zeigt `unklar` oder `nicht verfügbar`.
 
 ## Installation
 
-Die genaue Schrittfolge steht in
-[`INSTALLATION-V28.2.md`](./INSTALLATION-V28.2.md).
+Die vollständige Schrittfolge steht in
+[`INSTALLATION-V29.md`](./INSTALLATION-V29.md).
 
 Kurzfassung:
 
-1. Paketinhalt in das Hauptverzeichnis des GitHub-Repositories hochladen.
-2. Die beiden Supabase Edge Functions deployen.
-3. Dashboard-Cache über `reset.html?v=28.2` zurücksetzen.
-4. Unter **News Feed → Feed aktualisieren** testen.
-
-Für die manuelle Aktualisierung ist keine erneute Ausführung der SQL-Schemata
-erforderlich, wenn V26 und V28 bereits vollständig eingerichtet wurden.
+1. Paketinhalt in das GitHub-Repository laden.
+2. `version29-market-intelligence-schema.sql` in Supabase ausführen.
+3. unter GitHub **Actions → Supabase Functions deployen → Run workflow**
+   starten;
+4. `reset.html?v=29.0` öffnen;
+5. unter **News Feed → Feed aktualisieren** testen.

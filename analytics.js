@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const VERSION = '28.2';
+  const VERSION = '29.0';
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
   const page = $('#analyticsPage');
@@ -193,11 +193,15 @@
       const time = new Date(item.published_at || item.created_at || 0).getTime();
       return time >= cutoff && newsMatchesPosition(item, position);
     });
-    const positive = rows.filter(item => num(item.sentiment, 0) > .15).length;
-    const negative = rows.filter(item => num(item.sentiment, 0) < -.15).length;
-    const high = rows.filter(item => String(item.impact || '').toLowerCase() === 'hoch').length;
-    const score = rows.reduce((sum, item) => sum + num(item.sentiment, 0), 0);
-    return {rows, positive, negative, high, score};
+    const positive = rows.filter(item => item.direction === 'positiv' || num(item.sentiment, 0) > .15).length;
+    const negative = rows.filter(item => item.direction === 'negativ' || num(item.sentiment, 0) < -.15).length;
+    const high = rows.filter(item => num(item.relevance_score, 0) >= 78 || String(item.impact || '').toLowerCase() === 'hoch').length;
+    const openPricing = rows.filter(item => ['eher_nicht','zu_frueh','unklar'].includes(String(item.priced_in_state || 'unklar'))).length;
+    const score = rows.reduce((sum, item) => {
+      const direction = item.direction === 'positiv' ? 1 : item.direction === 'negativ' ? -1 : num(item.sentiment, 0);
+      return sum + direction * Math.max(.35, num(item.impact_score, 50) / 100);
+    }, 0);
+    return {rows, positive, negative, high, openPricing, score};
   }
 
   function weightedTarget(tradeId) {
@@ -335,10 +339,10 @@
 
   function newsMatrix() {
     if (!state.positions.length) return '<div class="analytics-empty">Keine Depotpositionen für die News-Matrix.</div>';
-    return `<div class="table-shell-v28"><table><thead><tr><th>Instrument</th><th>30 Tage</th><th>Positiv</th><th>Negativ</th><th>Hohe Relevanz</th><th>Tendenz</th></tr></thead><tbody>${state.positions.map(position => {
+    return `<div class="table-shell-v28"><table><thead><tr><th>Instrument</th><th>30 Tage</th><th>Positiv</th><th>Negativ</th><th>Hohe Relevanz</th><th>Einpreisung offen</th><th>Tendenz</th></tr></thead><tbody>${state.positions.map(position => {
       const stats = newsStats(position, 30);
       const trend = stats.score > .3 ? 'positiv' : stats.score < -.3 ? 'negativ' : 'neutral';
-      return `<tr><td><strong>${escapeHtml(position.name)}</strong><div class="cell-sub">${escapeHtml(position.symbol)}</div></td><td>${stats.rows.length}</td><td class="positive-text">${stats.positive}</td><td class="negative-text">${stats.negative}</td><td>${stats.high}</td><td><span class="chip ${trend === 'positiv' ? 'good' : trend === 'negativ' ? 'bad' : 'neutral'}">${trend}</span></td></tr>`;
+      return `<tr><td><strong>${escapeHtml(position.name)}</strong><div class="cell-sub">${escapeHtml(position.symbol)}</div></td><td>${stats.rows.length}</td><td class="positive-text">${stats.positive}</td><td class="negative-text">${stats.negative}</td><td>${stats.high}</td><td>${stats.openPricing}</td><td><span class="chip ${trend === 'positiv' ? 'good' : trend === 'negativ' ? 'bad' : 'neutral'}">${trend}</span></td></tr>`;
     }).join('')}</tbody></table></div>`;
   }
 
@@ -389,7 +393,7 @@
       <article class="card analytics-panel span-5"><div class="analytics-panel-head"><div><h3>Signal-Labor</h3><p>Historische Auswertung gespeicherter Signale</p></div></div><div class="signal-lab-grid"><div><span>Trefferquote</span><strong>${pct(lab.hitRate)}</strong></div><div><span>Ø 1 Tag</span><strong class="${lab.avg1d < 0 ? 'negative-text':'positive-text'}">${pct(lab.avg1d)}</strong></div><div><span>Ø 5 Tage</span><strong class="${lab.avg5d < 0 ? 'negative-text':'positive-text'}">${pct(lab.avg5d)}</strong></div><div><span>Ø 20 Tage</span><strong class="${lab.avg20d < 0 ? 'negative-text':'positive-text'}">${pct(lab.avg20d)}</strong></div></div><p class="analytics-note">Die Kennzahlen basieren auf <strong>${lab.total}</strong> Outcome-Datensätzen. Leere Zeiträume werden nicht hochgerechnet.</p></article>
       <article class="card analytics-panel span-12"><div class="analytics-panel-head"><div><h3>Analysten-Revisionen</h3><p>Rating- und Kurszielhistorie je Analyse</p></div><span class="chip ${state.analyticsSchemaReady?'good':'warn'}">${state.analyticsSchemaReady?'Cloud aktiv':'Schema fehlt'}</span></div>${analystSection()}</article>
       <article class="card analytics-panel span-6"><div class="analytics-panel-head"><div><h3>Regionen</h3><p>Aktuelle Exponierung</p></div></div><div class="exposure-list-v28">${regions.map(group=>`<div><span>${escapeHtml(group.label)}</span><div><i style="width:${group.pct.toFixed(2)}%"></i></div><b>${pct(group.pct)}</b></div>`).join('') || '<div class="analytics-empty">Keine Regionen zugeordnet.</div>'}</div></article>
-      <article class="card analytics-panel span-6"><div class="analytics-panel-head"><div><h3>Datenqualität</h3><p>Quellen und Installationsstand</p></div></div><div class="quality-list"><div><span>Depotpositionen</span><b class="${state.positions.length?'positive-text':'negative-text'}">${state.positions.length}</b></div><div><span>Analysen</span><b>${state.trades.length}</b></div><div><span>News</span><b>${state.news.length}</b></div><div><span>Ereignisse</span><b>${state.events.length}</b></div><div><span>Analystenrevisionen</span><b>${state.revisions.length}</b></div><div><span>Letzte Aktualisierung</span><b>${dateText(state.lastLoadedAt,true)}</b></div></div>${state.errors.length ? `<details class="analytics-errors"><summary>${state.errors.length} Tabellenhinweis(e)</summary>${state.errors.map(error=>`<p>${escapeHtml(error)}</p>`).join('')}</details>` : ''}</article>
+      <article class="card analytics-panel span-6"><div class="analytics-panel-head"><div><h3>Datenqualität</h3><p>Quellen und Installationsstand</p></div></div><div class="quality-list"><div><span>Depotpositionen</span><b class="${state.positions.length?'positive-text':'negative-text'}">${state.positions.length}</b></div><div><span>Analysen</span><b>${state.trades.length}</b></div><div><span>News</span><b>${state.news.length}</b></div><div><span>V29 bewertet</span><b class="${state.news.some(item=>String(item.assessment_version||'').startsWith('29.'))?'positive-text':'negative-text'}">${state.news.filter(item=>String(item.assessment_version||'').startsWith('29.')).length}</b></div><div><span>Ereignisse</span><b>${state.events.length}</b></div><div><span>Analystenrevisionen</span><b>${state.revisions.length}</b></div><div><span>Letzte Aktualisierung</span><b>${dateText(state.lastLoadedAt,true)}</b></div></div>${state.errors.length ? `<details class="analytics-errors"><summary>${state.errors.length} Tabellenhinweis(e)</summary>${state.errors.map(error=>`<p>${escapeHtml(error)}</p>`).join('')}</details>` : ''}</article>
     </section>`;
 
     $$('[data-analytics-trade]', content).forEach(button => button.addEventListener('click', () => openTrade(button.dataset.analyticsTrade)));
