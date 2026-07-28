@@ -6,17 +6,20 @@ import {
   type PriceBar,
 } from "../_shared/market-intelligence.ts";
 import {
-  bingNewsRssUrl,
   cacheIsFresh,
+  gdeltDocUrl,
   googleNewsRssUrl,
+  parseGdeltJson,
   parseRss,
   parseStooqCsv,
+  publisherFeeds,
   rotateForUtcDay,
   stooqHistoryUrl,
   stooqSymbol,
+  yahooFinanceRssUrl,
 } from "../_shared/hybrid-sources.ts";
 
-const BUILD_VERSION = "29.2-hybrid-market-intelligence-sync";
+const BUILD_VERSION = "29.3-multisource-hybrid-market-intelligence-sync";
 const DAY = 86_400_000;
 
 type Ref = {
@@ -45,6 +48,7 @@ type FeedQuery = {
   label: string;
   topic: string;
   refKeys: string[];
+  marketSymbols: string[];
 };
 
 type ReceivedArticle = {
@@ -69,6 +73,7 @@ type PreparedArticle = {
   sourceUrl: string;
   sourceName: string;
   feedProvider: string;
+  newsSourceKind: "open_news_index" | "publisher_feed" | "rss_aggregator";
   symbols: string[];
   tags: string[];
   topic: string;
@@ -113,6 +118,12 @@ function integerEnv(
   return Number.isFinite(parsed)
     ? Math.min(maximum, Math.max(minimum, Math.floor(parsed)))
     : fallback;
+}
+
+function booleanEnv(name: string, fallback = false) {
+  const value = env(name);
+  if (!value) return fallback;
+  return /^(1|true|yes|ja|on)$/i.test(value);
 }
 
 function jsonKey(name: string) {
@@ -333,8 +344,9 @@ async function fetchText(
     try {
       const response = await fetch(url, {
         headers: {
-          Accept: "application/rss+xml, application/xml, text/xml, text/csv, */*",
-          "User-Agent": "Investition-Dashboard/29.2 (+RSS market monitor)",
+          Accept:
+            "application/json, application/feed+json, application/rss+xml, application/atom+xml, application/xml, text/xml, text/csv, */*",
+          "User-Agent": "Investition-Dashboard/29.3 (+market monitor)",
         },
         signal: controller.signal,
       });
@@ -421,15 +433,19 @@ function buildFeedQueries(portfolio: Ref[], watchlist: Ref[]) {
     label: ref.name,
     topic: "Unternehmen",
     refKeys: [ref.__key!],
+    marketSymbols: [
+      norm(ref.market_symbol || ref.symbol),
+    ].filter(Boolean),
   }));
   const topicQueries: FeedQuery[] = [
     {
       key: "topic:ki",
       value:
-        '("artificial intelligence" OR "künstliche Intelligenz" OR AI OR KI) (stocks OR Aktien OR investment)',
+        '("artificial intelligence" OR "künstliche Intelligenz" OR "AI technology") (stocks OR Aktien OR investment)',
       label: "KI",
       topic: "KI",
       refKeys: [],
+      marketSymbols: [],
     },
     {
       key: "topic:halbleiter",
@@ -438,6 +454,7 @@ function buildFeedQueries(portfolio: Ref[], watchlist: Ref[]) {
       label: "Halbleiter",
       topic: "Halbleiter",
       refKeys: [],
+      marketSymbols: [],
     },
     {
       key: "topic:energie",
@@ -446,6 +463,7 @@ function buildFeedQueries(portfolio: Ref[], watchlist: Ref[]) {
       label: "Energie",
       topic: "Energie",
       refKeys: [],
+      marketSymbols: [],
     },
     {
       key: "topic:makro",
@@ -454,6 +472,7 @@ function buildFeedQueries(portfolio: Ref[], watchlist: Ref[]) {
       label: "Makro",
       topic: "Makro",
       refKeys: [],
+      marketSymbols: [],
     },
     {
       key: "topic:eurusd",
@@ -462,6 +481,7 @@ function buildFeedQueries(portfolio: Ref[], watchlist: Ref[]) {
       label: "EUR/USD",
       topic: "EUR/USD",
       refKeys: [],
+      marketSymbols: [],
     },
   ];
   const limit = integerEnv("RSS_QUERY_LIMIT", 30, 5, 60);
@@ -478,28 +498,62 @@ async function fetchFeedQuery(
   sourceErrors: string[],
 ) {
   const attemptErrors: string[] = [];
-  const attempts = [
+  const attempts: {
+    provider: string;
+    load: () => Promise<ReturnType<typeof parseRss>>;
+  }[] = [
     {
-      provider: "Google News RSS",
-      url: googleNewsRssUrl(query.value, lookbackDays),
-    },
-    {
-      provider: "Bing News RSS",
-      url: bingNewsRssUrl(query.value),
+      provider: "GDELT Global News",
+      load: async () =>
+        parseGdeltJson(
+          await fetchJson(
+            gdeltDocUrl(
+              query.value,
+              lookbackDays,
+              integerEnv("GDELT_MAX_RECORDS", 30, 5, 50),
+            ),
+            `GDELT ${query.label}`,
+            15_000,
+          ),
+        ),
     },
   ];
+  const yahooUrl = yahooFinanceRssUrl(query.marketSymbols);
+  if (yahooUrl) {
+    attempts.push({
+      provider: "Yahoo Finance RSS",
+      load: async () =>
+        parseRss(
+          await fetchText(
+            yahooUrl,
+            `Yahoo Finance RSS ${query.label}`,
+            10_000,
+            1,
+          ),
+          "Yahoo Finance",
+        ),
+    });
+  }
+  if (booleanEnv("GOOGLE_NEWS_RSS_ENABLED", false)) {
+    attempts.push({
+      provider: "Google News RSS",
+      load: async () =>
+        parseRss(
+          await fetchText(
+            googleNewsRssUrl(query.value, lookbackDays),
+            `Google News RSS ${query.label}`,
+            10_000,
+            1,
+          ),
+          "Google News RSS",
+        ),
+    });
+  }
+
   for (const attempt of attempts) {
     try {
-      const xml = await fetchText(
-        attempt.url,
-        `${attempt.provider} ${query.label}`,
-        10_000,
-        1,
-      );
-      const articles = parseRss(xml, attempt.provider);
-      if (!articles.length) {
-        throw new Error(`${attempt.provider} ${query.label}: keine RSS-Einträge.`);
-      }
+      const articles = await attempt.load();
+      if (!articles.length) continue;
       return articles.map((article) => ({
         ...article,
         feedProvider: attempt.provider,
@@ -512,10 +566,65 @@ async function fetchFeedQuery(
       attemptErrors.push(safeError(error));
     }
   }
-  sourceErrors.push(
-    `${query.label}: ${attemptErrors.join(" | ")}`.slice(0, 1_200),
-  );
+  if (attemptErrors.length) {
+    sourceErrors.push(
+      `${query.label}: ${attemptErrors.join(" | ")}`.slice(0, 1_200),
+    );
+  }
   return [] as ReceivedArticle[];
+}
+
+async function fetchPublisherArticles(
+  tracked: Ref[],
+  lookbackDays: number,
+  sourceErrors: string[],
+) {
+  const minimumPublishedAt = Date.now() - (lookbackDays + 1) * DAY;
+  const received: ReceivedArticle[] = [];
+  await mapLimit(publisherFeeds(), 3, async (feed) => {
+    try {
+      const xml = await fetchText(
+        feed.url,
+        `${feed.provider} Direktfeed`,
+        12_000,
+        1,
+      );
+      const articles = parseRss(xml, feed.provider);
+      if (!articles.length) {
+        throw new Error(`${feed.provider} Direktfeed: keine Einträge.`);
+      }
+      for (const article of articles) {
+        if (new Date(article.publishedAt).getTime() < minimumPublishedAt) {
+          continue;
+        }
+        const text = `${article.title} ${article.description}`;
+        const matchedRefs = tracked.filter((ref) =>
+          matchRef(text, [], ref)
+        );
+        const derivedTopic = feed.forcedTopic ||
+          topicFrom([], [], text);
+        if (
+          !feed.forcedTopic &&
+          !matchedRefs.length &&
+          derivedTopic === "Unternehmen"
+        ) {
+          continue;
+        }
+        received.push({
+          ...article,
+          feedProvider: `${feed.provider} Direktfeed`,
+          queryKeys: [`publisher:${feed.provider}`],
+          queryLabels: [feed.provider],
+          topics: [derivedTopic],
+          refKeys: matchedRefs.map((ref) => String(ref.__key)).filter(Boolean),
+        });
+      }
+    } catch (error) {
+      sourceErrors.push(safeError(error).slice(0, 1_200));
+    }
+    return null;
+  });
+  return received;
 }
 
 async function eodhdHistory(
@@ -794,7 +903,7 @@ Deno.serve(async (req: Request) => {
     const sourceErrors: string[] = [];
     const received: ReceivedArticle[] = [];
 
-    await mapLimit(feedQueries, 5, async (query) => {
+    await mapLimit(feedQueries, 2, async (query) => {
       const articles = await fetchFeedQuery(query, lookbackDays, sourceErrors);
       received.push(
         ...articles.filter((article) =>
@@ -804,9 +913,14 @@ Deno.serve(async (req: Request) => {
       return null;
     });
 
-    if (!received.length) {
-      throw new Error(
-        `Keine RSS-News geladen. ${sourceErrors.slice(-6).join(" | ")}`,
+    received.push(
+      ...await fetchPublisherArticles(tracked, lookbackDays, sourceErrors),
+    );
+
+    const sourceDegraded = !received.length;
+    if (sourceDegraded) {
+      sourceErrors.push(
+        "Keine aktuelle Meldung aus GDELT, Yahoo Finance oder den Direktfeeds; der Lauf bleibt aktiv und vorhandene Meldungen bleiben unverändert.",
       );
     }
 
@@ -877,7 +991,7 @@ Deno.serve(async (req: Request) => {
       ].slice(0, 16);
       prepared.push({
         externalId: await sha256(
-          `hybrid-rss|${article.guid}|${article.title}`,
+          `hybrid-multisource|${article.guid}|${article.title}`,
         ),
         title: article.title,
         content: article.description,
@@ -885,6 +999,11 @@ Deno.serve(async (req: Request) => {
         sourceUrl: article.link,
         sourceName: article.sourceName,
         feedProvider: article.feedProvider,
+        newsSourceKind: article.feedProvider === "GDELT Global News"
+          ? "open_news_index"
+          : article.feedProvider.endsWith(" Direktfeed")
+          ? "publisher_feed"
+          : "rss_aggregator",
         symbols: querySymbols,
         tags: article.queryLabels,
         topic,
@@ -971,7 +1090,7 @@ Deno.serve(async (req: Request) => {
       if (!missingHybridSchema(error)) throw error;
       hybridSchemaReady = false;
       marketWarnings.push(
-        "V29.2-Hybrid-Schema fehlt; RSS läuft, Kurscache und Tagesbudget sind bis zur Migration nicht aktiv.",
+        "Hybrid-Schema fehlt; News laufen, Kurscache und Tagesbudget sind bis zur Migration nicht aktiv.",
       );
     }
 
@@ -1076,7 +1195,7 @@ Deno.serve(async (req: Request) => {
           if (!missingHybridSchema(error)) throw error;
           hybridSchemaReady = false;
           marketWarnings.push(
-            "V29.2-Budgetfunktion fehlt; zum Schutz des Free-Tarifs wurden keine EODHD-Aufrufe ausgeführt.",
+            "Hybrid-Budgetfunktion fehlt; zum Schutz des Free-Tarifs wurden keine EODHD-Aufrufe ausgeführt.",
           );
           break;
         }
@@ -1117,7 +1236,7 @@ Deno.serve(async (req: Request) => {
       }
     } else if (token && !hybridSchemaReady && refreshOrder.length) {
       marketWarnings.push(
-        "Direkte EODHD-Kurse wurden ohne V29.2-Budgettabelle vorsorglich nicht abgerufen.",
+        "Direkte EODHD-Kurse wurden ohne Hybrid-Budgettabelle vorsorglich nicht abgerufen.",
       );
     }
 
@@ -1166,7 +1285,7 @@ Deno.serve(async (req: Request) => {
         priceBars: historyMap.get(key) || null,
         liveQuote: null,
         fundamentals: null,
-        newsSourceKind: "rss_aggregator",
+        newsSourceKind: article.newsSourceKind,
         priceProvider: providerMap.get(key) || null,
         priceContextUpdatedAt: cacheUpdatedMap.get(key) || null,
       });
@@ -1227,8 +1346,9 @@ Deno.serve(async (req: Request) => {
       version: BUILD_VERSION,
       request_id: requestId,
       provider:
-        "Kostenlose RSS-News + EODHD-Tagescache + Stooq-Markt-Proxys",
+        "GDELT + Direktfeeds + Yahoo-Fallback + EODHD-Tagescache + Stooq",
       auth_mode: auth.mode,
+      degraded: sourceDegraded,
       schema_ready: intelligenceSchemaReady && hybridSchemaReady,
       intelligence_schema_ready: intelligenceSchemaReady,
       hybrid_schema_ready: hybridSchemaReady,
@@ -1293,7 +1413,7 @@ Deno.serve(async (req: Request) => {
     return Response.json(responseBody, { headers: jsonHeaders });
   } catch (error) {
     const message = safeError(error);
-    console.error("sync-news-v29-2", { requestId, message });
+    console.error("sync-news-v29-3", { requestId, message });
     if (admin) {
       try {
         await recordSyncRun(admin, {
@@ -1303,7 +1423,7 @@ Deno.serve(async (req: Request) => {
           auth_mode: authMode,
           version: BUILD_VERSION,
           provider:
-            "Kostenlose RSS-News + EODHD-Tagescache + Stooq-Markt-Proxys",
+            "GDELT + Direktfeeds + Yahoo-Fallback + EODHD-Tagescache + Stooq",
           inserted: 0,
           assessed: 0,
           rss_articles: 0,
