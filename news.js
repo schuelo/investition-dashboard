@@ -1,5 +1,5 @@
 (() => {
-  const VERSION = '29.1';
+  const VERSION = '29.2';
   const SUPABASE_URL = 'https://pzhfybtoyfttftgcrcxk.supabase.co';
   const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_yGiDH_M0fUZglk40fCk7cQ_kkL1XKzj';
   const READ_KEY = 'investition-news-read-v29';
@@ -70,6 +70,7 @@
     ? dashboardApi.getSession()
     : null;
   let realtimeChannel = null;
+  let syncHealthTimer = null;
   let readIds = loadReadIds();
   let portfolio = [];
   let watchlist = [];
@@ -238,10 +239,10 @@
   function explainFunctionError(value) {
     const detail = String(value || 'Unbekannter Fehler').trim();
     if (/abort|timeout|zeitüberschreitung/i.test(detail)) {
-      return 'Sync dauerte zu lange. Erneut versuchen; bei vielen Wertpapieren EODHD-Limit und Function-Logs prüfen.';
+      return 'Sync dauerte zu lange. Erneut versuchen; bei vielen RSS-Suchen die Function-Logs prüfen.';
     }
     if (/failed to fetch|failed to send|functionsfetcherror|fetch failed|load failed|networkerror/i.test(detail)) {
-      return 'Sync-Function nicht erreichbar. V29-Function deployen und Browser-/CORS-Verbindung prüfen.';
+      return 'Sync-Function nicht erreichbar. V29.2-Function deployen und Browser-/CORS-Verbindung prüfen.';
     }
     if (/not found|404/i.test(detail)) {
       return 'Edge Function „sync-news“ ist nicht deployt oder falsch benannt.';
@@ -249,14 +250,14 @@
     if (/unauthorized|401|invalid jwt/i.test(detail)) {
       return 'Anmeldung für die Sync-Function abgelehnt. Bitte neu anmelden und erneut versuchen.';
     }
-    if (/eodhd_api_token.*fehlt/i.test(detail)) {
-      return 'Supabase Function-Secret EODHD_API_TOKEN fehlt.';
-    }
-    if (/429|rate limit|api limit/i.test(detail)) {
-      return 'EODHD-Aufrufslimit erreicht. Später erneut versuchen oder Tarif-/API-Limit prüfen.';
+    if (/keine rss-news|google news rss|bing news rss/i.test(detail)) {
+      return 'Die kostenlosen RSS-Quellen lieferten vorübergehend keine Meldungen. Der vorhandene Feed bleibt erhalten; später erneut versuchen.';
     }
     if (/assessment_version|relevance_score|priced_in_state|version29-market-intelligence-schema/i.test(detail)) {
       return 'V29-Bewertungsschema fehlt. version29-market-intelligence-schema.sql im Supabase SQL Editor ausführen.';
+    }
+    if (/hybrid_market_cache|hybrid_api_usage|reserve_hybrid_eodhd_calls|version29-2-hybrid-schema/i.test(detail)) {
+      return 'V29.2-Hybrid-Schema fehlt. version29-2-hybrid-schema.sql im Supabase SQL Editor ausführen.';
     }
     return detail;
   }
@@ -503,6 +504,13 @@
         ? `Kursvergleich: ${basis.price_context_symbol}${basis.price_context_kind === 'proxy' ? ' (Markt-Proxy)' : ' (direkt)'}`
         : '',
       basis.price_source ? `Kursquelle: ${basis.price_source === 'live_delayed' ? 'verzögerter Live-Kurs' : basis.price_source === 'eod' ? 'End-of-Day' : 'keine'}` : '',
+      basis.price_provider ? `Kursanbieter: ${basis.price_provider}` : '',
+      basis.price_context_updated_at
+        ? `Kurscache aktualisiert: ${dateTime(basis.price_context_updated_at)}`
+        : '',
+      basis.news_source_kind === 'rss_aggregator'
+        ? 'Nachrichtenzugang: kostenloser RSS-Aggregator'
+        : '',
       basis.price_availability
         ? `Kursstatus: ${basis.price_availability === 'available' ? 'verfügbar' : basis.price_availability === 'awaiting_session' ? 'nächste Handelssitzung ausstehend' : 'nicht verfügbar'}`
         : '',
@@ -687,6 +695,68 @@
     analystRevisions = revisionsResult.error ? [] : (revisionsResult.data || []);
   }
 
+  async function loadAutomaticSyncHealth() {
+    if (!sb || !getActiveSession()) return;
+    const {data, error} = await sb
+      .from('news_sync_runs')
+      .select('finished_at,ok,auth_mode,version,inserted,assessed,rss_articles,eodhd_calls,warning_count,error_message,details')
+      .order('finished_at', {ascending:false})
+      .limit(1)
+      .maybeSingle();
+    if (error) {
+      if (/news_sync_runs|schema cache|does not exist/i.test(error.message || '')) {
+        setHealth(
+          els.functionHealth,
+          'V29.2-Hybrid-Schema ausführen',
+          'warn'
+        );
+      }
+      return;
+    }
+    if (!data) {
+      setHealth(els.functionHealth, 'noch kein Hintergrundlauf', 'warn');
+      return;
+    }
+    let details = data.details;
+    if (typeof details === 'string') {
+      try { details = JSON.parse(details); } catch { details = {}; }
+    }
+    details = details && typeof details === 'object' ? details : {};
+    const mode = data.auth_mode === 'cron' ? 'automatisch' : 'manuell';
+    setHealth(
+      els.functionHealth,
+      data.ok
+        ? `${mode} · ${dateTime(data.finished_at)} · ${data.inserted || 0} gespeichert`
+        : `${mode} · Fehler ${dateTime(data.finished_at)}`,
+      data.ok ? (data.warning_count ? 'warn' : 'good') : 'bad'
+    );
+    if (data.ok) {
+      const used = numberOr(details.eodhd_calls_used_today, data.eodhd_calls || 0);
+      const budget = numberOr(details.eodhd_daily_budget, 6);
+      setHealth(
+        els.providerHealth,
+        `${data.rss_articles || 0} RSS-Treffer · ${details.rss_source_count || 0} Quellen · ${details.historical_symbols || 0} Kursreihen · EODHD ${used}/${budget} heute`,
+        data.warning_count ? 'warn' : 'good'
+      );
+    } else if (data.error_message) {
+      setHealth(els.providerHealth, explainFunctionError(data.error_message), 'bad');
+    }
+  }
+
+  function startSyncHealthPolling() {
+    if (syncHealthTimer) clearInterval(syncHealthTimer);
+    syncHealthTimer = setInterval(() => {
+      if (!document.hidden && getActiveSession()) {
+        loadAutomaticSyncHealth();
+      }
+    }, 60_000);
+  }
+
+  function stopSyncHealthPolling() {
+    if (syncHealthTimer) clearInterval(syncHealthTimer);
+    syncHealthTimer = null;
+  }
+
   async function loadCloudNews(options = {}) {
     const active = await resolveSession();
     if (!sb || !active) {
@@ -737,6 +807,7 @@
         : 'V29-Schema/Sync prüfen',
       assessed ? 'good' : 'warn'
     );
+    await loadAutomaticSyncHealth();
     els.lastUpdated.textContent = items[0]
       ? `Neueste Meldung: ${dateTime(items[0].published_at)}`
       : 'Noch keine Meldungen';
@@ -766,7 +837,7 @@
           apikey:SUPABASE_PUBLISHABLE_KEY,
           Authorization:`Bearer ${active.access_token}`
         },
-        body:JSON.stringify({force:true, portfolio:true, relink:true, intelligence:true}),
+        body:JSON.stringify({mode:'hybrid', force:true, portfolio:true, intelligence:true}),
         signal:controller.signal
       });
       const raw = await response.text();
@@ -788,9 +859,9 @@
       return;
     }
     els.sync.disabled = true;
-    setHealth(els.functionHealth, 'News und Marktdaten werden bewertet …', 'warn');
+    setHealth(els.functionHealth, 'RSS-News und Tageskurse werden bewertet …', 'warn');
     setHealth(els.assessmentHealth, 'Bewertung läuft …', 'warn');
-    setStatus('Portfolio-, Watchlist-, Branchen- und Marktnachrichten werden synchronisiert und bewertet …');
+    setStatus('Kostenlose RSS-Quellen werden für Portfolio, Watchlist, Branchen und Märkte synchronisiert und bewertet …');
     try {
       const data = await invokeSyncFunction(active);
       if (data?.ok === false) {
@@ -811,25 +882,32 @@
       );
       setHealth(
         els.providerHealth,
-        `${data?.historical_symbols ?? 0}/${data?.market_context_symbols ?? 0} Kursreihen · ${data?.live_quote_symbols ?? 0} Live-Kurse · ${data?.proxy_context_symbols ?? 0} Markt-Proxys · ${data?.fundamentals_symbols ?? 0} Fundamentals${sourceErrors ? ` · ${sourceErrors} News-Teilfehler` : ''}`,
+        `${data?.received ?? 0} RSS-Treffer · ${data?.rss_source_count ?? 0} Quellen · ${data?.historical_symbols ?? 0}/${data?.market_context_symbols ?? 0} Kursreihen · ${data?.proxy_context_symbols ?? 0} Markt-Proxys · EODHD ${data?.eodhd_calls_used_today ?? data?.eodhd_calls_reserved ?? 0}/${data?.eodhd_daily_budget ?? 6} heute${sourceErrors ? ` · ${sourceErrors} RSS-Teilfehler` : ''}`,
         sourceErrors || warnings ? 'warn' : 'good'
       );
       setHealth(
         els.assessmentHealth,
         data?.schema_ready === false
-          ? 'SQL-Migration erforderlich'
+          ? data?.hybrid_schema_ready === false
+            ? 'V29.2-Hybrid-Schema erforderlich'
+            : 'V29-Bewertungsschema erforderlich'
           : `${data?.assessed ?? 0} bewertet · ${measurable} Einpreisungen · ${pricing.zu_frueh || 0} zu früh · ${pricing.unklar || 0} nicht messbar`,
         data?.schema_ready === false ? 'bad' : 'good'
       );
       await loadCloudNews({quiet:true});
-      if (data?.schema_ready === false) {
+      if (data?.hybrid_schema_ready === false) {
+        setStatus(
+          `${data?.inserted ?? 0} RSS-Meldungen gespeichert und bewertet. Für Tagesbudget, Kurscache und sichtbare automatische Laufzeiten jetzt version29-2-hybrid-schema.sql ausführen und danach erneut synchronisieren.`,
+          'bad'
+        );
+      } else if (data?.intelligence_schema_ready === false) {
         setStatus(
           `${data?.inserted ?? 0} Meldungen gespeichert, aber nur im V28-Kompatibilitätsmodus. Jetzt version29-market-intelligence-schema.sql ausführen und danach erneut synchronisieren.`,
           'bad'
         );
       } else {
         setStatus(
-          `${data?.inserted ?? 0} Meldungen gespeichert und bewertet; ${data?.tracked_instruments ?? 0} Wertpapiere geprüft; ${measurable} Einpreisungen abgeleitet; ${pricing.zu_frueh || 0} warten auf die nächste Handelssitzung; ${pricing.unklar || 0} ohne verwertbare Kursdaten; ${data?.analyst_articles ?? 0} mit Analystenkontext.${sourceErrors || warnings ? ` ${sourceErrors + warnings} Teilhinweis(e) – der übrige Sync war erfolgreich.` : ''}`,
+          `${data?.inserted ?? 0} RSS-Meldungen gespeichert und bewertet; ${data?.tracked_instruments ?? 0} Wertpapiere geprüft; ${measurable} Einpreisungen abgeleitet; ${pricing.zu_frueh || 0} warten auf die nächste Handelssitzung; ${pricing.unklar || 0} ohne verwertbare Kursdaten; ${data?.analyst_articles ?? 0} mit erkanntem Analystensignal.${sourceErrors || warnings ? ` ${sourceErrors + warnings} Teilhinweis(e) – RSS-Sync und übrige Bewertungen waren erfolgreich.` : ''}`,
           sourceErrors || warnings ? 'warn' : 'good'
         );
       }
@@ -879,8 +957,10 @@
     setTimeout(() => {
       if (session) {
         subscribeRealtime();
+        startSyncHealthPolling();
         loadCloudNews();
       } else {
+        stopSyncHealthPolling();
         if (realtimeChannel) {
           sb?.removeChannel(realtimeChannel);
           realtimeChannel = null;
@@ -903,6 +983,7 @@
     const initial = await resolveSession();
     if (initial) {
       subscribeRealtime();
+      startSyncHealthPolling();
       await loadCloudNews();
     }
     window.addEventListener('investition:auth-changed', event =>
@@ -913,6 +994,9 @@
       if (active) applySession(active);
     });
     sb.auth.onAuthStateChange((_event, nextSession) => applySession(nextSession));
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && getActiveSession()) loadAutomaticSyncHealth();
+    });
   }
 
   els.navTrading.onclick = () => showPage('trading');
