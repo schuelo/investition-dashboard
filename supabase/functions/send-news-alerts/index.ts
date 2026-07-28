@@ -1,7 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2.49.8";
 import { corsHeaders, jsonHeaders } from "../_shared/cors.ts";
 
-const BUILD_VERSION = "29.2-hybrid-portfolio-market-intelligence-alerts";
+const BUILD_VERSION = "29.3-multisource-hybrid-portfolio-market-intelligence-alerts";
 
 function env(name: string) {
   return Deno.env.get(name)?.trim() || null;
