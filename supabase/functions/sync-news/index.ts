@@ -8,7 +8,7 @@ import {
   type PriceBar,
 } from "../_shared/market-intelligence.ts";
 
-const BUILD_VERSION = "29.0-market-intelligence-sync";
+const BUILD_VERSION = "29.1-market-intelligence-sync";
 const DAY = 86_400_000;
 
 type Ref = {
@@ -45,6 +45,8 @@ type PreparedArticle = {
   topic: string;
   scope: NewsScope;
   primarySymbol: string | null;
+  priceContextSymbol: string | null;
+  priceContextKind: "direct" | "proxy" | null;
   linkedSymbols: string[];
   portfolioHits: Ref[];
   watchlistHits: Ref[];
@@ -136,6 +138,12 @@ async function sha256(value: string) {
 
 function norm(value: unknown) {
   return String(value || "").replace(/\s+/g, " ").trim();
+}
+
+function nullableNumber(value: unknown) {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 function searchText(value: unknown) {
@@ -238,6 +246,18 @@ function primarySymbolFor(
   const articleSymbol = articleSymbols.find((symbol) => /\.[A-Z0-9-]+$/i.test(symbol));
   if (articleSymbol) return articleSymbol;
   return queries.find((query) => /\.[A-Z0-9-]+$/i.test(query)) || null;
+}
+
+function proxySymbolFor(topic: string) {
+  const proxies: Record<string, string> = {
+    KI: "QQQ.US",
+    Halbleiter: "SOXX.US",
+    Energie: "XLE.US",
+    "EUR/USD": "EURUSD.FOREX",
+    Makro: "SPY.US",
+    Unternehmen: "SPY.US",
+  };
+  return proxies[topic] || "SPY.US";
 }
 
 function safeError(error: unknown) {
@@ -379,11 +399,9 @@ async function eodhdFundamentals(
   url.searchParams.set("fmt", "json");
   const data = await fetchJson(url, `Fundamentals ${symbol}`, 8_000, 0);
   return {
-    targetPrice: Number.isFinite(Number(data?.Highlights?.WallStreetTargetPrice))
-      ? Number(data.Highlights.WallStreetTargetPrice)
-      : Number.isFinite(Number(data?.WallStreetTargetPrice))
-      ? Number(data.WallStreetTargetPrice)
-      : null,
+    targetPrice:
+      nullableNumber(data?.Highlights?.WallStreetTargetPrice) ??
+      nullableNumber(data?.WallStreetTargetPrice),
     currency: data?.General?.CurrencyCode || data?.CurrencyCode || null,
     updatedAt: data?.General?.UpdatedAt || data?.UpdatedAt || null,
   };
@@ -615,6 +633,8 @@ Deno.serve(async (req: Request) => {
         symbols,
         queriesForArticle,
       );
+      const priceContextSymbol = primarySymbol || proxySymbolFor(topic);
+      const priceContextKind = primarySymbol ? "direct" : "proxy";
       const linkedSymbols = [
         ...new Set([
           ...symbols,
@@ -637,6 +657,8 @@ Deno.serve(async (req: Request) => {
         topic,
         scope,
         primarySymbol,
+        priceContextSymbol,
+        priceContextKind,
         linkedSymbols,
         portfolioHits,
         watchlistHits,
@@ -657,15 +679,35 @@ Deno.serve(async (req: Request) => {
 
     const contextLimit = integerEnv(
       "NEWS_MARKET_CONTEXT_LIMIT",
-      24,
+      36,
       4,
-      40,
+      48,
+    );
+    const directContextSymbols = [
+      ...new Set(
+      prepared
+        .filter((article) => article.priceContextKind === "direct")
+          .map((article) => norm(article.priceContextSymbol).toUpperCase())
+        .filter(Boolean),
+      ),
+    ];
+    const proxyContextSymbols = [
+      ...new Set(
+      prepared
+        .filter((article) => article.priceContextKind === "proxy")
+          .map((article) => norm(article.priceContextSymbol).toUpperCase())
+        .filter(Boolean),
+      ),
+    ];
+    const directLimit = Math.max(
+      0,
+      contextLimit - Math.min(proxyContextSymbols.length, contextLimit),
     );
     const contextSymbols = [
-      ...new Set(
-        prepared.map((article) => norm(article.primarySymbol)).filter(Boolean),
-      ),
+      ...directContextSymbols.slice(0, directLimit),
+      ...proxyContextSymbols,
     ].slice(0, contextLimit);
+    const contextSymbolSet = new Set(contextSymbols);
     const marketWarnings: string[] = [];
     const liveMap = new Map<string, LiveQuote>();
     const historyMap = new Map<string, PriceBar[]>();
@@ -675,7 +717,13 @@ Deno.serve(async (req: Request) => {
       try {
         const quotes = await eodhdLiveBatch(token, batch);
         for (const quote of quotes) {
-          if (quote?.code) liveMap.set(String(quote.code).toUpperCase(), quote);
+          const responseCode = norm(quote?.code).toUpperCase();
+          const requested = batch.find((symbol) => {
+            const candidate = symbol.toUpperCase();
+            return candidate === responseCode ||
+              candidate.split(".")[0] === responseCode.split(".")[0];
+          });
+          if (requested) liveMap.set(requested.toUpperCase(), quote);
         }
       } catch (error) {
         marketWarnings.push(safeError(error));
@@ -688,10 +736,12 @@ Deno.serve(async (req: Request) => {
       .slice(0, 10);
     await mapLimit(contextSymbols, 4, async (symbol) => {
       try {
-        historyMap.set(
-          symbol.toUpperCase(),
-          await eodhdHistory(token, symbol, historyFrom),
-        );
+        const bars = await eodhdHistory(token, symbol, historyFrom);
+        if (bars.length) {
+          historyMap.set(symbol.toUpperCase(), bars);
+        } else {
+          marketWarnings.push(`EOD ${symbol}: keine Kurszeilen geliefert.`);
+        }
       } catch (error) {
         marketWarnings.push(safeError(error));
       }
@@ -722,8 +772,16 @@ Deno.serve(async (req: Request) => {
     const rows: Record<string, unknown>[] = [];
     let pricedArticles = 0;
     let analystArticles = 0;
+    const pricingBreakdown = {
+      weitgehend: 0,
+      teilweise: 0,
+      eher_nicht: 0,
+      zu_frueh: 0,
+      unklar: 0,
+    };
     for (const article of prepared.slice(0, 600)) {
-      const key = String(article.primarySymbol || "").toUpperCase();
+      const key = String(article.priceContextSymbol || "").toUpperCase();
+      const sentiment = nullableNumber(article.raw.sentiment?.polarity);
       const assessment = assessMarketNews({
         title: article.title,
         content: article.content,
@@ -731,10 +789,10 @@ Deno.serve(async (req: Request) => {
         topic: article.topic,
         tags: article.tags,
         symbols: article.symbols,
-        sentiment: Number.isFinite(Number(article.raw.sentiment?.polarity))
-          ? Number(article.raw.sentiment.polarity)
-          : null,
+        sentiment,
         primarySymbol: article.primarySymbol,
+        priceContextSymbol: article.priceContextSymbol,
+        priceContextKind: article.priceContextKind,
         scope: article.scope,
         positionDirections: article.portfolioHits
           .map((ref) => norm(ref.direction))
@@ -744,6 +802,7 @@ Deno.serve(async (req: Request) => {
         fundamentals: fundamentalsMap.get(key) || null,
       });
       if (assessment.price_reaction_percent !== null) pricedArticles += 1;
+      pricingBreakdown[assessment.priced_in_state] += 1;
       if (
         assessment.analyst_target_price !== null ||
         assessment.analyst_signal !== "nicht_verfuegbar"
@@ -772,9 +831,7 @@ Deno.serve(async (req: Request) => {
               : "",
           ]),
         ].filter(Boolean).slice(0, 20),
-        sentiment: Number.isFinite(Number(article.raw.sentiment?.polarity))
-          ? Number(article.raw.sentiment.polarity)
-          : null,
+        sentiment,
         ...assessment,
         is_published: true,
       });
@@ -812,8 +869,13 @@ Deno.serve(async (req: Request) => {
         inserted: savedIds.length,
         assessed: rows.length,
         priced_articles: pricedArticles,
+        pricing_breakdown: pricingBreakdown,
         analyst_articles: analystArticles,
         market_context_symbols: contextSymbols.length,
+        direct_context_symbols: directContextSymbols
+          .filter((symbol) => contextSymbolSet.has(symbol)).length,
+        proxy_context_symbols: proxyContextSymbols
+          .filter((symbol) => contextSymbolSet.has(symbol)).length,
         live_quote_symbols: liveMap.size,
         historical_symbols: historyMap.size,
         fundamentals_symbols: fundamentalsMap.size,
