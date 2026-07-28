@@ -1,4 +1,4 @@
-export const ASSESSMENT_VERSION = "29.0-rule-market-intelligence";
+export const ASSESSMENT_VERSION = "29.1-rule-market-intelligence";
 
 export type NewsScope = "portfolio" | "watchlist" | "sector" | "market";
 export type MarketDirection = "positiv" | "negativ" | "gemischt" | "neutral";
@@ -43,6 +43,8 @@ export type AssessmentInput = {
   symbols?: string[];
   sentiment?: number | null;
   primarySymbol?: string | null;
+  priceContextSymbol?: string | null;
+  priceContextKind?: "direct" | "proxy" | null;
   scope: NewsScope;
   positionDirections?: string[];
   priceBars?: PriceBar[] | null;
@@ -96,6 +98,7 @@ type PriceReaction = {
   periodLabel: string;
   volumeRatio: number | null;
   source: "live_delayed" | "eod" | "none";
+  availability: "available" | "awaiting_session" | "missing_market_data";
 };
 
 const EVENT_RULES: EventRule[] = [
@@ -209,6 +212,7 @@ const EVENT_MECHANISM: Record<string, string> = {
 };
 
 function numberOrNull(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
 }
@@ -315,14 +319,15 @@ function calculatePriceReaction(input: AssessmentInput): PriceReaction {
       periodLabel: "aktuelle Sitzung gegenüber Vortag",
       volumeRatio: null,
       source: "live_delayed",
+      availability: "available",
     };
   }
 
-  const previousIndex = bars.reduce(
-    (last, bar, index) => bar.date < eventDate ? index : last,
+  const baselineIndex = bars.reduce(
+    (last, bar, index) => bar.date <= eventDate ? index : last,
     -1,
   );
-  if (previousIndex < 0) {
+  if (baselineIndex < 0) {
     return {
       reaction: null,
       normalMove,
@@ -333,12 +338,17 @@ function calculatePriceReaction(input: AssessmentInput): PriceReaction {
       periodLabel: "keine belastbare Vorperiode",
       volumeRatio: null,
       source: "none",
+      availability: "missing_market_data",
     };
   }
 
-  const baseline = bars[previousIndex];
-  const availableAfter = bars.slice(previousIndex + 1);
+  const baseline = bars[baselineIndex];
+  const availableAfter = bars.filter((bar) => bar.date > eventDate);
   if (!availableAfter.length || !baseline.close) {
+    const latestBar = bars.at(-1)?.date || null;
+    const awaitingSession = Boolean(
+      latestBar && latestBar <= eventDate && ageHours <= 96,
+    );
     return {
       reaction: null,
       normalMove,
@@ -346,9 +356,14 @@ function calculatePriceReaction(input: AssessmentInput): PriceReaction {
       referencePrice: round(baseline.close, 6),
       observedPrice: quoteClose,
       observedAt: quoteDate?.toISOString() || null,
-      periodLabel: "noch kein Handelsschluss nach der Meldung",
+      periodLabel: awaitingSession
+        ? "noch keine abgeschlossene Handelssitzung nach der Meldung"
+        : "keine verwertbare Kursperiode nach der Meldung",
       volumeRatio: null,
       source: "none",
+      availability: awaitingSession
+        ? "awaiting_session"
+        : "missing_market_data",
     };
   }
 
@@ -358,7 +373,7 @@ function calculatePriceReaction(input: AssessmentInput): PriceReaction {
     ? (observed.close / baseline.close - 1) * 100
     : null;
   const volumeWindow = bars
-    .slice(Math.max(0, previousIndex - 20), previousIndex)
+    .slice(Math.max(0, baselineIndex - 20), baselineIndex)
     .map((bar) => bar.volume)
     .filter((value): value is number => value !== null && value > 0);
   const averageVolume = volumeWindow.length
@@ -380,6 +395,7 @@ function calculatePriceReaction(input: AssessmentInput): PriceReaction {
     periodLabel: `${requestedBars}-Handelstag-Reaktion bis ${observed.date}`,
     volumeRatio: round(volumeRatio, 2),
     source: "eod",
+    availability: "available",
   };
 }
 
@@ -430,12 +446,11 @@ function pricedInState(
 ): PricedInState {
   const now = input.now || new Date();
   const ageHours = hoursBetween(isoDate(input.publishedAt), now);
-  if (ageHours < 2 && price.source === "none") return "zu_frueh";
-  if (
-    direction === "neutral" ||
-    direction === "gemischt" ||
-    price.reaction === null
-  ) {
+  if (price.reaction === null) {
+    if (
+      price.availability === "awaiting_session" ||
+      (ageHours < 2 && price.source === "none")
+    ) return "zu_frueh";
     return "unklar";
   }
 
@@ -445,20 +460,37 @@ function pricedInState(
 
   if (expected && ratio < 0.65) return "weitgehend";
   if (aligned === true && ratio >= 1.6) return "weitgehend";
-  if (aligned === true && ratio >= 0.65) return "teilweise";
-  if (aligned === false && ratio >= 0.75) return "unklar";
+  if (ratio >= 0.65) return "teilweise";
   if (ratio < 0.65) return expected ? "weitgehend" : "eher_nicht";
   return "unklar";
 }
 
-function pricedInText(state: PricedInState, price: PriceReaction) {
+function pricedInText(
+  state: PricedInState,
+  price: PriceReaction,
+  direction: MarketDirection,
+  contextSymbol: string | null,
+  contextKind: "direct" | "proxy" | null,
+) {
   const labels: Record<PricedInState, string> = {
     weitgehend: "Weitgehend eingepreist",
     teilweise: "Teilweise eingepreist",
     eher_nicht: "Eher noch nicht eingepreist",
     zu_frueh: "Für eine Einpreisungsbewertung noch zu früh",
-    unklar: "Einpreisung unklar",
+    unklar: "Einpreisung derzeit nicht messbar",
   };
+  if (state === "zu_frueh") {
+    return `${labels[state]}. Seit der Veröffentlichung liegt noch keine abgeschlossene Handelssitzung mit belastbarer Kursreaktion vor${
+      contextSymbol ? ` (${contextSymbol})` : ""
+    }.`;
+  }
+  if (state === "unklar" && price.reaction === null) {
+    return `${labels[state]}. ${
+      contextSymbol
+        ? `Für ${contextSymbol} konnten keine verwertbaren Kursdaten nach der Meldung geladen werden.`
+        : "Der Meldung konnte kein belastbarer Kurs- oder Marktvergleich zugeordnet werden."
+    }`;
+  }
   const observations: string[] = [];
   if (price.reaction !== null) {
     observations.push(
@@ -480,11 +512,24 @@ function pricedInText(state: PricedInState, price: PriceReaction) {
       `Volumen ${formatNumber(price.volumeRatio, 1)}× 20-Tage-Mittel`,
     );
   }
+  const caveats: string[] = [];
+  if (direction === "neutral" || direction === "gemischt") {
+    caveats.push(
+      "Die Wirkungsrichtung der Meldung ist nicht eindeutig; der Status basiert primär auf der Stärke der Marktbewegung",
+    );
+  } else if (reactionAligned(direction, price.reaction) === false) {
+    caveats.push(
+      "Die Kursreaktion läuft entgegen der automatisch erkannten Wirkungsrichtung; der Status ist daher nur indikativ",
+    );
+  }
+  if (contextKind === "proxy" && contextSymbol) {
+    caveats.push(`Bewertung über Markt-Proxy ${contextSymbol}`);
+  }
   return `${labels[state]}. ${
     observations.length
       ? observations.join("; ")
       : "Es liegt noch keine belastbare Kursreaktion nach der Meldung vor."
-  }`;
+  }${caveats.length ? `. ${caveats.join(". ")}.` : ""}`;
 }
 
 function analystAssessment(
@@ -681,6 +726,8 @@ export function assessMarketNews(input: AssessmentInput): AssessmentResult {
   else if (content.length >= 60) confidence += 4;
   if (price.source !== "none") confidence += 18;
   if (price.normalMove !== null) confidence += 8;
+  if (input.priceContextKind === "proxy") confidence -= 8;
+  if (price.availability === "awaiting_session") confidence -= 3;
   if (analyst.target !== null || analyst.hasAction) confidence += 7;
   if ((input.symbols || []).length > 5) confidence -= 6;
   if (direction === "gemischt") confidence -= 5;
@@ -742,7 +789,13 @@ export function assessMarketNews(input: AssessmentInput): AssessmentResult {
     relevance_reason: reasonParts.join(" "),
     market_impact: marketImpact,
     priced_in_state: pricedState,
-    priced_in: pricedInText(pricedState, price),
+    priced_in: pricedInText(
+      pricedState,
+      price,
+      direction,
+      input.priceContextSymbol || input.primarySymbol || null,
+      input.priceContextKind || (input.primarySymbol ? "direct" : null),
+    ),
     analyst_view: analyst.text,
     analyst_signal: analyst.signal,
     action_code: action.code,
@@ -761,7 +814,12 @@ export function assessMarketNews(input: AssessmentInput): AssessmentResult {
       scope: input.scope,
       direct_symbol_match: directSymbol,
       sentiment,
+      price_context_symbol:
+        input.priceContextSymbol || input.primarySymbol || null,
+      price_context_kind:
+        input.priceContextKind || (input.primarySymbol ? "direct" : null),
       price_source: price.source,
+      price_availability: price.availability,
       price_period: price.periodLabel,
       reference_price: price.referencePrice,
       observed_price: price.observedPrice,
@@ -772,9 +830,16 @@ export function assessMarketNews(input: AssessmentInput): AssessmentResult {
       limitations: [
         "Regelbasierte Einordnung; keine individuelle Anlageberatung.",
         "Einpreisung ist eine Indikation aus Kursreaktion und Nachrichtensignal, keine beweisbare Tatsache.",
+        input.priceContextKind === "proxy"
+          ? "Branchen-/Makromeldung wird über einen liquiden Markt-Proxy gemessen; der Einzelwertbezug kann abweichen."
+          : "Direkter Kurskontext des zugeordneten Wertpapiers.",
         price.source === "live_delayed"
           ? "Live-Kurs kann je nach Markt 15–20 Minuten verzögert sein."
-          : "Kursbezug basiert auf End-of-Day-Daten.",
+          : price.source === "eod"
+          ? "Kursbezug basiert auf End-of-Day-Daten."
+          : price.availability === "awaiting_session"
+          ? "Die erste abgeschlossene Handelssitzung nach Veröffentlichung steht noch aus."
+          : "Für die Meldung waren keine verwertbaren Kursdaten verfügbar.",
       ],
     },
   };
