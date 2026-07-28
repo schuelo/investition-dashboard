@@ -1,4 +1,4 @@
-export const ASSESSMENT_VERSION = "29.1-rule-market-intelligence";
+export const ASSESSMENT_VERSION = "29.2-hybrid-rule-market-intelligence";
 
 export type NewsScope = "portfolio" | "watchlist" | "sector" | "market";
 export type MarketDirection = "positiv" | "negativ" | "gemischt" | "neutral";
@@ -50,6 +50,9 @@ export type AssessmentInput = {
   priceBars?: PriceBar[] | null;
   liveQuote?: LiveQuote | null;
   fundamentals?: FundamentalContext | null;
+  newsSourceKind?: "rss_aggregator" | "api" | "manual" | null;
+  priceProvider?: string | null;
+  priceContextUpdatedAt?: string | null;
   now?: Date;
 };
 
@@ -149,7 +152,7 @@ const EVENT_RULES: EventRule[] = [
     label: "Analystenrevision",
     materiality: 74,
     pattern:
-      /\b(upgrad(?:e|ed)|downgrad(?:e|ed)|rating|price target|target price|outperform|underperform|buy|sell|kursziel|hochgestuft|herabgestuft)\b/i,
+      /\b(upgrad(?:e|es|ed)|downgrad(?:e|es|ed)|rating|price target|target price|outperform|underperform|buy|sell|kursziel|hochgestuft|herabgestuft)\b/i,
   },
   {
     id: "contract",
@@ -188,9 +191,9 @@ const NEGATIVE_PATTERN =
 const EXPECTED_PATTERN =
   /\b(as expected|in line with|consensus|anticipated|priced in|reiterate(?:s|d)?|confirmed|unverändert|wie erwartet|im rahmen|konsens|eingepreist|bestätigt)\b/i;
 const UPGRADE_PATTERN =
-  /\b(upgrad(?:e|ed)|outperform|overweight|buy rating|hochgestuft|kaufen)\b/i;
+  /\b(upgrad(?:e|es|ed)|outperform|overweight|buy rating|hochgestuft|kaufen)\b/i;
 const DOWNGRADE_PATTERN =
-  /\b(downgrad(?:e|ed)|underperform|underweight|sell rating|herabgestuft|verkaufen)\b/i;
+  /\b(downgrad(?:e|es|ed)|underperform|underweight|sell rating|herabgestuft|verkaufen)\b/i;
 const TARGET_UP_PATTERN =
   /\b(price target|target price|kursziel).{0,32}\b(rais(?:e|ed)|increas(?:e|ed)|higher|angehoben|erhöht)\b|\b(rais(?:e|ed)|increas(?:e|ed)|angehoben|erhöht).{0,32}\b(price target|target price|kursziel)\b/i;
 const TARGET_DOWN_PATTERN =
@@ -585,7 +588,11 @@ function analystAssessment(
   }
   if (!parts.length) {
     parts.push(
-      "Keine belastbaren Konsens-/Kurszieldaten für dieses Symbol verfügbar; es wird kein Analystenurteil ergänzt.",
+      "Keine ausdrückliche Analystenrevision in der Meldung erkannt. Externe Konsens- und Kurszieldaten sind im kostenlosen Hybrid-Modus nicht verfügbar.",
+    );
+  } else if (target === null) {
+    parts.push(
+      "Die Einordnung basiert ausschließlich auf dem erkannten Meldungstext; ein externer Analystenkonsens ist im kostenlosen Hybrid-Modus nicht verfügbar.",
     );
   }
 
@@ -814,11 +821,14 @@ export function assessMarketNews(input: AssessmentInput): AssessmentResult {
       scope: input.scope,
       direct_symbol_match: directSymbol,
       sentiment,
+      news_source_kind: input.newsSourceKind || null,
       price_context_symbol:
         input.priceContextSymbol || input.primarySymbol || null,
       price_context_kind:
         input.priceContextKind || (input.primarySymbol ? "direct" : null),
       price_source: price.source,
+      price_provider: input.priceProvider || null,
+      price_context_updated_at: input.priceContextUpdatedAt || null,
       price_availability: price.availability,
       price_period: price.periodLabel,
       reference_price: price.referencePrice,
@@ -831,7 +841,7 @@ export function assessMarketNews(input: AssessmentInput): AssessmentResult {
         "Regelbasierte Einordnung; keine individuelle Anlageberatung.",
         "Einpreisung ist eine Indikation aus Kursreaktion und Nachrichtensignal, keine beweisbare Tatsache.",
         input.priceContextKind === "proxy"
-          ? "Branchen-/Makromeldung wird über einen liquiden Markt-Proxy gemessen; der Einzelwertbezug kann abweichen."
+          ? "Branchen-/Makromeldung wird über einen liquiden, kostenlos verfügbaren Markt-Proxy gemessen; der Einzelwertbezug kann abweichen."
           : "Direkter Kurskontext des zugeordneten Wertpapiers.",
         price.source === "live_delayed"
           ? "Live-Kurs kann je nach Markt 15–20 Minuten verzögert sein."
@@ -840,6 +850,12 @@ export function assessMarketNews(input: AssessmentInput): AssessmentResult {
           : price.availability === "awaiting_session"
           ? "Die erste abgeschlossene Handelssitzung nach Veröffentlichung steht noch aus."
           : "Für die Meldung waren keine verwertbaren Kursdaten verfügbar.",
+        input.newsSourceKind === "rss_aggregator"
+          ? "Die Nachricht stammt aus einem RSS-Aggregator. Bewertung und Analystensignal basieren auf Überschrift und verfügbarem Kurztext; die Originalquelle ist vor einer Handlung zu prüfen."
+          : "Nachrichtenquelle ohne zusätzliche Hybrid-Einschränkung.",
+        input.fundamentals
+          ? "Externe Fundamentaldaten waren verfügbar."
+          : "Im kostenlosen Hybrid-Modus werden keine externen Analysten-Konsensziele geladen.",
       ],
     },
   };
