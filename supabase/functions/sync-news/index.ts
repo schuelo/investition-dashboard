@@ -1,7 +1,15 @@
 import { createClient } from "npm:@supabase/supabase-js@2.49.8";
 import { corsHeaders, jsonHeaders } from "../_shared/cors.ts";
+import {
+  assessMarketNews,
+  type FundamentalContext,
+  type LiveQuote,
+  type NewsScope,
+  type PriceBar,
+} from "../_shared/market-intelligence.ts";
 
-const BUILD_VERSION = "28.2-news-sync-cors";
+const BUILD_VERSION = "29.0-market-intelligence-sync";
+const DAY = 86_400_000;
 
 type Ref = {
   id: string;
@@ -11,6 +19,7 @@ type Ref = {
   symbol?: string | null;
   market_symbol?: string | null;
   status?: string | null;
+  direction?: string | null;
   is_open?: boolean | null;
 };
 
@@ -25,6 +34,23 @@ type NewsQuery = {
   value: string;
 };
 
+type PreparedArticle = {
+  raw: any;
+  externalId: string;
+  title: string;
+  content: string;
+  publishedAt: string;
+  symbols: string[];
+  tags: string[];
+  topic: string;
+  scope: NewsScope;
+  primarySymbol: string | null;
+  linkedSymbols: string[];
+  portfolioHits: Ref[];
+  watchlistHits: Ref[];
+  queries: string[];
+};
+
 function env(name: string) {
   return Deno.env.get(name)?.trim() || null;
 }
@@ -33,6 +59,15 @@ function required(name: string) {
   const value = env(name);
   if (!value) throw new Error(`${name} fehlt.`);
   return value;
+}
+
+function integerEnv(name: string, fallback: number, minimum: number, maximum: number) {
+  const raw = env(name);
+  if (!raw) return fallback;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed)
+    ? Math.min(maximum, Math.max(minimum, Math.floor(parsed)))
+    : fallback;
 }
 
 function jsonKey(name: string) {
@@ -150,21 +185,18 @@ function matchRef(text: string, symbols: string[], ref: Ref) {
   return aliases(ref).some((alias) => haystack.includes(alias));
 }
 
-function topicFrom(tags: string[], requested: string, text: string) {
-  const haystack = `${requested} ${tags.join(" ")} ${text}`.toLowerCase();
+function topicFrom(tags: string[], requested: string[], text: string) {
+  const haystack = `${requested.join(" ")} ${tags.join(" ")} ${text}`
+    .toLowerCase();
   if (/semiconductor|chip|memory|foundry|hbm|dram|nand|gpu/.test(haystack)) {
     return "Halbleiter";
   }
   if (
-    /artificial intelligence|\bai\b|machine learning|llm|agentic/.test(
-      haystack,
-    )
+    /artificial intelligence|\bai\b|machine learning|llm|agentic/.test(haystack)
   ) {
     return "KI";
   }
-  if (
-    /energy|oil|gas|solar|wind|uranium|electricity|battery/.test(haystack)
-  ) {
+  if (/energy|oil|gas|solar|wind|uranium|electricity|battery/.test(haystack)) {
     return "Energie";
   }
   if (/forex|eurusd|currency|euro|dollar|exchange rate/.test(haystack)) {
@@ -180,53 +212,114 @@ function topicFrom(tags: string[], requested: string, text: string) {
   return "Unternehmen";
 }
 
-function impact(sentiment: any, title: string, portfolioHits: number) {
-  const polarity = Math.abs(Number(sentiment?.polarity || 0));
-  const headline = title.toLowerCase();
-  if (
-    portfolioHits > 0 &&
-    (
-      /earnings|guidance|profit warning|acquisition|merger|recall|bankruptcy|default|dividend|capital increase|downgrade|upgrade/
-        .test(
-          headline,
-        ) || polarity >= 0.65
-    )
-  ) {
-    return "hoch";
+function scopeFor(
+  portfolioHits: Ref[],
+  watchlistHits: Ref[],
+  topic: string,
+): NewsScope {
+  if (portfolioHits.length) return "portfolio";
+  if (watchlistHits.length) return "watchlist";
+  if (["KI", "Halbleiter", "Energie", "Unternehmen"].includes(topic)) {
+    return "sector";
   }
-  if (
-    portfolioHits > 0 ||
-    polarity >= 0.3 ||
-    /earnings|guidance|forecast|production|order|contract|rating|target price/
-      .test(
-        headline,
-      )
-  ) {
-    return "mittel";
-  }
-  return "niedrig";
+  return "market";
 }
 
-function valuation(sentiment: any, impactValue: string) {
-  const polarity = Number(sentiment?.polarity);
-  const direction = Number.isFinite(polarity)
-    ? polarity > 0.15 ? "positiv" : polarity < -0.15 ? "negativ" : "neutral"
-    : "neutral";
-  return {
-    market_impact:
-      `Vorläufige automatische Einordnung: ${direction}; Relevanz ${impactValue}. Kursreaktion und Investmentthese im Dashboard gegenprüfen.`,
-    priced_in:
-      "Automatische Einpreisungsprüfung benötigt aktuelle Kursreaktion; noch manuell zu bestätigen.",
-    analyst_view:
-      "Analystenänderungen werden aus News-Schlagzeilen erkannt; Konsensdaten sind nicht Bestandteil dieses Feeds.",
-  };
+function primarySymbolFor(
+  portfolioHits: Ref[],
+  watchlistHits: Ref[],
+  articleSymbols: string[],
+  queries: string[],
+) {
+  const preferred = [...portfolioHits, ...watchlistHits]
+    .map((ref) => norm(ref.market_symbol))
+    .find(Boolean);
+  if (preferred) return preferred;
+  const articleSymbol = articleSymbols.find((symbol) => /\.[A-Z0-9-]+$/i.test(symbol));
+  if (articleSymbol) return articleSymbol;
+  return queries.find((query) => /\.[A-Z0-9-]+$/i.test(query)) || null;
 }
 
-async function eodhd(
+function safeError(error: unknown) {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function sleep(milliseconds: number) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+async function fetchJson(
+  url: URL,
+  label: string,
+  timeoutMs = 12_000,
+  retries = 1,
+) {
+  let lastError: unknown = null;
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const response = await fetch(url, {
+        headers: { Accept: "application/json" },
+        signal: controller.signal,
+      });
+      const raw = await response.text();
+      if (!response.ok) {
+        const error = new Error(
+          `${label}: HTTP ${response.status} ${raw.slice(0, 180)}`,
+        );
+        if ((response.status === 429 || response.status >= 500) && attempt < retries) {
+          lastError = error;
+          await sleep(450 * (attempt + 1));
+          continue;
+        }
+        throw error;
+      }
+      try {
+        return JSON.parse(raw);
+      } catch {
+        throw new Error(`${label}: ungültige JSON-Antwort.`);
+      }
+    } catch (error) {
+      lastError = error;
+      if (attempt < retries && (error instanceof DOMException || /fetch|abort/i.test(safeError(error)))) {
+        await sleep(350 * (attempt + 1));
+        continue;
+      }
+      throw error;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  throw lastError;
+}
+
+async function mapLimit<T, R>(
+  values: T[],
+  limit: number,
+  worker: (value: T, index: number) => Promise<R>,
+) {
+  const results = new Array<R>(values.length);
+  let cursor = 0;
+  const runners = Array.from(
+    { length: Math.min(limit, Math.max(1, values.length)) },
+    async () => {
+      while (cursor < values.length) {
+        const index = cursor;
+        cursor += 1;
+        results[index] = await worker(values[index], index);
+      }
+    },
+  );
+  await Promise.all(runners);
+  return results;
+}
+
+async function eodhdNews(
   token: string,
   query: NewsQuery,
   from: string,
-  limit = 25,
+  limit = 20,
 ) {
   const parameter = query.kind === "symbol" ? "s" : "t";
   const url = new URL("https://eodhd.com/api/news");
@@ -235,23 +328,120 @@ async function eodhd(
   url.searchParams.set("limit", String(limit));
   url.searchParams.set("api_token", token);
   url.searchParams.set("fmt", "json");
-
-  const response = await fetch(url, {
-    headers: { Accept: "application/json" },
-  });
-  const raw = await response.text();
-  if (!response.ok) {
-    throw new Error(
-      `${query.kind}:${query.value}: HTTP ${response.status} ${
-        raw.slice(0, 160)
-      }`,
-    );
-  }
-  const data = JSON.parse(raw);
+  const data = await fetchJson(url, `News ${query.kind}:${query.value}`, 10_000, 0);
   if (!Array.isArray(data)) {
     throw new Error(`${query.kind}:${query.value}: Antwort ist kein Array.`);
   }
   return data;
+}
+
+async function eodhdHistory(
+  token: string,
+  symbol: string,
+  from: string,
+) {
+  const url = new URL(`https://eodhd.com/api/eod/${encodeURIComponent(symbol)}`);
+  url.searchParams.set("from", from);
+  url.searchParams.set("period", "d");
+  url.searchParams.set("order", "a");
+  url.searchParams.set("api_token", token);
+  url.searchParams.set("fmt", "json");
+  const data = await fetchJson(url, `EOD ${symbol}`, 8_000, 0);
+  if (!Array.isArray(data)) throw new Error(`EOD ${symbol}: Antwort ist kein Array.`);
+  return data as PriceBar[];
+}
+
+async function eodhdLiveBatch(token: string, symbols: string[]) {
+  if (!symbols.length) return [] as LiveQuote[];
+  const [first, ...rest] = symbols;
+  const url = new URL(
+    `https://eodhd.com/api/real-time/${encodeURIComponent(first)}`,
+  );
+  if (rest.length) url.searchParams.set("s", rest.join(","));
+  url.searchParams.set("api_token", token);
+  url.searchParams.set("fmt", "json");
+  const data = await fetchJson(url, `Live ${symbols.length} Symbole`, 8_000, 0);
+  return (Array.isArray(data) ? data : [data]) as LiveQuote[];
+}
+
+async function eodhdFundamentals(
+  token: string,
+  symbol: string,
+): Promise<FundamentalContext> {
+  const url = new URL(
+    `https://eodhd.com/api/v1.1/fundamentals/${encodeURIComponent(symbol)}`,
+  );
+  url.searchParams.set(
+    "filter",
+    "Highlights::WallStreetTargetPrice,General::CurrencyCode,General::UpdatedAt",
+  );
+  url.searchParams.set("api_token", token);
+  url.searchParams.set("fmt", "json");
+  const data = await fetchJson(url, `Fundamentals ${symbol}`, 8_000, 0);
+  return {
+    targetPrice: Number.isFinite(Number(data?.Highlights?.WallStreetTargetPrice))
+      ? Number(data.Highlights.WallStreetTargetPrice)
+      : Number.isFinite(Number(data?.WallStreetTargetPrice))
+      ? Number(data.WallStreetTargetPrice)
+      : null,
+    currency: data?.General?.CurrencyCode || data?.CurrencyCode || null,
+    updatedAt: data?.General?.UpdatedAt || data?.UpdatedAt || null,
+  };
+}
+
+function supportsFundamentals(symbol: string) {
+  return !/\.(FOREX|CC|INDX|GBOND|MONEY)$/i.test(symbol);
+}
+
+function chunks<T>(values: T[], size: number) {
+  const result: T[][] = [];
+  for (let index = 0; index < values.length; index += size) {
+    result.push(values.slice(index, index + size));
+  }
+  return result;
+}
+
+function legacyRow(row: Record<string, unknown>) {
+  const allowed = [
+    "external_id",
+    "published_at",
+    "topic",
+    "title",
+    "summary",
+    "content",
+    "source_url",
+    "source_name",
+    "symbols",
+    "tags",
+    "sentiment",
+    "impact",
+    "market_impact",
+    "priced_in",
+    "analyst_view",
+    "is_published",
+  ];
+  return Object.fromEntries(allowed.map((key) => [key, row[key]]));
+}
+
+function missingIntelligenceSchema(error: unknown) {
+  return /schema cache|pgrst204|column .* (?:does not exist|not found)|assessment_version|relevance_score|priced_in_state|recommended_action/i
+    .test(safeError(error));
+}
+
+async function upsertInChunks(
+  admin: any,
+  rows: Record<string, unknown>[],
+) {
+  const ids: string[] = [];
+  for (const part of chunks(rows, 80)) {
+    const { data, error } = await admin
+      .from("market_news")
+      .upsert(part, { onConflict: "external_id" })
+      .select("id");
+    if (error) throw error;
+    ids.push(...(data || []).map((item: any) => String(item.id)));
+  }
+  return ids;
 }
 
 Deno.serve(async (req: Request) => {
@@ -260,6 +450,7 @@ Deno.serve(async (req: Request) => {
   }
 
   const requestId = crypto.randomUUID();
+  const startedAt = Date.now();
   try {
     if (req.method !== "POST") {
       return Response.json(
@@ -268,8 +459,8 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const url = required("SUPABASE_URL");
-    const auth = await authorize(req, url);
+    const supabaseUrl = required("SUPABASE_URL");
+    const auth = await authorize(req, supabaseUrl);
     if (!auth.ok) {
       return Response.json(
         { ok: false, error: "Unauthorized" },
@@ -278,13 +469,13 @@ Deno.serve(async (req: Request) => {
     }
 
     const token = required("EODHD_API_TOKEN");
-    const admin = createClient(url, serverKey(), {
+    const admin = createClient(supabaseUrl, serverKey(), {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
     let plansQuery = admin
       .from("trade_plans")
-      .select("id,user_id,name,symbol,market_symbol,status")
+      .select("id,user_id,name,symbol,market_symbol,status,direction")
       .limit(1000);
     let positionsQuery = admin
       .from("depot_positions")
@@ -310,8 +501,9 @@ Deno.serve(async (req: Request) => {
     const portfolio: Ref[] = (positions || []).map((position: any) => ({
       ...planMap.get(String(position.trade_id)),
       ...position,
-      market_symbol: planMap.get(String(position.trade_id))?.market_symbol ||
-        null,
+      market_symbol:
+        planMap.get(String(position.trade_id))?.market_symbol || null,
+      direction: planMap.get(String(position.trade_id))?.direction || null,
     }));
     const heldIds = new Set(
       portfolio.map((position) => position.trade_id).filter(Boolean),
@@ -324,7 +516,7 @@ Deno.serve(async (req: Request) => {
 
     const queries: NewsQuery[] = [];
     for (const ref of tracked) {
-      const eodhdSymbol = String(ref.market_symbol || "").trim();
+      const eodhdSymbol = norm(ref.market_symbol);
       if (eodhdSymbol) {
         queries.push({ kind: "symbol", value: eodhdSymbol });
       } else if (ref.name) {
@@ -343,146 +535,304 @@ Deno.serve(async (req: Request) => {
     }
     queries.push({ kind: "symbol", value: "EURUSD.FOREX" });
 
-    const unique = [
+    const queryLimit = integerEnv("NEWS_QUERY_LIMIT", 50, 5, 80);
+    const uniqueQueries = [
       ...new Map(
         queries.map((query) => [
           `${query.kind}:${query.value.toUpperCase()}`,
           query,
         ]),
       ).values(),
-    ].slice(0, 60);
+    ].slice(0, queryLimit);
 
-    const from = new Date(Date.now() - 10 * 86_400_000)
+    const lookbackDays = integerEnv("NEWS_LOOKBACK_DAYS", 10, 2, 30);
+    const from = new Date(Date.now() - lookbackDays * DAY)
       .toISOString()
       .slice(0, 10);
     const received: any[] = [];
-    const errors: string[] = [];
+    const sourceErrors: string[] = [];
 
-    for (const query of unique) {
+    await mapLimit(uniqueQueries, 5, async (query) => {
       try {
-        const rows = await eodhd(token, query, from, 20);
-        rows.forEach((article) =>
-          received.push({ ...article, __query: query.value })
-        );
+        const articles = await eodhdNews(token, query, from, 20);
+        for (const article of articles) {
+          received.push({ ...article, __query: query.value });
+        }
       } catch (error) {
-        errors.push(error instanceof Error ? error.message : String(error));
+        sourceErrors.push(safeError(error));
       }
-      await new Promise((resolve) => setTimeout(resolve, 110));
-    }
+      return null;
+    });
 
     if (!received.length) {
       throw new Error(
-        `Keine News geladen. ${errors.slice(0, 5).join(" | ")}`,
+        `Keine News geladen. ${sourceErrors.slice(0, 5).join(" | ")}`,
       );
     }
 
     const deduplicated = new Map<string, any>();
     for (const article of received) {
-      const key = await sha256(
+      const externalId = await sha256(
         String(article.link || `${article.date}|${article.title}`),
       );
-      if (!deduplicated.has(key)) {
-        deduplicated.set(key, { ...article, __external: key });
+      const existing = deduplicated.get(externalId);
+      if (existing) {
+        existing.__queries = [
+          ...new Set([...(existing.__queries || []), article.__query]),
+        ];
+      } else {
+        deduplicated.set(externalId, {
+          ...article,
+          __external: externalId,
+          __queries: [article.__query],
+        });
       }
     }
 
-    const rows: any[] = [];
+    const prepared: PreparedArticle[] = [];
     for (const article of deduplicated.values()) {
       const symbols = Array.isArray(article.symbols)
         ? article.symbols.map(String)
         : [];
       const tags = Array.isArray(article.tags) ? article.tags.map(String) : [];
-      const text = `${article.title || ""} ${article.content || ""}`;
+      const title = norm(article.title) || "Ohne Titel";
+      const content = String(article.content || "").trim();
+      const text = `${title} ${norm(content)}`;
       const portfolioHits = portfolio.filter((ref) =>
         matchRef(text, symbols, ref)
       );
       const watchlistHits = watchlist.filter((ref) =>
         matchRef(text, symbols, ref)
       );
+      const queriesForArticle = Array.isArray(article.__queries)
+        ? article.__queries.map(String)
+        : [];
+      const topic = topicFrom(tags, queriesForArticle, text);
+      const scope = scopeFor(portfolioHits, watchlistHits, topic);
+      const primarySymbol = primarySymbolFor(
+        portfolioHits,
+        watchlistHits,
+        symbols,
+        queriesForArticle,
+      );
       const linkedSymbols = [
         ...new Set([
           ...symbols,
           ...portfolioHits.map((ref) =>
-            String(ref.market_symbol || ref.symbol || "")
+            norm(ref.market_symbol || ref.symbol)
           ).filter(Boolean),
           ...watchlistHits.map((ref) =>
-            String(ref.market_symbol || ref.symbol || "")
+            norm(ref.market_symbol || ref.symbol)
           ).filter(Boolean),
         ]),
       ].slice(0, 16);
-      const impactValue = impact(
-        article.sentiment,
-        String(article.title || ""),
-        portfolioHits.length,
-      );
-      const valuationResult = valuation(article.sentiment, impactValue);
-      const topic = topicFrom(tags, article.__query, text);
+      prepared.push({
+        raw: article,
+        externalId: article.__external,
+        title,
+        content,
+        publishedAt: article.date || new Date().toISOString(),
+        symbols,
+        tags,
+        topic,
+        scope,
+        primarySymbol,
+        linkedSymbols,
+        portfolioHits,
+        watchlistHits,
+        queries: queriesForArticle,
+      });
+    }
+
+    const scopeRank: Record<NewsScope, number> = {
+      portfolio: 0,
+      watchlist: 1,
+      sector: 2,
+      market: 3,
+    };
+    prepared.sort((a, b) =>
+      scopeRank[a.scope] - scopeRank[b.scope] ||
+      String(b.publishedAt).localeCompare(String(a.publishedAt))
+    );
+
+    const contextLimit = integerEnv(
+      "NEWS_MARKET_CONTEXT_LIMIT",
+      24,
+      4,
+      40,
+    );
+    const contextSymbols = [
+      ...new Set(
+        prepared.map((article) => norm(article.primarySymbol)).filter(Boolean),
+      ),
+    ].slice(0, contextLimit);
+    const marketWarnings: string[] = [];
+    const liveMap = new Map<string, LiveQuote>();
+    const historyMap = new Map<string, PriceBar[]>();
+    const fundamentalsMap = new Map<string, FundamentalContext>();
+
+    await mapLimit(chunks(contextSymbols, 15), 2, async (batch) => {
+      try {
+        const quotes = await eodhdLiveBatch(token, batch);
+        for (const quote of quotes) {
+          if (quote?.code) liveMap.set(String(quote.code).toUpperCase(), quote);
+        }
+      } catch (error) {
+        marketWarnings.push(safeError(error));
+      }
+      return null;
+    });
+
+    const historyFrom = new Date(Date.now() - 75 * DAY)
+      .toISOString()
+      .slice(0, 10);
+    await mapLimit(contextSymbols, 4, async (symbol) => {
+      try {
+        historyMap.set(
+          symbol.toUpperCase(),
+          await eodhdHistory(token, symbol, historyFrom),
+        );
+      } catch (error) {
+        marketWarnings.push(safeError(error));
+      }
+      return null;
+    });
+
+    const fundamentalsLimit = integerEnv(
+      "NEWS_FUNDAMENTALS_LIMIT",
+      12,
+      0,
+      25,
+    );
+    const fundamentalsSymbols = contextSymbols
+      .filter(supportsFundamentals)
+      .slice(0, fundamentalsLimit);
+    await mapLimit(fundamentalsSymbols, 3, async (symbol) => {
+      try {
+        fundamentalsMap.set(
+          symbol.toUpperCase(),
+          await eodhdFundamentals(token, symbol),
+        );
+      } catch (error) {
+        marketWarnings.push(safeError(error));
+      }
+      return null;
+    });
+
+    const rows: Record<string, unknown>[] = [];
+    let pricedArticles = 0;
+    let analystArticles = 0;
+    for (const article of prepared.slice(0, 600)) {
+      const key = String(article.primarySymbol || "").toUpperCase();
+      const assessment = assessMarketNews({
+        title: article.title,
+        content: article.content,
+        publishedAt: article.publishedAt,
+        topic: article.topic,
+        tags: article.tags,
+        symbols: article.symbols,
+        sentiment: Number.isFinite(Number(article.raw.sentiment?.polarity))
+          ? Number(article.raw.sentiment.polarity)
+          : null,
+        primarySymbol: article.primarySymbol,
+        scope: article.scope,
+        positionDirections: article.portfolioHits
+          .map((ref) => norm(ref.direction))
+          .filter(Boolean),
+        priceBars: historyMap.get(key) || null,
+        liveQuote: liveMap.get(key) || null,
+        fundamentals: fundamentalsMap.get(key) || null,
+      });
+      if (assessment.price_reaction_percent !== null) pricedArticles += 1;
+      if (
+        assessment.analyst_target_price !== null ||
+        assessment.analyst_signal !== "nicht_verfuegbar"
+      ) {
+        analystArticles += 1;
+      }
 
       rows.push({
-        external_id: article.__external,
-        published_at: article.date || new Date().toISOString(),
-        topic,
-        title: String(article.title || "Ohne Titel"),
-        summary: String(article.content || "")
-          .replace(/\s+/g, " ")
-          .slice(0, 520),
-        content: String(article.content || ""),
-        source_url: article.link || null,
+        external_id: article.externalId,
+        published_at: article.publishedAt,
+        topic: article.topic,
+        title: article.title,
+        summary: norm(article.content).slice(0, 520),
+        content: article.content,
+        source_url: article.raw.link || null,
         source_name: "EODHD News",
-        symbols: linkedSymbols,
+        symbols: article.linkedSymbols,
         tags: [
           ...new Set([
-            ...tags,
-            topic,
-            portfolioHits.length
+            ...article.tags,
+            article.topic,
+            article.scope === "portfolio"
               ? "Portfolio"
-              : watchlistHits.length
+              : article.scope === "watchlist"
               ? "Watchlist"
               : "",
           ]),
-        ].filter(Boolean).slice(0, 16),
-        sentiment: Number.isFinite(Number(article.sentiment?.polarity))
-          ? Number(article.sentiment.polarity)
+        ].filter(Boolean).slice(0, 20),
+        sentiment: Number.isFinite(Number(article.raw.sentiment?.polarity))
+          ? Number(article.raw.sentiment.polarity)
           : null,
-        impact: impactValue,
-        ...valuationResult,
+        ...assessment,
         is_published: true,
       });
     }
 
-    const { data: upserted, error: upsertError } = await admin
-      .from("market_news")
-      .upsert(rows, { onConflict: "external_id" })
-      .select("id");
-    if (upsertError) throw upsertError;
+    let schemaReady = true;
+    let savedIds: string[] = [];
+    const syncWarnings = [...marketWarnings];
+    try {
+      savedIds = await upsertInChunks(admin, rows);
+    } catch (error) {
+      if (!missingIntelligenceSchema(error)) throw error;
+      schemaReady = false;
+      syncWarnings.unshift(
+        "V29-Bewertungsschema fehlt; News wurden im V28-Kompatibilitätsmodus gespeichert. version29-market-intelligence-schema.sql ausführen.",
+      );
+      savedIds = await upsertInChunks(admin, rows.map(legacyRow));
+    }
 
     return Response.json(
       {
         ok: true,
         version: BUILD_VERSION,
         request_id: requestId,
-        provider: "EODHD Unternehmens-News + Themenfeeds",
+        provider:
+          "EODHD News + Kursreaktion + verzögerte Live-Kurse + Fundamentaldaten",
         auth_mode: auth.mode,
+        schema_ready: schemaReady,
         tracked_instruments: tracked.length,
         portfolio_positions: portfolio.length,
         watchlist_items: watchlist.length,
-        queries: unique.length,
+        queries: uniqueQueries.length,
         received: received.length,
         unique: rows.length,
-        inserted: upserted?.length || 0,
-        source_errors: errors.slice(0, 20),
+        inserted: savedIds.length,
+        assessed: rows.length,
+        priced_articles: pricedArticles,
+        analyst_articles: analystArticles,
+        market_context_symbols: contextSymbols.length,
+        live_quote_symbols: liveMap.size,
+        historical_symbols: historyMap.size,
+        fundamentals_symbols: fundamentalsMap.size,
+        source_errors: sourceErrors.slice(0, 20),
+        warnings: syncWarnings.slice(0, 30),
+        duration_ms: Date.now() - startedAt,
       },
       { headers: jsonHeaders },
     );
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error("sync-news-v28-2", { requestId, message });
+    const message = safeError(error);
+    console.error("sync-news-v29", { requestId, message });
     return Response.json(
       {
         ok: false,
         version: BUILD_VERSION,
         request_id: requestId,
         error: message,
+        duration_ms: Date.now() - startedAt,
       },
       { status: 500, headers: jsonHeaders },
     );
