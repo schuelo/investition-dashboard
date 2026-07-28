@@ -1,7 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2.49.8";
 import { corsHeaders, jsonHeaders } from "../_shared/cors.ts";
 
-const BUILD_VERSION = "28.2-portfolio-news-alerts-cors";
+const BUILD_VERSION = "29.0-portfolio-market-intelligence-alerts";
 
 function env(name: string) {
   return Deno.env.get(name)?.trim() || null;
@@ -192,6 +192,17 @@ Deno.serve(async (req: Request) => {
           matches(article, position, planMap.get(String(position.trade_id)))
         );
         if (!affected.length) continue;
+        const relevanceScore = Number.isFinite(Number(article.relevance_score))
+          ? Number(article.relevance_score)
+          : article.impact === "hoch"
+          ? 85
+          : 65;
+        const urgencyScore = Number.isFinite(Number(article.urgency_score))
+          ? Number(article.urgency_score)
+          : article.impact === "hoch"
+          ? 80
+          : 55;
+        if (relevanceScore < 70 && urgencyScore < 65) continue;
 
         const { data: existing, error: existingError } = await admin
           .from("news_notification_log")
@@ -209,15 +220,31 @@ Deno.serve(async (req: Request) => {
             "Position"
           )
           .join(", ");
-        const stars = article.impact === "hoch" ? "★★★★★" : "★★★★☆";
+        const stars = relevanceScore >= 90
+          ? "★★★★★"
+          : relevanceScore >= 78
+          ? "★★★★☆"
+          : "★★★☆☆";
         const text =
-          `📰 PORTFOLIO-NEWS ${stars}\n${names}\n\n${article.title}\n\nAuswirkung: ${
-            article.market_impact || article.impact
-          }\nEinpreisung: ${article.priced_in || "prüfen"}\n\n${
-            article.source_url || ""
-          }`.slice(0, 3900);
+          `📰 PORTFOLIO-NEWS ${stars}\n${names}\n\n${article.title}\n\n` +
+          `Relevanz: ${Math.round(relevanceScore)}/100 · Vertrauen: ${
+            Math.round(Number(article.confidence_score) || 50)
+          }/100 · Dringlichkeit: ${Math.round(urgencyScore)}/100\n` +
+          `Auswirkung: ${article.market_impact || article.impact}\n` +
+          `Einpreisung: ${article.priced_in || "unklar"}\n` +
+          `Analystenbild: ${article.analyst_view || "nicht verfügbar"}\n` +
+          `Handlung: ${
+            article.recommended_action ||
+            "These, Kursreaktion und Risikobudget prüfen."
+          }\n` +
+          `Datenqualität: ${article.data_quality || "nicht bewertet"}\n\n` +
+          `${article.source_url || ""}`;
 
-        await telegram(botToken, String(setting.telegram_chat_id), text);
+        await telegram(
+          botToken,
+          String(setting.telegram_chat_id),
+          text.slice(0, 3900),
+        );
         const { error: logError } = await admin
           .from("news_notification_log")
           .insert({
@@ -246,7 +273,7 @@ Deno.serve(async (req: Request) => {
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error("send-news-alerts-v28-2", { requestId, message });
+    console.error("send-news-alerts-v29", { requestId, message });
     return Response.json(
       {
         ok: false,
