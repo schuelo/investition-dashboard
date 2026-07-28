@@ -1,5 +1,5 @@
 (() => {
-  const VERSION = '29.2';
+  const VERSION = '29.3';
   const SUPABASE_URL = 'https://pzhfybtoyfttftgcrcxk.supabase.co';
   const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_yGiDH_M0fUZglk40fCk7cQ_kkL1XKzj';
   const READ_KEY = 'investition-news-read-v29';
@@ -239,10 +239,10 @@
   function explainFunctionError(value) {
     const detail = String(value || 'Unbekannter Fehler').trim();
     if (/abort|timeout|zeitüberschreitung/i.test(detail)) {
-      return 'Sync dauerte zu lange. Erneut versuchen; bei vielen RSS-Suchen die Function-Logs prüfen.';
+      return 'Sync dauerte zu lange. Erneut versuchen; bei vielen News-Suchen die Function-Logs prüfen.';
     }
     if (/failed to fetch|failed to send|functionsfetcherror|fetch failed|load failed|networkerror/i.test(detail)) {
-      return 'Sync-Function nicht erreichbar. V29.2-Function deployen und Browser-/CORS-Verbindung prüfen.';
+      return 'Sync-Function nicht erreichbar. V29.3-Function deployen und Browser-/CORS-Verbindung prüfen.';
     }
     if (/not found|404/i.test(detail)) {
       return 'Edge Function „sync-news“ ist nicht deployt oder falsch benannt.';
@@ -250,14 +250,14 @@
     if (/unauthorized|401|invalid jwt/i.test(detail)) {
       return 'Anmeldung für die Sync-Function abgelehnt. Bitte neu anmelden und erneut versuchen.';
     }
-    if (/keine rss-news|google news rss|bing news rss/i.test(detail)) {
-      return 'Die kostenlosen RSS-Quellen lieferten vorübergehend keine Meldungen. Der vorhandene Feed bleibt erhalten; später erneut versuchen.';
+    if (/keine (?:rss-)?news|google news rss|bing news rss|gdelt|yahoo finance rss|direktfeed/i.test(detail)) {
+      return 'Die kostenlosen News-Quellen lieferten vorübergehend keine Meldungen. Der vorhandene Feed bleibt erhalten; der nächste Cronlauf versucht es erneut.';
     }
     if (/assessment_version|relevance_score|priced_in_state|version29-market-intelligence-schema/i.test(detail)) {
       return 'V29-Bewertungsschema fehlt. version29-market-intelligence-schema.sql im Supabase SQL Editor ausführen.';
     }
     if (/hybrid_market_cache|hybrid_api_usage|reserve_hybrid_eodhd_calls|version29-2-hybrid-schema/i.test(detail)) {
-      return 'V29.2-Hybrid-Schema fehlt. version29-2-hybrid-schema.sql im Supabase SQL Editor ausführen.';
+      return 'Hybrid-Schema fehlt. version29-2-hybrid-schema.sql im Supabase SQL Editor ausführen.';
     }
     return detail;
   }
@@ -508,7 +508,11 @@
       basis.price_context_updated_at
         ? `Kurscache aktualisiert: ${dateTime(basis.price_context_updated_at)}`
         : '',
-      basis.news_source_kind === 'rss_aggregator'
+      basis.news_source_kind === 'open_news_index'
+        ? 'Nachrichtenzugang: offener globaler News-Index'
+        : basis.news_source_kind === 'publisher_feed'
+        ? 'Nachrichtenzugang: direkter Herausgeber-/Institutionsfeed'
+        : basis.news_source_kind === 'rss_aggregator'
         ? 'Nachrichtenzugang: kostenloser RSS-Aggregator'
         : '',
       basis.price_availability
@@ -707,7 +711,7 @@
       if (/news_sync_runs|schema cache|does not exist/i.test(error.message || '')) {
         setHealth(
           els.functionHealth,
-          'V29.2-Hybrid-Schema ausführen',
+          'Hybrid-Schema ausführen',
           'warn'
         );
       }
@@ -735,7 +739,7 @@
       const budget = numberOr(details.eodhd_daily_budget, 6);
       setHealth(
         els.providerHealth,
-        `${data.rss_articles || 0} RSS-Treffer · ${details.rss_source_count || 0} Quellen · ${details.historical_symbols || 0} Kursreihen · EODHD ${used}/${budget} heute`,
+        `${data.rss_articles || 0} News-Treffer · ${details.rss_source_count || 0} Quellen · ${details.historical_symbols || 0} Kursreihen · EODHD ${used}/${budget} heute`,
         data.warning_count ? 'warn' : 'good'
       );
     } else if (data.error_message) {
@@ -859,9 +863,9 @@
       return;
     }
     els.sync.disabled = true;
-    setHealth(els.functionHealth, 'RSS-News und Tageskurse werden bewertet …', 'warn');
+    setHealth(els.functionHealth, 'News und Tageskurse werden bewertet …', 'warn');
     setHealth(els.assessmentHealth, 'Bewertung läuft …', 'warn');
-    setStatus('Kostenlose RSS-Quellen werden für Portfolio, Watchlist, Branchen und Märkte synchronisiert und bewertet …');
+    setStatus('Kostenlose globale Suche und Direktfeeds werden für Portfolio, Watchlist, Branchen und Märkte synchronisiert und bewertet …');
     try {
       const data = await invokeSyncFunction(active);
       if (data?.ok === false) {
@@ -877,19 +881,19 @@
         (pricing.eher_nicht || 0);
       setHealth(
         els.functionHealth,
-        `erfolgreich · ${data?.inserted ?? 0} gespeichert · ${Math.round((data?.duration_ms || 0) / 1000)} s`,
-        'good'
+        `${data?.degraded ? 'aktiv, Quellen ohne Treffer' : 'erfolgreich'} · ${data?.inserted ?? 0} gespeichert · ${Math.round((data?.duration_ms || 0) / 1000)} s`,
+        data?.degraded ? 'warn' : 'good'
       );
       setHealth(
         els.providerHealth,
-        `${data?.received ?? 0} RSS-Treffer · ${data?.rss_source_count ?? 0} Quellen · ${data?.historical_symbols ?? 0}/${data?.market_context_symbols ?? 0} Kursreihen · ${data?.proxy_context_symbols ?? 0} Markt-Proxys · EODHD ${data?.eodhd_calls_used_today ?? data?.eodhd_calls_reserved ?? 0}/${data?.eodhd_daily_budget ?? 6} heute${sourceErrors ? ` · ${sourceErrors} RSS-Teilfehler` : ''}`,
+        `${data?.received ?? 0} News-Treffer · ${data?.rss_source_count ?? 0} Quellen · ${data?.historical_symbols ?? 0}/${data?.market_context_symbols ?? 0} Kursreihen · ${data?.proxy_context_symbols ?? 0} Markt-Proxys · EODHD ${data?.eodhd_calls_used_today ?? data?.eodhd_calls_reserved ?? 0}/${data?.eodhd_daily_budget ?? 6} heute${sourceErrors ? ` · ${sourceErrors} Quellenhinweis(e)` : ''}`,
         sourceErrors || warnings ? 'warn' : 'good'
       );
       setHealth(
         els.assessmentHealth,
         data?.schema_ready === false
           ? data?.hybrid_schema_ready === false
-            ? 'V29.2-Hybrid-Schema erforderlich'
+            ? 'Hybrid-Schema erforderlich'
             : 'V29-Bewertungsschema erforderlich'
           : `${data?.assessed ?? 0} bewertet · ${measurable} Einpreisungen · ${pricing.zu_frueh || 0} zu früh · ${pricing.unklar || 0} nicht messbar`,
         data?.schema_ready === false ? 'bad' : 'good'
@@ -897,7 +901,7 @@
       await loadCloudNews({quiet:true});
       if (data?.hybrid_schema_ready === false) {
         setStatus(
-          `${data?.inserted ?? 0} RSS-Meldungen gespeichert und bewertet. Für Tagesbudget, Kurscache und sichtbare automatische Laufzeiten jetzt version29-2-hybrid-schema.sql ausführen und danach erneut synchronisieren.`,
+          `${data?.inserted ?? 0} Meldungen gespeichert und bewertet. Für Tagesbudget, Kurscache und sichtbare automatische Laufzeiten jetzt version29-2-hybrid-schema.sql ausführen und danach erneut synchronisieren.`,
           'bad'
         );
       } else if (data?.intelligence_schema_ready === false) {
@@ -905,9 +909,14 @@
           `${data?.inserted ?? 0} Meldungen gespeichert, aber nur im V28-Kompatibilitätsmodus. Jetzt version29-market-intelligence-schema.sql ausführen und danach erneut synchronisieren.`,
           'bad'
         );
+      } else if (data?.degraded) {
+        setStatus(
+          'Der Sync und die Kursprüfung liefen, aber keine kostenlose News-Quelle lieferte in diesem Lauf aktuelle Treffer. Vorhandene Meldungen bleiben erhalten; der nächste stündliche Lauf versucht es erneut.',
+          'warn'
+        );
       } else {
         setStatus(
-          `${data?.inserted ?? 0} RSS-Meldungen gespeichert und bewertet; ${data?.tracked_instruments ?? 0} Wertpapiere geprüft; ${measurable} Einpreisungen abgeleitet; ${pricing.zu_frueh || 0} warten auf die nächste Handelssitzung; ${pricing.unklar || 0} ohne verwertbare Kursdaten; ${data?.analyst_articles ?? 0} mit erkanntem Analystensignal.${sourceErrors || warnings ? ` ${sourceErrors + warnings} Teilhinweis(e) – RSS-Sync und übrige Bewertungen waren erfolgreich.` : ''}`,
+          `${data?.inserted ?? 0} Meldungen gespeichert und bewertet; ${data?.tracked_instruments ?? 0} Wertpapiere geprüft; ${measurable} Einpreisungen abgeleitet; ${pricing.zu_frueh || 0} warten auf die nächste Handelssitzung; ${pricing.unklar || 0} ohne verwertbare Kursdaten; ${data?.analyst_articles ?? 0} mit erkanntem Analystensignal.${sourceErrors || warnings ? ` ${sourceErrors + warnings} Teilhinweis(e) – übrige Quellen und Bewertungen waren erfolgreich.` : ''}`,
           sourceErrors || warnings ? 'warn' : 'good'
         );
       }
