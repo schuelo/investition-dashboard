@@ -1,5 +1,5 @@
 (() => {
-  const VERSION = '29.0';
+  const VERSION = '29.1';
   const SUPABASE_URL = 'https://pzhfybtoyfttftgcrcxk.supabase.co';
   const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_yGiDH_M0fUZglk40fCk7cQ_kkL1XKzj';
   const READ_KEY = 'investition-news-read-v29';
@@ -126,6 +126,7 @@
   }
 
   function numberOr(value, fallback = null) {
+    if (value === null || value === undefined || value === '') return fallback;
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : fallback;
   }
@@ -289,9 +290,9 @@
       weitgehend:'weitgehend',
       teilweise:'teilweise',
       eher_nicht:'eher nicht',
-      zu_frueh:'zu früh',
-      unklar:'unklar'
-    }[value] || 'unklar';
+      zu_frueh:'noch zu früh',
+      unklar:'nicht messbar'
+    }[value] || 'nicht messbar';
   }
 
   function eventLabel(value) {
@@ -498,7 +499,13 @@
     const limitations = Array.isArray(basis.limitations) ? basis.limitations : [];
     const facts = [
       basis.event_label ? `Ereignis: ${basis.event_label}` : '',
+      basis.price_context_symbol
+        ? `Kursvergleich: ${basis.price_context_symbol}${basis.price_context_kind === 'proxy' ? ' (Markt-Proxy)' : ' (direkt)'}`
+        : '',
       basis.price_source ? `Kursquelle: ${basis.price_source === 'live_delayed' ? 'verzögerter Live-Kurs' : basis.price_source === 'eod' ? 'End-of-Day' : 'keine'}` : '',
+      basis.price_availability
+        ? `Kursstatus: ${basis.price_availability === 'available' ? 'verfügbar' : basis.price_availability === 'awaiting_session' ? 'nächste Handelssitzung ausstehend' : 'nicht verfügbar'}`
+        : '',
       basis.price_period ? `Messfenster: ${basis.price_period}` : '',
       basis.observed_at ? `Kursstand: ${dateTime(basis.observed_at)}` : '',
       `Modell: ${news.assessment_version || 'unbekannt'}`
@@ -577,6 +584,7 @@
       </div>
       <div class="news-market-facts">
         <div><span>Primärsymbol</span><strong>${escapeHtml(news.primary_symbol || news.symbols[0] || '—')}</strong></div>
+        <div><span>Kursvergleich</span><strong>${escapeHtml(news.analysis_basis?.price_context_symbol || '—')}${news.analysis_basis?.price_context_kind === 'proxy' ? ' · Proxy' : ''}</strong></div>
         <div><span>Kursreaktion</span><strong>${escapeHtml(formatPercent(news.price_reaction_percent))}</strong></div>
         <div><span>Normalbewegung</span><strong>${escapeHtml(news.normal_move_percent === null ? '—' : `${formatNumber(news.normal_move_percent, 1)} %`)}</strong></div>
         <div><span>Konsensziel-Abstand</span><strong>${escapeHtml(formatPercent(news.analyst_target_upside_percent))}</strong></div>
@@ -707,6 +715,16 @@
     const assessed = items.filter(news =>
       String(news.assessment_version).startsWith('29.')
     ).length;
+    const measurable = items.filter(news =>
+      String(news.assessment_version).startsWith('29.') &&
+      !['unklar', 'zu_frueh'].includes(news.priced_in_state)
+    ).length;
+    const awaiting = items.filter(news =>
+      news.priced_in_state === 'zu_frueh'
+    ).length;
+    const unavailable = items.filter(news =>
+      news.priced_in_state === 'unklar'
+    ).length;
     setHealth(
       els.tableHealth,
       `erreichbar · ${items.length} Zeilen`,
@@ -714,7 +732,9 @@
     );
     setHealth(
       els.assessmentHealth,
-      assessed ? `${assessed} fundiert bewertet` : 'V29-Schema/Sync prüfen',
+      assessed
+        ? `${assessed} bewertet · ${measurable} Einpreisungen · ${awaiting} zu früh · ${unavailable} nicht messbar`
+        : 'V29-Schema/Sync prüfen',
       assessed ? 'good' : 'warn'
     );
     els.lastUpdated.textContent = items[0]
@@ -780,6 +800,10 @@
         ? data.source_errors.length
         : 0;
       const warnings = Array.isArray(data?.warnings) ? data.warnings.length : 0;
+      const pricing = data?.pricing_breakdown || {};
+      const measurable = (pricing.weitgehend || 0) +
+        (pricing.teilweise || 0) +
+        (pricing.eher_nicht || 0);
       setHealth(
         els.functionHealth,
         `erfolgreich · ${data?.inserted ?? 0} gespeichert · ${Math.round((data?.duration_ms || 0) / 1000)} s`,
@@ -787,14 +811,14 @@
       );
       setHealth(
         els.providerHealth,
-        `${data?.market_context_symbols ?? 0} Kurskontexte · ${data?.fundamentals_symbols ?? 0} Fundamentalabrufe${sourceErrors ? ` · ${sourceErrors} News-Teilfehler` : ''}`,
+        `${data?.historical_symbols ?? 0}/${data?.market_context_symbols ?? 0} Kursreihen · ${data?.live_quote_symbols ?? 0} Live-Kurse · ${data?.proxy_context_symbols ?? 0} Markt-Proxys · ${data?.fundamentals_symbols ?? 0} Fundamentals${sourceErrors ? ` · ${sourceErrors} News-Teilfehler` : ''}`,
         sourceErrors || warnings ? 'warn' : 'good'
       );
       setHealth(
         els.assessmentHealth,
         data?.schema_ready === false
           ? 'SQL-Migration erforderlich'
-          : `${data?.assessed ?? 0} bewertet · ${data?.priced_articles ?? 0} mit Kursreaktion`,
+          : `${data?.assessed ?? 0} bewertet · ${measurable} Einpreisungen · ${pricing.zu_frueh || 0} zu früh · ${pricing.unklar || 0} nicht messbar`,
         data?.schema_ready === false ? 'bad' : 'good'
       );
       await loadCloudNews({quiet:true});
@@ -805,7 +829,7 @@
         );
       } else {
         setStatus(
-          `${data?.inserted ?? 0} Meldungen gespeichert und bewertet; ${data?.tracked_instruments ?? 0} Wertpapiere geprüft; ${data?.priced_articles ?? 0} Meldungen mit Kursreaktion; ${data?.analyst_articles ?? 0} mit Analystenkontext.${sourceErrors || warnings ? ` ${sourceErrors + warnings} Teilhinweis(e) – der übrige Sync war erfolgreich.` : ''}`,
+          `${data?.inserted ?? 0} Meldungen gespeichert und bewertet; ${data?.tracked_instruments ?? 0} Wertpapiere geprüft; ${measurable} Einpreisungen abgeleitet; ${pricing.zu_frueh || 0} warten auf die nächste Handelssitzung; ${pricing.unklar || 0} ohne verwertbare Kursdaten; ${data?.analyst_articles ?? 0} mit Analystenkontext.${sourceErrors || warnings ? ` ${sourceErrors + warnings} Teilhinweis(e) – der übrige Sync war erfolgreich.` : ''}`,
           sourceErrors || warnings ? 'warn' : 'good'
         );
       }

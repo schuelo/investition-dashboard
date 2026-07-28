@@ -1,56 +1,48 @@
-# Investition Dashboard V29.0 – Market Intelligence
+# Investition Dashboard V29.1 – Market Intelligence
 
-V29.0 basiert vollständig auf V28.2. Die Korrekturen für Modal-Überlagerung,
-gemeinsame Supabase-Sitzung, deployfähige Edge Functions und CORS bleiben
-erhalten.
+V29.1 korrigiert die Einpreisungsanalyse aus V29.0 und übernimmt alle bisherigen
+Dashboard-Funktionen.
 
-## Neu in V29
+## Korrekturen in V29.1
 
-- nachvollziehbare Scores von 0 bis 100 für Relevanz, Vertrauen, Auswirkung und
-  Dringlichkeit;
-- persönlicher Relevanzaufschlag für Depot- und Watchlist-Bezug;
-- Einpreisungsindikation aus tatsächlicher Kursreaktion relativ zur üblichen
-  Tagesbewegung;
-- verzögerte Live-Kurse für sehr aktuelle Meldungen und End-of-Day-Reaktionen
-  für ältere Meldungen;
-- Ereignisklassifikation und Wirkungsrichtung;
-- Analystenbild aus erkannten Up-/Downgrades sowie verfügbarem
-  EODHD-Konsenskursziel;
-- konkrete, nach Portfolio/Watchlist und Wirkungsrichtung differenzierte
-  Handlung;
-- sichtbare Datenqualität, Bewertungszeitpunkt und Methodik;
-- V29-Scores in Entscheidungszentrale, Analytics und Telegram;
-- direkter Browser-Aufruf der `sync-news`-Function mit klaren HTTP-Fehlern;
-- Teilfehlertoleranz: News werden auch gespeichert, wenn einzelne Kurs- oder
-  Fundamentalendpunkte nicht verfügbar sind;
-- V28-Kompatibilitätsmodus, falls das neue SQL-Schema beim ersten Test noch
-  fehlt.
+- leere EODHD-Zahlen werden nicht mehr als `0` interpretiert;
+- fehlendes `adjusted_close` fällt auf den tatsächlichen Schlusskurs zurück;
+- Branchen- und Makromeldungen erhalten einen transparent ausgewiesenen
+  Markt-Proxy;
+- Meldungen vor der nächsten Handelssitzung erscheinen als `noch zu früh`;
+- fehlende Kursdaten erscheinen als `nicht messbar`;
+- vorhandene Kursreaktionen führen auch bei gemischtem Textsignal zu einer
+  abgestuften Einpreisungsindikation;
+- Statuszeile zeigt geladene Kursreihen, Live-Kurse, Markt-Proxys und die
+  Verteilung der Einpreisungsstatus.
 
 ## Bewertungsprinzip
 
-Die Bewertung ist regel- und datenbasiert. Sie kombiniert:
+Die regel- und datenbasierte Einordnung kombiniert:
 
-1. direkten Symbol-, Depot- oder Watchlist-Bezug;
-2. Ereignistyp und Schlüsselbegriffe;
-3. EODHD-News-Sentiment;
-4. Aktualität;
-5. beobachtete Kursreaktion und Normalbewegung;
-6. verfügbare Konsenskursziel- beziehungsweise Analystensignale.
+1. Symbol-, Depot- und Watchlist-Bezug;
+2. Ereignistyp und Nachrichtensignal;
+3. Aktualität;
+4. tatsächliche Kursreaktion;
+5. übliche Tagesbewegung;
+6. verfügbare Analysten- und Konsensdaten.
 
-Einpreisung wird ausdrücklich als Indikation dargestellt, nicht als beweisbare
-Tatsache. Bei fehlender Datengrundlage erfindet das Dashboard keine Aussage,
-sondern zeigt `unklar` oder `nicht verfügbar`.
+`Weitgehend`, `teilweise` und `eher nicht` sind Indikationen, keine beweisbaren
+Tatsachen oder individuellen Anlageempfehlungen. Die Bewertungsgrundlage nennt
+Kursquelle, Messfenster und einen gegebenenfalls verwendeten Markt-Proxy.
 
-## Installation
+## Aktualisierung
 
 Die vollständige Schrittfolge steht in
-[`INSTALLATION-V29.md`](./INSTALLATION-V29.md).
+[`INSTALLATION-V29.1.md`](./INSTALLATION-V29.1.md).
 
 Kurzfassung:
 
-1. Paketinhalt in das GitHub-Repository laden.
-2. `version29-market-intelligence-schema.sql` in Supabase ausführen.
-3. unter GitHub **Actions → Supabase Functions deployen → Run workflow**
-   starten;
-4. `reset.html?v=29.0` öffnen;
-5. unter **News Feed → Feed aktualisieren** testen.
+1. Paketinhalt nach GitHub laden.
+2. GitHub Action **Supabase Functions deployen** starten.
+3. `reset.html?v=29.1` online öffnen.
+4. **News Feed → Feed aktualisieren** wählen.
+
+Von V29.0 auf V29.1 ist keine neue SQL-Migration erforderlich. Bei einer
+Neuinstallation weiterhin einmal
+`version29-market-intelligence-schema.sql` ausführen.
