@@ -1,4 +1,12 @@
-# Investition Dashboard V29.3 – kostenlose Multi-Source Intelligence
+# Investition Dashboard V29.3.1 – kostenlose Multi-Source Intelligence
+
+V29.3.1 ist ein Start-Hotfix für die Supabase-Function `sync-news`. Das neue,
+eindeutig benannte Shared-Modul verhindert eine Versionsmischung mit der alten
+V29.2-Datei `hybrid-sources.ts`. Die Dashboard-Oberfläche und die
+Multi-Source-Logik von V29.3 bleiben unverändert.
+
+Die vollständigen Update-Schritte stehen in
+[`HOTFIX-V29.3.1.md`](./HOTFIX-V29.3.1.md).
 
 V29.3 ersetzt die in Supabase blockierten Google-/Bing-Suchen aus V29.2 durch
 eine unabhängige Mehrquellen-Architektur. Portfolio, Watchlist, Bewertungen,
@@ -56,4 +64,4 @@ Von V29.2 auf V29.3 ist keine neue SQL-Migration und keine Änderung von
 `CRON_SECRET`, EODHD-Token oder Cronjobs erforderlich.
 
 Die vollständige Anleitung steht in
-[`INSTALLATION-V29.3.md`](./INSTALLATION-V29.3.md).
+[`INSTALLATION-V29.3.1.md`](./INSTALLATION-V29.3.1.md).
