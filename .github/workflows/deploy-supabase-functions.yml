@@ -17,7 +17,12 @@ jobs:
       - name: Supabase CLI einrichten
         uses: supabase/setup-cli@v1
         with:
-          version: latest
+          # Eine feste Version vermeidet die GitHub-API-Abfrage für "latest",
+          # die bei anonymen Actions-Läufen in ein Rate-Limit laufen kann.
+          version: 2.110.0
+
+      - name: Supabase CLI prüfen
+        run: supabase --version
 
       - name: V29.3.1-Quellen prüfen
         run: |
