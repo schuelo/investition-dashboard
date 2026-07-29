@@ -54,9 +54,17 @@ Diese Schritte müssen grün enden:
 ```text
 Repository laden
 Supabase CLI einrichten
+Supabase CLI prüfen
+V29.3.1-Quellen prüfen
 News-Sync deployen
 Telegram-News deployen
 ```
+
+Der Workflow verwendet bewusst die fest gesetzte Supabase CLI `2.110.0`.
+Dadurch muss GitHub nicht bei jedem Lauf die neueste Version über die
+GitHub-API ermitteln. Der Fehler
+`Failed to resolve latest Supabase CLI release: rate limit exceeded`
+tritt damit nicht mehr auf.
 
 Erwartete Versionswerte:
 

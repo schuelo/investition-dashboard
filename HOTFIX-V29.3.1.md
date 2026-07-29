@@ -1,5 +1,19 @@
 # Hotfix V29.3.1 – Supabase BOOT_ERROR
 
+## Deployment-Hotfix
+
+Der GitHub-Actions-Workflow verwendet die Supabase CLI jetzt in der fest
+gesetzten Version `2.110.0`. Zuvor führte `version: latest` bei der
+automatischen Release-Abfrage vereinzelt zu:
+
+```text
+Failed to resolve latest Supabase CLI release: rate limit exceeded
+```
+
+Dieser Fehler trat vor dem eigentlichen Function-Deployment auf. Die
+V29.3.1-Function-Dateien wurden in solchen Läufen nicht an Supabase übertragen.
+Nach dem Austausch der Workflow-Datei genügt ein neuer manueller Lauf.
+
 ## Behobener Fehler
 
 V29.3 konnte in Supabase mit folgender Meldung abbrechen:
