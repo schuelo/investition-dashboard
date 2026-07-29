@@ -19,6 +19,12 @@ jobs:
         with:
           version: latest
 
+      - name: V29.3.1-Quellen prüfen
+        run: |
+          test -f supabase/functions/_shared/multisource-sources-v2931.ts
+          grep -q 'export function gdeltDocUrl' supabase/functions/_shared/multisource-sources-v2931.ts
+          grep -q 'multisource-sources-v2931.ts' supabase/functions/sync-news/index.ts
+
       - name: News-Sync deployen
         run: supabase functions deploy sync-news --project-ref "$PROJECT_ID" --no-verify-jwt
 
