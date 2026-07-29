@@ -17,9 +17,9 @@ import {
   stooqHistoryUrl,
   stooqSymbol,
   yahooFinanceRssUrl,
-} from "../_shared/hybrid-sources.ts";
+} from "../_shared/multisource-sources-v2931.ts";
 
-const BUILD_VERSION = "29.3-multisource-hybrid-market-intelligence-sync";
+const BUILD_VERSION = "29.3.1-multisource-hybrid-market-intelligence-sync";
 const DAY = 86_400_000;
 
 type Ref = {
@@ -346,7 +346,7 @@ async function fetchText(
         headers: {
           Accept:
             "application/json, application/feed+json, application/rss+xml, application/atom+xml, application/xml, text/xml, text/csv, */*",
-          "User-Agent": "Investition-Dashboard/29.3 (+market monitor)",
+          "User-Agent": "Investition-Dashboard/29.3.1 (+market monitor)",
         },
         signal: controller.signal,
       });
