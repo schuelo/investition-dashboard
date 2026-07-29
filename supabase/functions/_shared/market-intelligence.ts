@@ -1,4 +1,4 @@
-export const ASSESSMENT_VERSION = "29.2-hybrid-rule-market-intelligence";
+export const ASSESSMENT_VERSION = "29.3-multisource-hybrid-rule-market-intelligence";
 
 export type NewsScope = "portfolio" | "watchlist" | "sector" | "market";
 export type MarketDirection = "positiv" | "negativ" | "gemischt" | "neutral";
@@ -50,7 +50,13 @@ export type AssessmentInput = {
   priceBars?: PriceBar[] | null;
   liveQuote?: LiveQuote | null;
   fundamentals?: FundamentalContext | null;
-  newsSourceKind?: "rss_aggregator" | "api" | "manual" | null;
+  newsSourceKind?:
+    | "open_news_index"
+    | "publisher_feed"
+    | "rss_aggregator"
+    | "api"
+    | "manual"
+    | null;
   priceProvider?: string | null;
   priceContextUpdatedAt?: string | null;
   now?: Date;
@@ -850,7 +856,11 @@ export function assessMarketNews(input: AssessmentInput): AssessmentResult {
           : price.availability === "awaiting_session"
           ? "Die erste abgeschlossene Handelssitzung nach Veröffentlichung steht noch aus."
           : "Für die Meldung waren keine verwertbaren Kursdaten verfügbar.",
-        input.newsSourceKind === "rss_aggregator"
+        input.newsSourceKind === "open_news_index"
+          ? "Die Nachricht wurde über einen offenen globalen Nachrichtenindex gefunden. Die Bewertung basiert überwiegend auf der Überschrift; die verlinkte Originalquelle ist vor einer Handlung zu prüfen."
+          : input.newsSourceKind === "publisher_feed"
+          ? "Die Nachricht stammt direkt aus dem Feed des Herausgebers oder einer Institution; Umfang und Aktualität hängen vom jeweiligen Feed ab."
+          : input.newsSourceKind === "rss_aggregator"
           ? "Die Nachricht stammt aus einem RSS-Aggregator. Bewertung und Analystensignal basieren auf Überschrift und verfügbarem Kurztext; die Originalquelle ist vor einer Handlung zu prüfen."
           : "Nachrichtenquelle ohne zusätzliche Hybrid-Einschränkung.",
         input.fundamentals
