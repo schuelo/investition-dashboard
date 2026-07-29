@@ -1,0 +1,8 @@
+[functions.sync-news]
+verify_jwt = false
+
+[functions.send-news-alerts]
+verify_jwt = false
+
+[functions.send-digest]
+verify_jwt = false
