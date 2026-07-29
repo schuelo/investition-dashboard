@@ -24,14 +24,24 @@ jobs:
       - name: Supabase CLI prüfen
         run: supabase --version
 
-      - name: V29.3.1-Quellen prüfen
+      - name: V29.4-Konsistenz prüfen
         run: |
-          test -f supabase/functions/_shared/multisource-sources-v2931.ts
-          grep -q 'export function gdeltDocUrl' supabase/functions/_shared/multisource-sources-v2931.ts
-          grep -q 'multisource-sources-v2931.ts' supabase/functions/sync-news/index.ts
+          test -f supabase/functions/_shared/multisource-sources-v294.ts
+          test -f supabase/functions/_shared/digest-logic.ts
+          test -f supabase/functions/send-digest/index.ts
+          test ! -f supabase/functions/_shared/hybrid-sources.ts
+          test ! -f supabase/functions/_shared/multisource-sources-v2931.ts
+          grep -q 'export function gdeltDocUrl' supabase/functions/_shared/multisource-sources-v294.ts
+          grep -q 'multisource-sources-v294.ts' supabase/functions/sync-news/index.ts
+          grep -q '29.4-multisource-hybrid-market-intelligence-sync' supabase/functions/sync-news/index.ts
+          grep -q '29.4-multisource-hybrid-portfolio-market-intelligence-alerts' supabase/functions/send-news-alerts/index.ts
+          grep -q '29.4-multisource-hybrid-digest' supabase/functions/send-digest/index.ts
 
       - name: News-Sync deployen
         run: supabase functions deploy sync-news --project-ref "$PROJECT_ID" --no-verify-jwt
 
       - name: Telegram-News deployen
         run: supabase functions deploy send-news-alerts --project-ref "$PROJECT_ID" --no-verify-jwt
+
+      - name: Telegram-Berichte deployen
+        run: supabase functions deploy send-digest --project-ref "$PROJECT_ID" --no-verify-jwt
