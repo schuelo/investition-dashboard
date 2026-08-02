@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Event- & Szenarioanalyse · Investition Dashboard</title>
+  <link rel="stylesheet" href="./event-analysis.css?v=30.0">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<main class="shell">
+  <header class="topbar">
+    <div class="brand"><span class="badge">V30.0 · separates Modul</span><h1>Event- & Szenarioanalyse</h1><p>Ereignisse recherchieren, Portfolioauswirkungen bewerten und Investmentideen ableiten.</p></div>
+    <div><a class="btn" href="./?v=29.4">Zum Dashboard</a></div>
+  </header>
+
+  <section class="card" id="loginCard">
+    <h2>Cloud-Anmeldung</h2><p class="muted">Verwendet dasselbe Supabase-Konto wie das bestehende Dashboard.</p>
+    <div class="form-grid"><div><label>E-Mail</label><input id="email" type="email" autocomplete="username"></div><div><label>Passwort</label><input id="password" type="password" autocomplete="current-password"></div></div>
+    <div class="actions"><button class="btn primary" id="loginBtn">Anmelden</button></div><div class="status" id="loginStatus"></div>
+  </section>
+
+  <section id="app" class="hidden">
+    <div class="grid">
+      <section class="card span-8">
+        <h2>Neues Ereignis analysieren</h2>
+        <label for="eventInput">Ereignis, These oder Schlagwörter</label>
+        <textarea id="eventInput" placeholder="Beispiel: China beschränkt den Export seltener Erden nach Europa und in die USA."></textarea>
+        <div class="form-grid">
+          <div><label>Horizont</label><select id="horizon"><option>1–10 Handelstage</option><option selected>1–6 Monate</option><option>über 6 Monate</option></select></div>
+          <div><label>Umfang</label><select id="scope"><option value="portfolio">nur Portfolio</option><option value="portfolio_watchlist">Portfolio und Watchlist</option><option value="portfolio_watchlist_market" selected>Portfolio, Watchlist und Marktideen</option></select></div>
+          <div><label>Risikoprofil</label><select id="risk"><option>defensiv</option><option>ausgewogen</option><option selected>chancenorientiert</option></select></div>
+          <div><label>Region</label><select id="region"><option selected>weltweit</option><option>Europa</option><option>USA</option><option>Asien</option></select></div>
+        </div>
+        <div class="actions"><button class="btn primary" id="analyzeBtn">Suche & Analyse starten</button><button class="btn" id="clearBtn">Eingabe leeren</button></div>
+        <div class="status" id="analysisStatus">Noch keine Analyse gestartet.</div>
+      </section>
+      <aside class="card span-4"><h2>Analysehistorie</h2><div id="history"><div class="empty">Noch keine gespeicherten Analysen.</div></div></aside>
+    </div>
+
+    <section id="results" class="hidden" style="margin-top:16px">
+      <div class="grid" id="metrics"></div>
+      <section class="card" style="margin-top:16px"><div class="tabs" id="tabs"></div><div id="tabContent"></div></section>
+    </section>
+  </section>
+</main>
+<script src="./event-analysis.js?v=30.0"></script>
+</body></html>
