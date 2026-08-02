@@ -1,3 +1,9 @@
+# Hinweis zum integrierten Paket
+
+Dieses Paket enthält zusätzlich die V30.1 Event- & Szenarioanalyse. Verwende für die Installation die aktuelle Anleitung [`INSTALLATION-V29.4-V30.md`](./INSTALLATION-V29.4-V30.md).
+
+---
+
 # Installation V29.4
 
 Diese Aktualisierung bringt das bestehende Dashboard auf einen vollständig

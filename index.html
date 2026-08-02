@@ -907,7 +907,107 @@
       .heat-cell { min-height:120px; padding:10px; }
     }
 
-</style>
+
+
+    /* V30.1: integrierte, technisch getrennte Event- & Szenarioanalyse */
+    .event-analysis-hero {
+      display:flex; align-items:flex-start; justify-content:space-between; gap:22px;
+      padding:22px; margin-bottom:16px; overflow:hidden;
+      background:
+        radial-gradient(circle at 92% 0%, rgba(99,169,255,.16), transparent 24rem),
+        linear-gradient(180deg, rgba(16,31,46,.98), rgba(10,22,34,.96));
+    }
+    .event-analysis-hero h2 { margin:5px 0 7px; font-size:clamp(22px,3vw,34px); letter-spacing:-.04em; }
+    .event-analysis-hero p { max-width:850px; margin:0; color:#b8c8d7; }
+    .event-eyebrow { color:var(--accent); font-size:10px; font-weight:850; letter-spacing:.12em; text-transform:uppercase; }
+    .event-analysis-layout { display:grid; grid-template-columns:minmax(0,1.7fr) minmax(300px,.65fr); gap:16px; }
+    .event-analysis-form, .event-history-card { padding:18px; }
+    .event-analysis-form textarea { min-height:150px; }
+    .event-form-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; margin-top:12px; }
+    .event-examples { display:flex; flex-wrap:wrap; gap:7px; margin-top:11px; }
+    .event-example { border:1px solid var(--border); border-radius:999px; padding:6px 9px; background:#0a1520; color:#aebfce; font-size:11px; }
+    .event-example:hover { border-color:rgba(80,210,194,.55); color:#eafffb; }
+    .event-analysis-status { min-height:20px; margin-top:12px; color:var(--muted); font-size:12px; }
+    .event-analysis-status.good { color:var(--good); }
+    .event-analysis-status.warn { color:var(--warn); }
+    .event-analysis-status.bad { color:var(--bad); }
+    .event-history-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; }
+    .event-history-head h2 { margin:0; font-size:15px; }
+    .event-history-list { max-height:490px; overflow:auto; padding-right:3px; }
+    .event-history-item {
+      width:100%; display:flex; align-items:center; justify-content:space-between; gap:10px;
+      margin:0 0 8px; padding:11px; text-align:left; color:var(--text); background:rgba(6,15,23,.45);
+      border:1px solid var(--border); border-radius:11px;
+    }
+    .event-history-item:hover { border-color:rgba(80,210,194,.5); background:rgba(80,210,194,.045); }
+    .event-history-item strong { display:block; font-size:12px; }
+    .event-history-item small { display:block; margin-top:4px; color:var(--muted); font-size:10px; }
+    .event-history-score { min-width:42px; text-align:right; font-size:16px; font-weight:850; }
+    .event-analysis-results { margin-top:16px; }
+    .event-metrics { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin-bottom:16px; }
+    .event-metric-card { padding:16px; }
+    .event-metric-value { font-size:29px; font-weight:900; letter-spacing:-.05em; }
+    .event-metric-label { margin-top:5px; color:#d9e5ef; font-weight:750; }
+    .event-metric-detail { color:var(--muted); font-size:11px; }
+    .event-impact-positive { color:var(--good) !important; }
+    .event-impact-negative { color:var(--bad) !important; }
+    .event-impact-neutral { color:var(--warn) !important; }
+    .event-results-card { overflow:hidden; }
+    .event-tabs { display:flex; gap:7px; overflow:auto; padding:12px 14px; border-bottom:1px solid var(--border); }
+    .event-tab { flex:0 0 auto; white-space:nowrap; }
+    .event-tab.active { color:#031019; background:var(--accent); border-color:transparent; font-weight:850; }
+    .event-tab-content { padding:18px; }
+    .event-summary-head { display:flex; align-items:flex-start; justify-content:space-between; gap:20px; margin-bottom:15px; }
+    .event-summary-head h2 { margin:4px 0 6px; font-size:23px; }
+    .event-summary-head p { margin:0; color:#bdcbd7; }
+    .event-result-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+    .event-result-grid.compact { margin:12px 0; }
+    .event-result-grid.compact > div { display:grid; gap:4px; }
+    .event-result-grid.compact span { color:#bdcbd7; }
+    .event-result-panel { padding:14px; border:1px solid var(--border); border-radius:12px; background:rgba(6,15,23,.44); }
+    .event-result-panel h3 { margin:0 0 7px; font-size:13px; }
+    .event-result-panel p { margin:0; color:#bdcbd7; }
+    .event-sector-row { display:flex; flex-wrap:wrap; gap:7px; margin-top:13px; }
+    .event-pill { display:inline-flex; padding:5px 8px; border-radius:999px; color:#bdeee7; background:rgba(80,210,194,.09); border:1px solid rgba(80,210,194,.2); font-size:11px; }
+    .event-table-wrap { overflow:auto; }
+    .event-table { min-width:1160px; }
+    .event-table tbody tr { cursor:default; }
+    .event-table td { vertical-align:top; }
+    .event-table td strong { display:block; }
+    .event-muted { display:block; color:var(--muted); font-size:11px; margin-top:3px; }
+    .event-scenario { margin-bottom:12px; padding:15px; border:1px solid var(--border); border-left:4px solid var(--accent); border-radius:12px; background:rgba(6,15,23,.42); }
+    .event-scenario-bull { border-left-color:var(--good); }
+    .event-scenario-bear { border-left-color:var(--bad); }
+    .event-scenario-head { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    .event-scenario h3 { margin:0; }
+    .event-scenario p { color:#bdcbd7; }
+    .event-source-row { display:flex; align-items:flex-start; justify-content:space-between; gap:14px; padding:12px 0; border-bottom:1px solid rgba(36,56,74,.8); }
+    .event-source-row:last-child { border-bottom:0; }
+    .event-source-row p { margin:4px 0 0; color:var(--muted); font-size:11px; }
+    .event-empty { padding:28px 12px; text-align:center; color:var(--muted); }
+    .event-scope-note { margin-top:9px; padding:9px 11px; border:1px solid rgba(80,210,194,.2); border-radius:9px; background:rgba(80,210,194,.055); color:#b9d8d4; font-size:11px; }
+    .event-idea-notice { display:grid; gap:4px; margin-bottom:16px; padding:12px 14px; border:1px solid rgba(74,210,149,.28); border-radius:11px; background:rgba(74,210,149,.065); }
+    .event-idea-notice.warn { border-color:rgba(243,170,69,.3); background:rgba(243,170,69,.07); }
+    .event-idea-notice strong { font-size:12px; }
+    .event-idea-notice span { color:#bdcbd7; font-size:11px; }
+    .event-idea-group { margin-top:18px; }
+    .event-idea-group:first-of-type { margin-top:0; }
+    .event-idea-group-head { display:flex; align-items:flex-end; justify-content:space-between; gap:12px; margin:0 0 8px; }
+    .event-idea-group-head h3 { margin:0; font-size:14px; }
+    .event-idea-group-head span { color:var(--muted); font-size:10px; }
+    .event-overlap { display:inline-flex; margin:5px 5px 0 0; padding:3px 6px; border-radius:999px; color:#bdeee7; background:rgba(80,210,194,.09); border:1px solid rgba(80,210,194,.18); font-size:9px; }
+    @media (max-width:1100px) {
+      .event-analysis-layout { grid-template-columns:1fr; }
+      .event-history-list { max-height:300px; }
+    }
+    @media (max-width:760px) {
+      .event-analysis-hero { flex-direction:column; }
+      .event-form-grid, .event-metrics, .event-result-grid { grid-template-columns:1fr; }
+      .event-summary-head, .event-source-row { flex-direction:column; }
+      .event-analysis-form, .event-history-card, .event-tab-content { padding:14px; }
+    }
+
+  </style>
 </head>
 <body class="auth-locked">
 <div id="appError" hidden style="position:sticky;top:0;z-index:9999;background:#7f1d1d;color:#fff;padding:12px 16px;font:600 14px system-ui;text-align:center"></div>
@@ -981,6 +1081,7 @@ setTimeout(function(){
       <button class="nav-btn" id="navTradingBtn" data-page="trading">▦ Trading & Analysen</button>
       <button class="nav-btn" id="navAnalyticsBtn" data-page="analytics">▤ Portfolio Intelligence</button>
       <button class="nav-btn" id="navNewsBtn" data-page="news">◉ News Feed</button>
+      <button class="nav-btn" id="navEventAnalysisBtn" data-page="events">◇ Event- &amp; Szenarioanalyse</button>
     </nav>
   <header class="topbar">
     <div class="brand-row">
@@ -1013,6 +1114,7 @@ setTimeout(function(){
         </div>
         <div class="decision-version">
           <span class="chip good">Dashboard 29.4</span>
+          <span class="chip neutral">Eventanalyse 30.0</span>
           <span class="chip neutral">Ausbaustufen 18–23 + 25</span>
           <button class="btn small" id="decisionRefreshBtn" type="button">↻ Aktualisieren</button>
         </div>
@@ -1208,6 +1310,63 @@ setTimeout(function(){
     <section id="analyticsContent"></section>
   </main>
 
+  <main class="page app-page" id="eventAnalysisPage" hidden>
+    <section class="card event-analysis-hero">
+      <div>
+        <span class="event-eyebrow">V30.1 · GETRENNTES ANALYSEMODUL</span>
+        <h2>Event- &amp; Szenarioanalyse</h2>
+        <p>Ereignisse, Thesen und Schlagwörter recherchieren, gegen Portfolio und Watchlist spiegeln und parallel davon unabhängige Marktideen, Gewinner, Risiken und Handlungsoptionen ableiten.</p>
+      </div>
+      <span class="chip good">liest V29.4-Daten · verändert keine Position</span>
+    </section>
+
+    <section class="event-analysis-layout">
+      <article class="card event-analysis-form">
+        <div class="card-head" style="padding:0 0 14px;border-bottom:0">
+          <div><h2>Neues Ereignis analysieren</h2><p>Beschreibe ein reales Ereignis, ein mögliches Szenario oder mehrere Suchbegriffe.</p></div>
+        </div>
+        <label for="eventAnalysisInput">Ereignis, These oder Schlagwörter</label>
+        <textarea id="eventAnalysisInput" maxlength="2000" placeholder="Beispiel: China beschränkt den Export seltener Erden nach Europa und in die USA."></textarea>
+        <div class="event-examples" aria-label="Beispiele">
+          <button class="event-example" type="button" data-event-example="China beschränkt den Export seltener Erden nach Europa und in die USA.">Seltene Erden</button>
+          <button class="event-example" type="button" data-event-example="Die USA verschärfen Exportkontrollen für KI-Chips nach China.">KI-Chip-Exportkontrollen</button>
+          <button class="event-example" type="button" data-event-example="Der Ölpreis steigt nachhaltig über 100 US-Dollar je Barrel.">Ölpreis über 100 USD</button>
+          <button class="event-example" type="button" data-event-example="Die EZB senkt die Leitzinsen schneller als vom Markt erwartet.">Schnelle EZB-Zinssenkung</button>
+          <button class="event-example" type="button" data-event-example="Ein Cyberangriff legt mehrere europäische Häfen und Logistiksysteme lahm.">Cyberangriff auf Logistik</button>
+          <button class="event-example" type="button" data-event-example="Der Strombedarf von KI-Rechenzentren steigt deutlich stärker als erwartet.">KI-Strombedarf</button>
+        </div>
+        <div class="event-form-grid">
+          <div><label for="eventAnalysisHorizon">Horizont</label><select id="eventAnalysisHorizon"><option>1–10 Handelstage</option><option selected>1–6 Monate</option><option>über 6 Monate</option></select></div>
+          <div><label for="eventAnalysisScope">Bestandsabgleich</label><select id="eventAnalysisScope"><option value="portfolio">nur Portfolio</option><option value="portfolio_watchlist" selected>Portfolio und Watchlist</option><option value="market_only">kein Bestandsabgleich</option></select></div>
+          <div><label for="eventAnalysisRisk">Risikoprofil</label><select id="eventAnalysisRisk"><option>defensiv</option><option>ausgewogen</option><option selected>chancenorientiert</option></select></div>
+          <div><label for="eventAnalysisRegion">Region</label><select id="eventAnalysisRegion"><option selected>weltweit</option><option>Europa</option><option>USA</option><option>Asien</option></select></div>
+        </div>
+        <div class="event-scope-note"><strong>Investmentideen:</strong> Der globale Markt-Scan läuft immer separat und unabhängig vom gewählten Bestandsabgleich.</div>
+        <div class="actions" style="justify-content:flex-start;margin-top:14px">
+          <button class="btn primary" id="eventAnalysisRunBtn" type="button">⌕ Suche &amp; Analyse starten</button>
+          <button class="btn" id="eventAnalysisClearBtn" type="button">Eingabe leeren</button>
+        </div>
+        <div class="event-analysis-status" id="eventAnalysisStatus">Noch keine Analyse gestartet.</div>
+      </article>
+
+      <aside class="card event-history-card">
+        <div class="event-history-head">
+          <div><span class="event-eyebrow">GESPEICHERT</span><h2>Analysehistorie</h2></div>
+          <button class="btn small" id="eventAnalysisRefreshHistoryBtn" type="button">↻</button>
+        </div>
+        <div class="event-history-list" id="eventAnalysisHistory"><div class="event-empty">Historie wird nach der Anmeldung geladen.</div></div>
+      </aside>
+    </section>
+
+    <section class="event-analysis-results" id="eventAnalysisResults" hidden>
+      <div class="event-metrics" id="eventAnalysisMetrics"></div>
+      <article class="card event-results-card">
+        <div class="event-tabs" id="eventAnalysisTabs"></div>
+        <div class="event-tab-content" id="eventAnalysisTabContent"></div>
+      </article>
+    </section>
+  </main>
+
 </div>
 
 <div class="modal-backdrop" id="modalBackdrop" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
@@ -1382,10 +1541,11 @@ setTimeout(function(){
 </div>
 
 <script defer src="./supabase.js?v=29.4"></script>
-<script defer src="./app.js?v=29.4"></script>
-<script defer src="./news.js?v=29.4"></script>
+<script defer src="./app.js?v=30.1"></script>
+<script defer src="./news.js?v=30.0"></script>
 <script defer src="./decision.js?v=29.4"></script>
 <script defer src="./analytics.js?v=29.4"></script>
+<script defer src="./event-analysis.js?v=30.1"></script>
 
 </body>
 </html>

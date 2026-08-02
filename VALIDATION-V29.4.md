@@ -1,16 +1,26 @@
+# Hinweis zum integrierten V30.1-Modul
+
+Die folgenden V29.4-Prüfungen bleiben gültig. Ergänzend wurden Navigation, V30.1-Schema und unabhängige Ideen-Engine, die Function `analyze-market-event` und die vollständige Testsuite geprüft. Für den produktiven Funktionstest gilt Abschnitt 6 in [`INSTALLATION-V29.4-V30.md`](./INSTALLATION-V29.4-V30.md).
+
+---
+
 # Validierung V29.4
 
 Geprüfter Paketstand: Investition Dashboard V29.4
 
 ## Erfolgreiche Prüfungen
 
-- 28 automatisierte Fach- und Konsistenztests;
+- 40 automatisierte Fach- und Konsistenztests;
 - JavaScript-Syntax aller fünf Browserdateien und des Service Workers;
-- Deno-/TypeScript-Prüfung aller drei deploybaren Edge Functions;
+- sieben unterschiedliche Ereignisszenarien erzeugen jeweils mindestens vier themenspezifische Marktideen;
+- ein nicht klassifizierbares Szenario erzeugt transparente Rückfallhypothesen statt einer leeren Liste;
+- Ideenlogik funktioniert ohne Portfolio- oder Watchlistdaten;
+- Portfolio-/Watchlist-Überschneidungen entfernen keine Marktideen;
+- TypeScript-Syntaxprüfung aller vier deploybaren Edge Functions;
 - YAML-Prüfung des GitHub-Actions-Workflows;
 - einheitliche V29.4-Kennungen in Frontend, Cache, Functions und
   Bewertungsmodell;
-- genau drei Function-Deployments im Workflow;
+- genau vier Function-Deployments im Workflow;
 - feste Supabase CLI `2.110.0`, keine `latest`-Auflösung;
 - keine alten Shared-Quellenmodule im Paket;
 - genau drei aktuelle Cron-Definitionen im Konsolidierungs-SQL;

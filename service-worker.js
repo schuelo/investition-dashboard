@@ -1,12 +1,13 @@
-const CACHE_NAME = 'investition-dashboard-v29-4-multisource';
+const CACHE_NAME = 'investition-dashboard-v29-4-event-analysis-v30-1';
 const CORE = [
   './',
   './index.html',
-  './app.js?v=29.4',
+  './app.js?v=30.1',
   './supabase.js?v=29.4',
-  './news.js?v=29.4',
+  './news.js?v=30.0',
   './decision.js?v=29.4',
-  './analytics.js?v=29.4'
+  './analytics.js?v=29.4',
+  './event-analysis.js?v=30.1'
 ];
 
 self.addEventListener('install', event => {

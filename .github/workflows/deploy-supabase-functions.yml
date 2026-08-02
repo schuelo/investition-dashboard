@@ -24,7 +24,7 @@ jobs:
       - name: Supabase CLI prüfen
         run: supabase --version
 
-      - name: V29.4-Konsistenz prüfen
+      - name: V29.4- und V30-Konsistenz prüfen
         run: |
           test -f supabase/functions/_shared/multisource-sources-v294.ts
           test -f supabase/functions/_shared/digest-logic.ts
@@ -36,6 +36,10 @@ jobs:
           grep -q '29.4-multisource-hybrid-market-intelligence-sync' supabase/functions/sync-news/index.ts
           grep -q '29.4-multisource-hybrid-portfolio-market-intelligence-alerts' supabase/functions/send-news-alerts/index.ts
           grep -q '29.4-multisource-hybrid-digest' supabase/functions/send-digest/index.ts
+          test -f event-analysis.js
+          test -f setup-v30-event-analysis.sql
+          test -f supabase/functions/analyze-market-event/index.ts
+          grep -q '30.0-integrated-event-scenario-analysis' supabase/functions/analyze-market-event/index.ts
 
       - name: News-Sync deployen
         run: supabase functions deploy sync-news --project-ref "$PROJECT_ID" --no-verify-jwt
@@ -45,3 +49,6 @@ jobs:
 
       - name: Telegram-Berichte deployen
         run: supabase functions deploy send-digest --project-ref "$PROJECT_ID" --no-verify-jwt
+
+      - name: Event- und Szenarioanalyse deployen
+        run: supabase functions deploy analyze-market-event --project-ref "$PROJECT_ID" --no-verify-jwt

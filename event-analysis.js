@@ -1,69 +1,455 @@
 (() => {
   'use strict';
-  const SUPABASE_URL='https://pzhfybtoyfttftgcrcxk.supabase.co';
-  const SUPABASE_KEY='sb_publishable_yGiDH_M0fUZglk40fCk7cQ_kkL1XKzj';
-  const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
-  const $=id=>document.getElementById(id);
-  let current=null;
-  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
-  const impactClass=n=>n>20?'impact-pos':n<-20?'impact-neg':'impact-neu';
 
-  async function init(){
-    $('loginBtn').onclick=login;$('analyzeBtn').onclick=analyze;$('clearBtn').onclick=()=>{$('eventInput').value='';};
-    const {data:{session}}=await sb.auth.getSession();
-    if(session) showApp();
+  const VERSION = '30.1';
+  const $ = (selector, root = document) => root.querySelector(selector);
+  const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
+  const page = $('#eventAnalysisPage');
+  if (!page) return;
+
+  const els = {
+    input: $('#eventAnalysisInput'),
+    horizon: $('#eventAnalysisHorizon'),
+    scope: $('#eventAnalysisScope'),
+    risk: $('#eventAnalysisRisk'),
+    region: $('#eventAnalysisRegion'),
+    analyze: $('#eventAnalysisRunBtn'),
+    clear: $('#eventAnalysisClearBtn'),
+    refreshHistory: $('#eventAnalysisRefreshHistoryBtn'),
+    status: $('#eventAnalysisStatus'),
+    history: $('#eventAnalysisHistory'),
+    results: $('#eventAnalysisResults'),
+    metrics: $('#eventAnalysisMetrics'),
+    tabs: $('#eventAnalysisTabs'),
+    tabContent: $('#eventAnalysisTabContent')
+  };
+
+  const state = {
+    sb: null,
+    session: null,
+    current: null,
+    loading: false,
+    historyLoaded: false
+  };
+
+  function dashboard() {
+    return window.InvestitionDashboard || null;
   }
-  async function login(){
-    $('loginBtn').disabled=true;$('loginStatus').textContent='Anmeldung läuft …';
-    const {error}=await sb.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});
-    $('loginBtn').disabled=false;
-    if(error){$('loginStatus').textContent='Fehler: '+error.message;return;}
-    showApp();
+
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>'"]/g, character => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+    }[character]));
   }
-  async function showApp(){
-    $('loginCard').classList.add('hidden');$('app').classList.remove('hidden');await loadHistory();
+
+  function safeUrl(value) {
+    try {
+      const url = new URL(String(value || ''));
+      return ['http:', 'https:'].includes(url.protocol) ? url.href : '';
+    } catch {
+      return '';
+    }
   }
-  async function analyze(){
-    const eventInput=$('eventInput').value.trim();
-    if(eventInput.length<8){$('analysisStatus').textContent='Bitte das Ereignis etwas genauer beschreiben.';return;}
-    $('analyzeBtn').disabled=true;$('analysisStatus').textContent='Recherche, Portfolioabgleich und Szenariomodell laufen …';
-    try{
-      const {data:{session}}=await sb.auth.getSession();
-      if(!session) throw new Error('Sitzung abgelaufen. Bitte neu anmelden.');
-      const res=await fetch(`${SUPABASE_URL}/functions/v1/analyze-market-event`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`},body:JSON.stringify({event_input:eventInput,analysis_horizon:$('horizon').value,analysis_scope:$('scope').value,risk_profile:$('risk').value,regions:[$('region').value]})});
-      const body=await res.json().catch(()=>({}));
-      if(!res.ok||!body.ok) throw new Error(body.error||`Function-Fehler ${res.status}`);
-      current=body.analysis;render(current);await loadHistory();$('analysisStatus').textContent=`Analyse abgeschlossen · ${current.sources?.length||0} Quellen · ${current.assets?.length||0} Werte bewertet.`;
-    }catch(e){$('analysisStatus').textContent='Fehler: '+(e.message||String(e));}
-    finally{$('analyzeBtn').disabled=false;}
+
+  function number(value, fallback = 0) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
   }
-  async function loadHistory(){
-    const {data,error}=await sb.from('event_analyses').select('id,event_title,event_input,market_relevance,portfolio_impact,created_at,raw_result').order('created_at',{ascending:false}).limit(20);
-    if(error){$('history').innerHTML='<div class="empty">Historie noch nicht verfügbar. Zuerst V30-SQL ausführen.</div>';return;}
-    if(!data?.length){$('history').innerHTML='<div class="empty">Noch keine gespeicherten Analysen.</div>';return;}
-    $('history').innerHTML=data.map(x=>`<div class="history-item" data-id="${x.id}"><div><b>${esc(x.event_title||x.event_input)}</b><div class="muted">${new Date(x.created_at).toLocaleString('de-DE')}</div></div><span class="${impactClass(x.portfolio_impact)}">${x.portfolio_impact>0?'+':''}${x.portfolio_impact}</span></div>`).join('');
-    [...$('history').querySelectorAll('.history-item')].forEach(el=>el.onclick=async()=>{const {data}=await sb.from('event_analyses').select('raw_result').eq('id',el.dataset.id).single();if(data?.raw_result){current=data.raw_result;render(current);}});
+
+  function impactClass(value) {
+    const score = number(value);
+    return score > 20 ? 'event-impact-positive' : score < -20 ? 'event-impact-negative' : 'event-impact-neutral';
   }
-  function render(a){
-    $('results').classList.remove('hidden');
-    $('metrics').innerHTML=[['Marktrelevanz',a.market_relevance,'/ 100'],['Portfolio-Impact',`${a.portfolio_impact>0?'+':''}${a.portfolio_impact}`,'-100 bis +100'],['Vertrauen',a.confidence_score,'/ 100']].map((m,i)=>`<div class="card span-4"><div class="metric ${i===1?impactClass(a.portfolio_impact):''}">${esc(m[1])}<small>${esc(m[0])} · ${esc(m[2])}</small></div></div>`).join('');
-    const tabs=[['summary','Zusammenfassung'],['portfolio','Portfolio & Watchlist'],['ideas','Investmentideen'],['scenarios','Szenarien'],['signals','Frühindikatoren'],['sources','Quellen']];
-    $('tabs').innerHTML=tabs.map((t,i)=>`<button class="btn tab ${i===0?'active':''}" data-tab="${t[0]}">${t[1]}</button>`).join('');
-    [...$('tabs').children].forEach(b=>b.onclick=()=>{[...$('tabs').children].forEach(x=>x.classList.remove('active'));b.classList.add('active');renderTab(b.dataset.tab,a);});
-    renderTab('summary',a);$('results').scrollIntoView({behavior:'smooth',block:'start'});
+
+  function dateText(value) {
+    if (!value) return '—';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return String(value);
+    return new Intl.DateTimeFormat('de-DE', {
+      dateStyle: 'short',
+      timeStyle: 'short',
+      timeZone: 'Europe/Berlin'
+    }).format(date);
   }
-  function renderTab(tab,a){
-    const assets=a.assets||[];
-    if(tab==='summary') $('tabContent').innerHTML=`<h2>${esc(a.event_title)}</h2><p>${esc(a.event_summary)}</p><div class="grid"><div class="card span-6"><h3>So wurde das Ereignis verstanden</h3><p>${esc(a.interpretation)}</p><p><b>Einpreisung:</b> ${esc(a.pricing_state)}</p></div><div class="card span-6"><h3>Wichtigste Handlung</h3><p>${esc(a.key_action)}</p><p><b>Betroffene Bereiche:</b> ${(a.affected_sectors||[]).map(x=>`<span class="pill">${esc(x)}</span>`).join(' ')}</p></div></div>`;
-    if(tab==='portfolio') $('tabContent').innerHTML=tableAssets(assets.filter(x=>x.is_portfolio_position||x.is_watchlist_position));
-    if(tab==='ideas') $('tabContent').innerHTML=tableAssets(assets.filter(x=>!x.is_portfolio_position&&!x.is_watchlist_position));
-    if(tab==='scenarios') $('tabContent').innerHTML=(a.scenarios||[]).map(s=>`<div class="scenario"><h3>${esc(s.title)} · ${esc(s.probability)} %</h3><p>${esc(s.description)}</p><p><b>Portfolio:</b> ${esc(s.portfolio_effect)}<br><b>Markt:</b> ${esc(s.market_effect)}</p><p class="muted">Bestätigung: ${(s.confirmation_signals||[]).map(esc).join(' · ')}</p></div>`).join('')||'<div class="empty">Keine Szenarien.</div>';
-    if(tab==='signals') $('tabContent').innerHTML=(a.signals||[]).map(s=>`<div class="source"><b>${esc(s.signal_name)}</b><span class="pill" style="float:right">${esc(s.importance)}/100</span><div>${esc(s.signal_description)}</div></div>`).join('')||'<div class="empty">Keine Frühindikatoren.</div>';
-    if(tab==='sources') $('tabContent').innerHTML=(a.sources||[]).map(s=>`<div class="source"><b>${esc(s.title)}</b><div class="muted">${esc(s.source_name||'Quelle')} · Relevanz ${esc(s.relevance_score)}</div>${s.source_url?`<a target="_blank" rel="noopener" href="${esc(s.source_url)}">Originalquelle öffnen</a>`:''}</div>`).join('')||'<div class="empty">Keine externen Quellen gefunden; Analyse beruht auf Portfolio- und Regelmodell.</div>';
+
+  function setStatus(message, type = '') {
+    if (!els.status) return;
+    els.status.textContent = message;
+    els.status.className = `event-analysis-status ${type}`;
   }
-  function tableAssets(rows){
-    if(!rows.length)return '<div class="empty">Keine passenden Werte erkannt.</div>';
-    return `<div class="table-wrap"><table><thead><tr><th>Wert</th><th>Bezug</th><th>Impact</th><th>Vertrauen</th><th>Einpreisung</th><th>Empfehlung</th><th>Begründung</th></tr></thead><tbody>${rows.map(x=>`<tr><td><b>${esc(x.company_name)}</b><br><span class="muted">${esc(x.symbol||'')}</span></td><td>${esc(x.asset_source)}</td><td class="${impactClass(x.impact_score)}">${x.impact_score>0?'+':''}${esc(x.impact_score)}</td><td>${esc(x.confidence_score)}</td><td>${esc(x.pricing_state)}</td><td>${esc(x.recommendation)}</td><td>${esc(x.reasoning)}</td></tr>`).join('')}</tbody></table></div>`;
+
+  function setBusy(busy) {
+    state.loading = busy;
+    if (els.analyze) els.analyze.disabled = busy;
+    if (els.refreshHistory) els.refreshHistory.disabled = busy;
+    page.setAttribute('aria-busy', busy ? 'true' : 'false');
   }
-  init();
+
+  function syncAccess() {
+    state.sb = dashboard()?.getSupabase?.() || state.sb;
+    state.session = dashboard()?.getSession?.() || null;
+    return Boolean(state.sb && state.session);
+  }
+
+  async function functionError(error) {
+    let details = error?.message || String(error || 'Unbekannter Function-Fehler');
+    try {
+      if (error?.context instanceof Response) {
+        const payload = await error.context.clone().json();
+        details = payload?.error || payload?.message || details;
+      }
+    } catch (_ignored) {
+      try {
+        if (error?.context instanceof Response) details = await error.context.clone().text() || details;
+      } catch (_ignoredAgain) {}
+    }
+    return details;
+  }
+
+  async function runAnalysis() {
+    const eventInput = String(els.input?.value || '').trim();
+    if (eventInput.length < 8) {
+      setStatus('Bitte das Ereignis oder die These etwas genauer beschreiben.', 'warn');
+      els.input?.focus();
+      return;
+    }
+    if (!syncAccess()) {
+      setStatus('Keine aktive Cloud-Sitzung. Bitte das Dashboard erneut entsperren.', 'bad');
+      return;
+    }
+
+    setBusy(true);
+    setStatus('Recherche, Portfolioabgleich und Szenariomodell laufen …');
+    try {
+      const {data, error} = await state.sb.functions.invoke('analyze-market-event', {
+        body: {
+          event_input: eventInput,
+          analysis_horizon: els.horizon?.value || '1–6 Monate',
+          analysis_scope: els.scope?.value || 'portfolio_watchlist',
+          risk_profile: els.risk?.value || 'chancenorientiert',
+          regions: [els.region?.value || 'weltweit']
+        }
+      });
+      if (error) throw new Error(await functionError(error));
+      if (!data?.ok || !data.analysis) throw new Error(data?.error || 'Die Function lieferte kein Analyseergebnis.');
+
+      state.current = data.analysis;
+      renderAnalysis(state.current);
+      await loadHistory(true);
+      const sourceCount = state.current.sources?.length || 0;
+      const assetCount = state.current.assets?.length || 0;
+      const ideaCount = (state.current.assets || []).filter(asset => !asset.is_portfolio_position && !asset.is_watchlist_position).length;
+      setStatus(`Analyse abgeschlossen · ${sourceCount} Quellen · ${assetCount} Werte bewertet · ${ideaCount} unabhängige Marktideen.`, 'good');
+    } catch (error) {
+      console.error('Event-Analyse:', error);
+      setStatus(`Analyse fehlgeschlagen: ${error?.message || String(error)}`, 'bad');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function loadHistory(force = false) {
+    if (!syncAccess()) {
+      els.history.innerHTML = '<div class="event-empty">Keine aktive Cloud-Sitzung.</div>';
+      return;
+    }
+    if (state.historyLoaded && !force) return;
+
+    els.history.innerHTML = '<div class="event-empty">Analysehistorie wird geladen …</div>';
+    const {data, error} = await state.sb
+      .from('event_analyses')
+      .select('id,event_title,event_input,market_relevance,portfolio_impact,confidence_score,created_at,raw_result')
+      .eq('user_id', state.session.user.id)
+      .order('created_at', {ascending: false})
+      .limit(30);
+
+    if (error) {
+      state.historyLoaded = false;
+      const schemaHint = /event_analyses|schema cache|does not exist/i.test(error.message || '')
+        ? ' Das SQL „setup-v30-event-analysis.sql“ wurde vermutlich noch nicht ausgeführt.'
+        : '';
+      els.history.innerHTML = `<div class="event-empty">Historie nicht verfügbar: ${escapeHtml(error.message)}${escapeHtml(schemaHint)}</div>`;
+      return;
+    }
+
+    state.historyLoaded = true;
+    if (!data?.length) {
+      els.history.innerHTML = '<div class="event-empty">Noch keine gespeicherten Analysen.</div>';
+      return;
+    }
+
+    els.history.innerHTML = data.map(item => `
+      <button class="event-history-item" type="button" data-analysis-id="${escapeHtml(item.id)}">
+        <span>
+          <strong>${escapeHtml(item.event_title || item.event_input || 'Ereignisanalyse')}</strong>
+          <small>${escapeHtml(dateText(item.created_at))} · Vertrauen ${escapeHtml(item.confidence_score ?? '—')}/100</small>
+        </span>
+        <span class="event-history-score ${impactClass(item.portfolio_impact)}">${number(item.portfolio_impact) > 0 ? '+' : ''}${escapeHtml(item.portfolio_impact ?? 0)}</span>
+      </button>
+    `).join('');
+
+    $$('[data-analysis-id]', els.history).forEach(button => {
+      button.addEventListener('click', () => {
+        const row = data.find(item => item.id === button.dataset.analysisId);
+        if (!row?.raw_result) return;
+        state.current = row.raw_result;
+        renderAnalysis(state.current);
+        setStatus(`Gespeicherte Analyse vom ${dateText(row.created_at)} geöffnet.`, 'good');
+      });
+    });
+  }
+
+  function metricCard(label, value, detail, className = '') {
+    return `
+      <article class="card event-metric-card ${className}">
+        <div class="event-metric-value">${escapeHtml(value)}</div>
+        <div class="event-metric-label">${escapeHtml(label)}</div>
+        <div class="event-metric-detail">${escapeHtml(detail)}</div>
+      </article>
+    `;
+  }
+
+  function assetsFrom(analysis) {
+    return Array.isArray(analysis?.assets) ? analysis.assets : [];
+  }
+
+  function ideaRoleLabel(asset) {
+    if (asset.idea_type === 'winner') return 'Potenzieller Gewinner';
+    if (asset.idea_type === 'loser') return 'Risiko-/Short-Kandidat';
+    if (asset.idea_type === 'hedge') return 'Mögliche Absicherung';
+    return 'Recherchekandidat';
+  }
+
+  function renderIdeaGroups(rows, analysis) {
+    if (!rows.length) return '<div class="event-empty">Keine Marktideen vorhanden. Dies wäre ein technischer Fehler der Ideen-Engine.</div>';
+    const sorted = [...rows].sort((a, b) => number(a.idea_rank, 999) - number(b.idea_rank, 999));
+    const positive = sorted.filter(asset => number(asset.impact_score) > 20);
+    const negative = sorted.filter(asset => number(asset.impact_score) < -20);
+    const research = sorted.filter(asset => Math.abs(number(asset.impact_score)) <= 20);
+    const fallback = Boolean(analysis?.idea_engine?.used_fallback);
+    const section = (title, description, items) => items.length ? `
+      <section class="event-idea-group">
+        <div class="event-idea-group-head"><h3>${escapeHtml(title)}</h3><span>${escapeHtml(description)}</span></div>
+        ${assetTable(items, false)}
+      </section>` : '';
+    return `
+      <div class="event-idea-notice ${fallback ? 'warn' : 'good'}">
+        <strong>Unabhängiger Markt-Scan</strong>
+        <span>Diese Ideen werden getrennt von Portfolio und Watchlist erzeugt.${fallback ? ' Mindestens ein Kandidat stammt aus einer niedrig-konfidenten Rückfallebene und muss besonders sorgfältig validiert werden.' : ''}</span>
+      </div>
+      ${section('Chancen & Profiteure', 'positive Ereigniswirkung', positive)}
+      ${section('Risiken & Short-Kandidaten', 'negative Ereigniswirkung', negative)}
+      ${section('Recherche & Absicherung', 'noch keine eindeutige Richtung', research)}
+    `;
+  }
+
+  function renderAnalysis(analysis) {
+    if (!analysis) return;
+    els.results.hidden = false;
+    const impact = number(analysis.portfolio_impact);
+    const ideaCount = assetsFrom(analysis).filter(asset => !asset.is_portfolio_position && !asset.is_watchlist_position).length;
+    els.metrics.innerHTML = [
+      metricCard('Marktrelevanz', analysis.market_relevance ?? '—', 'von 100'),
+      metricCard('Portfolio-Impact', `${impact > 0 ? '+' : ''}${impact}`, '-100 bis +100', impactClass(impact)),
+      metricCard('Marktideen', ideaCount, 'unabhängig vom Bestand'),
+      metricCard('Vertrauen', analysis.confidence_score ?? '—', 'von 100')
+    ].join('');
+
+    const tabs = [
+      ['summary', 'Zusammenfassung'],
+      ['portfolio', 'Portfolio & Watchlist'],
+      ['ideas', 'Investmentideen'],
+      ['scenarios', 'Szenarien'],
+      ['signals', 'Frühindikatoren'],
+      ['sources', 'Quellen']
+    ];
+    els.tabs.innerHTML = tabs.map(([key, label], index) => `
+      <button class="btn small event-tab ${index === 0 ? 'active' : ''}" type="button" data-event-tab="${key}">${label}</button>
+    `).join('');
+    $$('[data-event-tab]', els.tabs).forEach(button => {
+      button.addEventListener('click', () => {
+        $$('[data-event-tab]', els.tabs).forEach(item => item.classList.remove('active'));
+        button.classList.add('active');
+        renderTab(button.dataset.eventTab, analysis);
+      });
+    });
+    renderTab('summary', analysis);
+    els.results.scrollIntoView({behavior: 'smooth', block: 'start'});
+  }
+
+  function renderTab(tab, analysis) {
+    const assets = assetsFrom(analysis);
+    if (tab === 'summary') {
+      els.tabContent.innerHTML = `
+        <div class="event-summary-head">
+          <div>
+            <span class="event-eyebrow">Ereignisinterpretation</span>
+            <h2>${escapeHtml(analysis.event_title || 'Ereignisanalyse')}</h2>
+            <p>${escapeHtml(analysis.event_summary || '')}</p>
+          </div>
+          <span class="chip neutral">Einpreisung: ${escapeHtml(analysis.pricing_state || 'unklar')}</span>
+        </div>
+        <div class="event-result-grid">
+          <article class="event-result-panel">
+            <h3>So wurde das Ereignis verstanden</h3>
+            <p>${escapeHtml(analysis.interpretation || 'Keine Interpretation verfügbar.')}</p>
+          </article>
+          <article class="event-result-panel">
+            <h3>Wichtigste Handlung</h3>
+            <p>${escapeHtml(analysis.key_action || 'Keine Handlungsempfehlung verfügbar.')}</p>
+          </article>
+        </div>
+        <div class="event-sector-row">
+          ${(analysis.affected_sectors || []).map(sector => `<span class="event-pill">${escapeHtml(sector)}</span>`).join('') || '<span class="event-pill">Keine Branche erkannt</span>'}
+        </div>
+      `;
+      return;
+    }
+    if (tab === 'portfolio') {
+      els.tabContent.innerHTML = assetTable(assets.filter(asset => asset.is_portfolio_position || asset.is_watchlist_position), true);
+      bindAssetLinks();
+      return;
+    }
+    if (tab === 'ideas') {
+      els.tabContent.innerHTML = renderIdeaGroups(assets.filter(asset => !asset.is_portfolio_position && !asset.is_watchlist_position), analysis);
+      bindAssetLinks();
+      return;
+    }
+    if (tab === 'scenarios') {
+      els.tabContent.innerHTML = (analysis.scenarios || []).map(scenario => `
+        <article class="event-scenario event-scenario-${escapeHtml(scenario.scenario_type || 'base')}">
+          <div class="event-scenario-head">
+            <h3>${escapeHtml(scenario.title || 'Szenario')}</h3>
+            <span class="chip neutral">${escapeHtml(scenario.probability ?? '—')} %</span>
+          </div>
+          <p>${escapeHtml(scenario.description || '')}</p>
+          <div class="event-result-grid compact">
+            <div><strong>Portfolio</strong><span>${escapeHtml(scenario.portfolio_effect || '—')}</span></div>
+            <div><strong>Markt</strong><span>${escapeHtml(scenario.market_effect || '—')}</span></div>
+          </div>
+          <p class="event-muted"><strong>Bestätigung:</strong> ${(scenario.confirmation_signals || []).map(escapeHtml).join(' · ') || '—'}</p>
+          <p class="event-muted"><strong>Ungültig bei:</strong> ${(scenario.invalidation_signals || []).map(escapeHtml).join(' · ') || '—'}</p>
+        </article>
+      `).join('') || '<div class="event-empty">Keine Szenarien vorhanden.</div>';
+      return;
+    }
+    if (tab === 'signals') {
+      els.tabContent.innerHTML = (analysis.signals || []).map(signal => `
+        <article class="event-source-row">
+          <div>
+            <strong>${escapeHtml(signal.signal_name || 'Frühindikator')}</strong>
+            <p>${escapeHtml(signal.signal_description || '')}</p>
+          </div>
+          <span class="chip neutral">Priorität ${escapeHtml(signal.importance ?? '—')}</span>
+        </article>
+      `).join('') || '<div class="event-empty">Keine Frühindikatoren vorhanden.</div>';
+      return;
+    }
+    if (tab === 'sources') {
+      els.tabContent.innerHTML = (analysis.sources || []).map(source => {
+        const url = safeUrl(source.source_url);
+        return `
+          <article class="event-source-row">
+            <div>
+              <strong>${escapeHtml(source.title || 'Quelle')}</strong>
+              <p>${escapeHtml(source.source_name || 'Quelle')} · ${escapeHtml(dateText(source.published_at))} · Relevanz ${escapeHtml(source.relevance_score ?? '—')}</p>
+            </div>
+            ${url ? `<a class="btn small" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">Originalquelle ↗</a>` : ''}
+          </article>
+        `;
+      }).join('') || '<div class="event-empty">Keine externen Quellen gefunden. Die Analyse basiert auf Portfolio-, News- und Regelmodell.</div>';
+    }
+  }
+
+  function assetTable(rows, includeSource) {
+    if (!rows.length) return '<div class="event-empty">Keine passenden Werte erkannt.</div>';
+    return `
+      <div class="event-table-wrap">
+        <table class="event-table">
+          <thead><tr>
+            <th>Wert</th>
+            ${includeSource ? '<th>Zuordnung</th>' : '<th>Rolle</th><th>Chance</th>'}
+            <th>Impact</th>
+            <th>Vertrauen</th>
+            <th>Einpreisung</th>
+            <th>Empfehlung</th>
+            <th>Begründung</th>
+            <th></th>
+          </tr></thead>
+          <tbody>${rows.map(asset => {
+            const score = number(asset.impact_score);
+            const canOpen = Boolean(asset.symbol && dashboard()?.hasAnalysisForSymbol?.(asset.symbol));
+            return `
+              <tr>
+                <td><strong>${escapeHtml(asset.company_name || 'Unbekannter Wert')}</strong><span class="event-muted">${escapeHtml(asset.symbol || 'kein Symbol')}</span>${asset.overlaps_portfolio ? '<span class="event-overlap">auch im Portfolio</span>' : ''}${asset.overlaps_watchlist ? '<span class="event-overlap">auch in Watchlist</span>' : ''}</td>
+                <td>${escapeHtml(includeSource ? (asset.asset_source || 'Bestand') : ideaRoleLabel(asset))}${asset.is_fallback_idea ? '<span class="event-muted">Rückfallhypothese</span>' : ''}</td>
+                ${includeSource ? '' : `<td><strong>${escapeHtml(asset.opportunity_score ?? '—')}</strong><span class="event-muted">von 100</span></td>`}
+                <td class="${impactClass(score)}"><strong>${score > 0 ? '+' : ''}${escapeHtml(score)}</strong></td>
+                <td>${escapeHtml(asset.confidence_score ?? '—')}</td>
+                <td>${escapeHtml(asset.pricing_state || 'unklar')}</td>
+                <td>${escapeHtml(asset.recommendation || '—')}</td>
+                <td>${escapeHtml(asset.reasoning || '—')}</td>
+                <td>${canOpen ? `<button class="btn small" type="button" data-event-open-symbol="${escapeHtml(asset.symbol)}">Analyse öffnen</button>` : ''}</td>
+              </tr>
+            `;
+          }).join('')}</tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  function bindAssetLinks() {
+    $$('[data-event-open-symbol]', els.tabContent).forEach(button => {
+      button.addEventListener('click', () => {
+        const result = dashboard()?.openAnalysisBySymbol?.(button.dataset.eventOpenSymbol || '');
+        if (!result?.ok) {
+          setStatus('Für diesen Wert wurde keine bestehende Trading-Analyse gefunden.', 'warn');
+          return;
+        }
+        window.InvestitionNavigation?.showPage?.('trading');
+      });
+    });
+  }
+
+  function clearInput() {
+    if (els.input) els.input.value = '';
+    els.input?.focus();
+    setStatus('Eingabe geleert. Bestehende Analysen bleiben gespeichert.');
+  }
+
+  function initialize() {
+    els.analyze?.addEventListener('click', runAnalysis);
+    els.clear?.addEventListener('click', clearInput);
+    els.refreshHistory?.addEventListener('click', () => loadHistory(true));
+    $$('[data-event-example]', page).forEach(button => {
+      button.addEventListener('click', () => {
+        els.input.value = button.dataset.eventExample || '';
+        els.input.focus();
+      });
+    });
+    window.addEventListener('investition:event-analysis-visible', () => loadHistory());
+    window.addEventListener('investition:auth-changed', event => {
+      state.session = event.detail?.session || null;
+      state.historyLoaded = false;
+      if (!state.session) {
+        state.current = null;
+        els.results.hidden = true;
+        els.history.innerHTML = '<div class="event-empty">Dashboard ist gesperrt.</div>';
+      } else if (!page.hidden) {
+        loadHistory(true);
+      }
+    });
+    window.addEventListener('investition:ready', () => {
+      syncAccess();
+      if (!page.hidden) loadHistory(true);
+    });
+    if (!page.hidden) loadHistory(true);
+    window.InvestitionEventAnalysis = Object.assign(window.InvestitionEventAnalysis || {}, {
+      version: VERSION,
+      refresh: () => loadHistory(true),
+      getCurrent: () => state.current ? {...state.current} : null
+    });
+  }
+
+  initialize();
 })();

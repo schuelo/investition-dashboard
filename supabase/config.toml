@@ -6,3 +6,6 @@ verify_jwt = false
 
 [functions.send-digest]
 verify_jwt = false
+
+[functions.analyze-market-event]
+verify_jwt = false
