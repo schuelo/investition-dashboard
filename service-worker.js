@@ -1,13 +1,18 @@
-const CACHE_NAME = 'investition-dashboard-v29-4-event-analysis-v30-1';
+const CACHE_NAME = 'investition-dashboard-v29-4-event-analysis-v30-1-signal-v31-0';
 const CORE = [
   './',
   './index.html',
-  './app.js?v=30.1',
+  './app.js?v=31.0',
   './supabase.js?v=29.4',
-  './news.js?v=30.0',
+  './news.js?v=31.0',
   './decision.js?v=29.4',
   './analytics.js?v=29.4',
-  './event-analysis.js?v=30.1'
+  './event-analysis.js?v=30.1',
+  './signal-simulation.js?v=31.0',
+  './signal-simulation.css?v=31.0',
+  './supabase/functions/_shared/signal-engine.mjs?v=31.0',
+  './supabase/functions/_shared/signal-engine.mjs',
+  './supabase/functions/_shared/signal-service.mjs?v=31.0'
 ];
 
 self.addEventListener('install', event => {

@@ -32,11 +32,13 @@
     analyticsPage: $('#analyticsPage'),
     newsPage: $('#newsPage'),
     eventAnalysisPage: $('#eventAnalysisPage'),
+    signalSimulationPage: $('#signalSimulationPage'),
     navTrading: $('#navTradingBtn'),
     navDecision: $('#navDecisionBtn'),
     navAnalytics: $('#navAnalyticsBtn'),
     navNews: $('#navNewsBtn'),
     navEventAnalysis: $('#navEventAnalysisBtn'),
+    navSignalSimulation: $('#navSignalSimulationBtn'),
     list: $('#newsList'),
     detail: $('#newsDetail'),
     detailCard: $('#newsDetailCard'),
@@ -639,7 +641,7 @@
   }
 
   function showPage(name) {
-    const page = ['decision', 'trading', 'analytics', 'news', 'events'].includes(name)
+    const page = ['decision', 'trading', 'analytics', 'news', 'events', 'signals'].includes(name)
       ? name
       : 'decision';
     els.tradingPage.hidden = page !== 'trading';
@@ -652,6 +654,8 @@
     els.navAnalytics?.classList.toggle('active', page === 'analytics');
     els.navNews?.classList.toggle('active', page === 'news');
     els.navEventAnalysis?.classList.toggle('active', page === 'events');
+    if (els.signalSimulationPage) els.signalSimulationPage.hidden = page !== 'signals';
+    els.navSignalSimulation?.classList.toggle('active', page === 'signals');
     history.replaceState(null, '', `#${page}`);
     if (page === 'news') renderList();
     if (page === 'decision') {
@@ -660,6 +664,9 @@
     if (page === 'analytics') {
       window.dispatchEvent(new CustomEvent('investition:analytics-visible'));
     }
+    if (page === 'signals') {
+      window.dispatchEvent(new CustomEvent('investition:signal-simulation-visible'));
+    }
     if (page === 'events') {
       window.dispatchEvent(new CustomEvent('investition:event-analysis-visible'));
     }
@@ -667,7 +674,7 @@
 
   function pageFromHash() {
     const value = String(location.hash || '').replace('#', '');
-    return ['decision', 'trading', 'analytics', 'news', 'events'].includes(value)
+    return ['decision', 'trading', 'analytics', 'news', 'events', 'signals'].includes(value)
       ? value
       : 'decision';
   }
@@ -1030,6 +1037,7 @@
   if (els.navAnalytics) els.navAnalytics.onclick = () => showPage('analytics');
   els.navNews.onclick = () => showPage('news');
   if (els.navEventAnalysis) els.navEventAnalysis.onclick = () => showPage('events');
+  if (els.navSignalSimulation) els.navSignalSimulation.onclick = () => showPage('signals');
   [els.search, els.scope, els.topic, els.impact, els.pricing, els.read]
     .filter(Boolean)
     .forEach(element => element.addEventListener('input', renderList));

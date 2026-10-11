@@ -44,3 +44,10 @@
 - historischer V30.0-Stand: Marktideen wurden nur beim Umfang `Portfolio, Watchlist und Marktideen` ergänzt; in V30.1 behoben;
 - Einpreisung wird aus passenden, bereits bewerteten V29.4-News abgeleitet;
 - bestehende Dashboard-Anmeldung wird wiederverwendet.
+
+## V30.1.1 – Deployment-Fix
+
+- Falsche V30.0-Kennung in der GitHub-Actions-Konsistenzprüfung korrigiert.
+- Aussagekräftige Workflow-Fehlermeldungen ergänzt.
+- Secret- und Event-Idea-Engine-Prüfung ergänzt.
+- Keine Änderung an der Event- und Szenarioanalyse selbst.

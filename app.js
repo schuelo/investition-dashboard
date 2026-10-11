@@ -1086,7 +1086,7 @@
     });
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", function() {
-        navigator.serviceWorker.register("./service-worker.js?v=30.1").catch(function(err) {
+        navigator.serviceWorker.register("./service-worker.js?v=31.0").catch(function(err) {
           console.warn("Service Worker konnte nicht registriert werden.", err);
         });
       });

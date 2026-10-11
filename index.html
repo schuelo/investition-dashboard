@@ -1008,6 +1008,7 @@
     }
 
   </style>
+  <link rel="stylesheet" href="./signal-simulation.css?v=31.0" />
 </head>
 <body class="auth-locked">
 <div id="appError" hidden style="position:sticky;top:0;z-index:9999;background:#7f1d1d;color:#fff;padding:12px 16px;font:600 14px system-ui;text-align:center"></div>
@@ -1081,6 +1082,7 @@ setTimeout(function(){
       <button class="nav-btn" id="navTradingBtn" data-page="trading">▦ Trading & Analysen</button>
       <button class="nav-btn" id="navAnalyticsBtn" data-page="analytics">▤ Portfolio Intelligence</button>
       <button class="nav-btn" id="navNewsBtn" data-page="news">◉ News Feed</button>
+      <button class="nav-btn" id="navSignalSimulationBtn" data-page="signals">↗ Signal- &amp; Verlaufssimulation</button>
       <button class="nav-btn" id="navEventAnalysisBtn" data-page="events">◇ Event- &amp; Szenarioanalyse</button>
     </nav>
   <header class="topbar">
@@ -1308,6 +1310,54 @@ setTimeout(function(){
     </section>
     <div class="analytics-status" id="analyticsStatus">Portfolio Intelligence wird vorbereitet …</div>
     <section id="analyticsContent"></section>
+  </main>
+
+  <main class="page app-page" id="signalSimulationPage" hidden>
+    <section class="card ss-hero">
+      <span class="ss-kicker">V31 · Signal-Labor</span>
+      <h2>Signal- &amp; Verlaufssimulation</h2>
+      <p>Feedmeldungen und berechnete Chartsignale zusammenführen, mögliche Kursbereiche simulieren und bedingte Ein-/Ausstiege prüfen.</p>
+      <span class="ss-small">Tageskurse · getrennte Analyse · sichtbar begründete Chartmethoden · Ergebnisse mit Quellen und Datenstand</span>
+    </section>
+    <section class="ss-layout">
+      <article class="card ss-panel">
+        <form id="ssForm">
+          <div class="ss-fields">
+            <label>EODHD-Symbol / Handelsplatz<input id="ssSymbol" placeholder="NVDA.US / SAP.XETRA" required maxlength="40" autocomplete="off" /></label>
+            <label>Notierungswährung bestätigen<select id="ssCurrency" required><option value="">Bitte bestätigen</option><option selected>USD</option><option>EUR</option><option>GBP</option><option>GBX</option><option>CHF</option><option>JPY</option><option>KRW</option><option>CNY</option><option>HKD</option><option>SEK</option><option>AUD</option><option>CAD</option><option>INR</option></select></label>
+            <label>Unternehmensname (optional)<input id="ssCompany" maxlength="120" placeholder="NVIDIA" /></label>
+            <label>Simulationshorizont<select id="ssDays"><option value="5">5 Handelstage</option><option value="20" selected>20 Handelstage</option><option value="60">60 Handelstage</option></select></label>
+          </div>
+          <label>Nachrichtenthema / Hypothese (optional)<textarea id="ssContext" maxlength="2000" placeholder="Zum Beispiel: neue Exportbeschränkungen für KI-Chips. Eine Hypothese wird nicht automatisch als bestätigtes Ereignis gewertet."></textarea></label>
+          <label class="ss-check"><input type="checkbox" id="ssUseAi" checked /> KI für News-Ableitungen verwenden (wenn konfiguriert)</label>
+          <label class="ss-check"><input type="checkbox" id="ssNewsImpulse" /> KI-Richtung als begrenzten Newsimpuls simulieren (zusätzliche, unkalibrierte Annahme)</label>
+          <div class="ss-actions"><button class="btn primary" id="ssRun" type="submit">Analysieren &amp; simulieren</button><button class="btn" id="ssSelected" type="button">Ausgewählte Aktie übernehmen</button><button class="btn" id="ssDemo" type="button">Synthetische Demo</button></div>
+        </form>
+        <div id="ssStatus" class="ss-status" role="status" aria-live="polite">Symbol inklusive Handelsplatz eingeben oder eine ausgewählte Aktie übernehmen.</div>
+        <details>
+          <summary>Eigene OHLCV-Kursdaten als CSV importieren</summary>
+          <p class="ss-small">Spalten: date,open,high,low,close,volume[,adjusted_close]. Mindestens 60 abgeschlossene Tageskerzen. Komma oder Semikolon; Dezimalkomma nur bei Semikolon. Kein TradingView-Widget-Scraping.</p>
+          <label>CSV-Datei<input id="ssCsv" type="file" accept=".csv,text/csv" /></label><p id="ssCsvStatus" class="ss-small">Kein Import; Kurse kommen aus dem Marktcache/EODHD.</p><button class="btn" id="ssClearCsv" type="button">Import entfernen</button>
+        </details>
+        <div class="ss-note">Ein Kursverlauf ist eine Modellsimulation. Handelsmarken gelten erst nach Bestätigung. Veraltete Kurse und ungeklärte Kurssprünge sperren Empfehlungen.</div>
+      </article>
+      <aside class="card ss-panel">
+        <h3>Feedregeln</h3><p class="ss-small">Die aktuelle Eingabe als Regel speichern. Neue passende Feedmeldungen lösen beim Prüfen eine neue Analyse aus; maximal drei Regeln pro Prüfung.</p>
+        <div class="ss-actions"><button class="btn" id="ssSaveRule" type="button">Eingabe als Regel speichern</button><button class="btn" id="ssCheckRules" type="button">Neue Feedmeldungen prüfen</button></div>
+        <label class="ss-check" style="margin-top:16px"><input id="ssAutoFeed" type="checkbox" /> Bei Feedaktualisierung automatisch prüfen, solange das Dashboard geöffnet ist</label>
+        <div id="ssRules"><p>Noch keine Regeln geladen.</p></div>
+        <h3>Analysehistorie</h3><button class="btn" id="ssLoadHistory" type="button">Historie laden</button><div id="ssHistory"><p>Nach Anmeldung verfügbar.</p></div>
+      </aside>
+    </section>
+    <section id="ssResults" hidden>
+      <h3 id="ssResultTitle"></h3><div id="ssMetrics" class="ss-metrics"></div><div id="ssQuality"></div>
+      <article class="card ss-section"><h3>Historie &amp; Modellband</h3><label>Handelsmarken im Chart<select id="ssChartDirection"><option value="none">Keine</option><option value="long">Long</option><option value="short">Short</option></select></label><div id="ssChart"></div><p class="ss-small">Weiß: vergangene Schlusskurse · Blau gestrichelt: P50 · Band: P10–P90 der Modellpfade.</p><p id="ssSimulationInfo" class="ss-small"></p><div id="ssScenarios" class="ss-result-grid"></div></article>
+      <article class="card ss-section"><h3>Erkannte Feed- und Charttrigger</h3><div id="ssTriggers"></div></article>
+      <article class="card ss-section"><h3>Bedingte Ein- &amp; Ausstiegsschwellen</h3><p class="ss-small">Preisniveaus des Basiswerts in der bestätigten Notierungswährung. Long- und Short-Schwellen getrennt; keine Produktauswahl.</p><div id="ssSetups" class="ss-result-grid"></div></article>
+      <article class="card ss-section"><h3>Angewendete Charttechniken</h3><div id="ssMethods" class="ss-result-grid"></div></article>
+      <article class="card ss-section"><h3>KI-Auswertung &amp; Bestätigungspunkte</h3><div id="ssNarrative"></div></article>
+      <article class="card ss-section ss-sources"><h3>Verwendete Feedquellen</h3><div id="ssSources"></div></article>
+    </section>
   </main>
 
   <main class="page app-page" id="eventAnalysisPage" hidden>
@@ -1541,11 +1591,13 @@ setTimeout(function(){
 </div>
 
 <script defer src="./supabase.js?v=29.4"></script>
-<script defer src="./app.js?v=30.1"></script>
-<script defer src="./news.js?v=30.0"></script>
+<script defer src="./app.js?v=31.0"></script>
+<script defer src="./news.js?v=31.0"></script>
 <script defer src="./decision.js?v=29.4"></script>
 <script defer src="./analytics.js?v=29.4"></script>
 <script defer src="./event-analysis.js?v=30.1"></script>
+
+<script type="module" src="./signal-simulation.js?v=31.0"></script>
 
 </body>
 </html>

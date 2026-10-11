@@ -1,0 +1,43 @@
+#signalSimulationPage { padding-bottom:40px; }
+#signalSimulationPage .ss-hero { padding:24px; border-color:#315367; background:linear-gradient(120deg,#112833,#0d1824); }
+#signalSimulationPage h2 { margin:8px 0; font-size:clamp(24px,4vw,34px); }
+#signalSimulationPage p { color:var(--muted); line-height:1.6; }
+#signalSimulationPage .ss-kicker { color:var(--accent); font-size:12px; letter-spacing:.12em; text-transform:uppercase; }
+#signalSimulationPage .ss-layout { display:grid; grid-template-columns:minmax(0,1.6fr) minmax(260px,.7fr); gap:16px; margin-top:16px; }
+#signalSimulationPage .ss-panel { padding:20px; }
+#signalSimulationPage .ss-fields { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+#signalSimulationPage label { display:grid; gap:7px; margin-bottom:12px; font-size:13px; color:var(--muted); }
+#signalSimulationPage label.ss-check { display:flex; align-items:flex-start; gap:9px; }
+#signalSimulationPage input[type=checkbox] { width:auto; min-height:0; margin-top:3px; }
+#signalSimulationPage input,#signalSimulationPage select,#signalSimulationPage textarea { width:100%; border:1px solid var(--border); border-radius:9px; background:#08131e; color:var(--text); padding:10px; font:inherit; }
+#signalSimulationPage textarea { min-height:82px; resize:vertical; }
+#signalSimulationPage .ss-actions { display:flex; flex-wrap:wrap; gap:9px; margin-top:10px; }
+#signalSimulationPage .ss-status { padding:12px 0; min-height:24px; font-size:13px; color:var(--muted); }
+#signalSimulationPage .ss-status.bad,#signalSimulationPage .ss-bad { color:var(--bad); }
+#signalSimulationPage .ss-status.good { color:var(--good); }
+#signalSimulationPage .ss-status.warn,#signalSimulationPage .ss-warn { color:var(--warn); }
+#signalSimulationPage .ss-note { padding:12px 15px; background:#172532; border-left:3px solid var(--warn); border-radius:6px; margin:12px 0; font-size:13px; line-height:1.6; }
+#signalSimulationPage .ss-small { font-size:12px; color:var(--muted); line-height:1.6; }
+#signalSimulationPage .ss-metrics { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; margin-top:18px; }
+#signalSimulationPage .ss-metric { padding:16px; }
+#signalSimulationPage .ss-metric strong { display:block; font-size:22px; margin:7px 0; overflow-wrap:anywhere; }
+#signalSimulationPage .ss-result-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+#signalSimulationPage .ss-method { padding:16px; border:1px solid var(--border); border-radius:12px; }
+#signalSimulationPage .ss-method h4 { margin:0 0 8px; }
+#signalSimulationPage .ss-method p { margin:8px 0; font-size:13px; }
+#signalSimulationPage .ss-method dl { display:grid; grid-template-columns:1fr auto; gap:4px; margin:9px 0; font-size:13px; }
+#signalSimulationPage .ss-method dd { margin:0; }
+#signalSimulationPage .ss-section { margin-top:16px; padding:20px; }
+#signalSimulationPage .ss-chart { width:100%; display:block; min-height:250px; }
+#signalSimulationPage .ss-chart text { fill:var(--muted); font:11px system-ui; }
+#signalSimulationPage .ss-chart .ss-mark { fill:var(--text); }
+#signalSimulationPage .ss-history-item { width:100%; background:transparent; color:var(--text); text-align:left; padding:11px; border:1px solid var(--border); border-radius:9px; margin:7px 0; cursor:pointer; }
+#signalSimulationPage .ss-history-item small { display:block; margin-top:5px; color:var(--muted); }
+#signalSimulationPage .ss-rule { padding:12px; border:1px solid var(--border); border-radius:9px; margin:8px 0; }
+#signalSimulationPage .ss-rule button { margin:8px 7px 0 0; }
+#signalSimulationPage .ss-sources a { color:var(--accent-2); }
+#signalSimulationPage .ss-trigger { padding:10px; border-bottom:1px solid var(--border); font-size:13px; }
+#signalSimulationPage .ss-trigger b { color:var(--accent); }
+#signalSimulationPage button:disabled { opacity:.45; cursor:wait; }
+@media(max-width:850px) { #signalSimulationPage .ss-layout { grid-template-columns:1fr; } #signalSimulationPage .ss-metrics { grid-template-columns:1fr 1fr; } }
+@media(max-width:550px) { #signalSimulationPage .ss-fields,#signalSimulationPage .ss-result-grid { grid-template-columns:1fr; } #signalSimulationPage .ss-panel,#signalSimulationPage .ss-section,#signalSimulationPage .ss-hero { padding:15px; } }

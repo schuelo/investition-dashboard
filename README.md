@@ -1,3 +1,14 @@
+# V31.0 – Signal- & Verlaufssimulation
+
+Vollständiges Dashboard auf Basis V29.4 + V30.1.1. Neues getrenntes Modul: KI-News-Ableitungen, informative Chartmethoden, reproduzierbare Verlaufssimulation, bedingte Ein-/Ausstiegsschwellen, Feedregeln und eigene Historie.
+
+**Aktuelle Installation:** [INSTALLATION-V31.md](INSTALLATION-V31.md).
+**Prüfbericht:** [TESTPROTOKOLL-V31.md](TESTPROTOKOLL-V31.md).
+
+Die nachfolgenden Angaben beschreiben den unveränderten bisherigen Funktionsumfang.
+
+---
+
 # Investition Dashboard V29.4 + V30.1 Event- & Szenarioanalyse
 
 Dieses Paket enthält den vollständigen, konsistenten V29.4-Stand und integriert die V30-Funktion **als eigene Seite innerhalb der vorhandenen Navigation**.
