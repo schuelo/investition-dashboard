@@ -1,0 +1,17 @@
+{
+  "analytics.js": "6b36cc16d3e88ac7f598735343ad7f9edd17e21f8026f45d1fc320b5908cbe70",
+  "decision.js": "e821b06584b00a60ce3e1e9ea4d2e37be3d481375112625bc01832b1f1436f80",
+  "event-analysis.js": "7a3680f8df39ed5eb394e53d774a376989340226da974321a867e458cb823cd9",
+  "setup-v29-4-consistent.sql": "4ef311e19230c72b402a7942387df83d111073e8f9c9b099390f5305413164ac",
+  "setup-v30-event-analysis.sql": "e3b9a944ac2c0643d2c1424fb9b488e877fccbb911c6bb0c76de063169df8266",
+  ".github/workflows/deploy-supabase-functions.yml": "186de6553037f1d4d07320c812a2ade8fa7e54eb7484152bf9e7c28581965d34",
+  "supabase/functions/_shared/market-intelligence.ts": "3af8b2e246aee5bb112159140206fb91d0733dea3e50d55cfdc1d908d058665c",
+  "supabase/functions/_shared/multisource-sources-v294.ts": "289c796ea827a5ca012e3c4c51f36c98f22457e790dc7fe135287c27f41720d9",
+  "supabase/functions/_shared/event-idea-engine.mjs": "95f4f78dd20b0b80f8ce75c2f9ffc1b09ce8f05b8375d4a852ba2843888eb9f7",
+  "supabase/functions/_shared/digest-logic.ts": "3188dcb0fe8300492752e9b1303d38ab216e0efd1d3ef1b12642150df3a3b34a",
+  "supabase/functions/_shared/cors.ts": "8e1f40e1a1185431652fadfe65723ab60811386585a184cdc9307b17db0ad777",
+  "supabase/functions/send-news-alerts/index.ts": "7c941b3b739614ea38345f74af57fbbaa5ad58d58534028e38e43471fa948c59",
+  "supabase/functions/sync-news/index.ts": "a81f4fd1ccaf5394be27967e9306eb89bad105352fe09a2cc1cff68f5991f502",
+  "supabase/functions/analyze-market-event/index.ts": "d193f2c14d4f9c8c11d1526b865789f14e210a2fe8a715de48513c076e672ea8",
+  "supabase/functions/send-digest/index.ts": "96a6599e0793baa472709d7ab6b061d14175984a3c42707cf7bda2ddc1bc7af9"
+}
