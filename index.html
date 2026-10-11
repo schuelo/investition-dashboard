@@ -1008,7 +1008,7 @@
     }
 
   </style>
-  <link rel="stylesheet" href="./signal-simulation.css?v=31.0" />
+  <link rel="stylesheet" href="./signal-simulation.css?v=31.2" />
 </head>
 <body class="auth-locked">
 <div id="appError" hidden style="position:sticky;top:0;z-index:9999;background:#7f1d1d;color:#fff;padding:12px 16px;font:600 14px system-ui;text-align:center"></div>
@@ -1314,13 +1314,16 @@ setTimeout(function(){
 
   <main class="page app-page" id="signalSimulationPage" hidden>
     <section class="card ss-hero">
-      <span class="ss-kicker">V31 · Signal-Labor</span>
+      <span class="ss-kicker">V31.2 · manueller KI-Start</span>
       <h2>Signal- &amp; Verlaufssimulation</h2>
-      <p>Feedmeldungen und berechnete Chartsignale zusammenführen, mögliche Kursbereiche simulieren und bedingte Ein-/Ausstiege prüfen.</p>
+      <p>TRIGGER-KI-Meldung auswählen, KI manuell starten, News und Charttechniken auswerten und mögliche Verläufe sowie bedingte Ein-/Ausstiege prüfen.</p>
       <span class="ss-small">Tageskurse · getrennte Analyse · sichtbar begründete Chartmethoden · Ergebnisse mit Quellen und Datenstand</span>
     </section>
     <section class="ss-layout">
       <article class="card ss-panel">
+        <div id="ssOrigin" class="ss-note">Keine Meldung ausgewählt. Du kannst auch einen Wert direkt manuell analysieren.</div>
+        <label id="ssOriginSymbols" hidden>Betroffener Basiswert<select id="ssOriginSymbol"></select></label>
+        <button class="btn" id="ssClearOrigin" type="button">Meldung lösen</button>
         <form id="ssForm">
           <div class="ss-fields">
             <label>EODHD-Symbol / Handelsplatz<input id="ssSymbol" placeholder="NVDA.US / SAP.XETRA" required maxlength="40" autocomplete="off" /></label>
@@ -1330,8 +1333,9 @@ setTimeout(function(){
           </div>
           <label>Nachrichtenthema / Hypothese (optional)<textarea id="ssContext" maxlength="2000" placeholder="Zum Beispiel: neue Exportbeschränkungen für KI-Chips. Eine Hypothese wird nicht automatisch als bestätigtes Ereignis gewertet."></textarea></label>
           <label class="ss-check"><input type="checkbox" id="ssUseAi" checked /> KI für News-Ableitungen verwenden (wenn konfiguriert)</label>
+          <p class="ss-small">Ein KI-Aufruf erst nach deinem manuellen Start. Telegram-Links, Anmeldung, neue News und Seitenwechsel starten keine KI. Bei erreichtem Kontingent läuft die Chartberechnung weiter.</p>
           <label class="ss-check"><input type="checkbox" id="ssNewsImpulse" /> KI-Richtung als begrenzten Newsimpuls simulieren (zusätzliche, unkalibrierte Annahme)</label>
-          <div class="ss-actions"><button class="btn primary" id="ssRun" type="submit">Analysieren &amp; simulieren</button><button class="btn" id="ssSelected" type="button">Ausgewählte Aktie übernehmen</button><button class="btn" id="ssDemo" type="button">Synthetische Demo</button></div>
+          <div class="ss-actions"><button class="btn primary" id="ssRun" type="submit">KI-Analyse manuell starten</button><button class="btn" id="ssSelected" type="button">Ausgewählte Aktie übernehmen</button><button class="btn" id="ssDemo" type="button">Synthetische Demo</button></div>
         </form>
         <div id="ssStatus" class="ss-status" role="status" aria-live="polite">Symbol inklusive Handelsplatz eingeben oder eine ausgewählte Aktie übernehmen.</div>
         <details>
@@ -1342,10 +1346,9 @@ setTimeout(function(){
         <div class="ss-note">Ein Kursverlauf ist eine Modellsimulation. Handelsmarken gelten erst nach Bestätigung. Veraltete Kurse und ungeklärte Kurssprünge sperren Empfehlungen.</div>
       </article>
       <aside class="card ss-panel">
-        <h3>Feedregeln</h3><p class="ss-small">Die aktuelle Eingabe als Regel speichern. Neue passende Feedmeldungen lösen beim Prüfen eine neue Analyse aus; maximal drei Regeln pro Prüfung.</p>
-        <div class="ss-actions"><button class="btn" id="ssSaveRule" type="button">Eingabe als Regel speichern</button><button class="btn" id="ssCheckRules" type="button">Neue Feedmeldungen prüfen</button></div>
-        <label class="ss-check" style="margin-top:16px"><input id="ssAutoFeed" type="checkbox" /> Bei Feedaktualisierung automatisch prüfen, solange das Dashboard geöffnet ist</label>
-        <div id="ssRules"><p>Noch keine Regeln geladen.</p></div>
+        <h3>TRIGGER KI · Meldungen</h3><p class="ss-small">Ergänzung der regulären Telegram-Portfolio-News. Eine Meldung bereitet die Analyse vor. Erst dein Startknopf verbraucht KI-Kontingent.</p>
+        <button class="btn" id="ssLoadTriggers" type="button">Meldungen laden</button>
+        <div id="ssTriggerList"><p>Nach Anmeldung verfügbar.</p></div>
         <h3>Analysehistorie</h3><button class="btn" id="ssLoadHistory" type="button">Historie laden</button><div id="ssHistory"><p>Nach Anmeldung verfügbar.</p></div>
       </aside>
     </section>
@@ -1591,13 +1594,13 @@ setTimeout(function(){
 </div>
 
 <script defer src="./supabase.js?v=29.4"></script>
-<script defer src="./app.js?v=31.0"></script>
-<script defer src="./news.js?v=31.0"></script>
+<script defer src="./app.js?v=31.2"></script>
+<script defer src="./news.js?v=31.2"></script>
 <script defer src="./decision.js?v=29.4"></script>
 <script defer src="./analytics.js?v=29.4"></script>
 <script defer src="./event-analysis.js?v=30.1"></script>
 
-<script type="module" src="./signal-simulation.js?v=31.0"></script>
+<script type="module" src="./signal-simulation.js?v=31.2"></script>
 
 </body>
 </html>

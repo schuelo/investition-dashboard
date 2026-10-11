@@ -1,15 +1,20 @@
-# Änderungen V31.0
+# Änderungen V31.2 – manueller Start und TRIGGER KI
 
-Neues getrenntes Modul Signal- & Verlaufssimulation auf Basis des vollständigen V30.1.1-Pakets.
+Ausgangsbasis ist das unveränderte originale V29.4-/V30.1.1-Deployment-Fix-Paket. Das getrennte Signalmodul ergänzt die bisherige Oberfläche.
 
-- Neue Seite und Navigationspunkt `#signals`.
-- KI-News-Ableitungen mit validierten Quellenverweisen; klar sichtbarer Chartmodus bei fehlender KI.
-- Berechnete Chartmethoden mit Parametern, Werten, Befunden und Grenzen.
-- Reproduzierbarer Block-Bootstrap, Modellbänder und illustrative Verlaufsszenarien.
-- Bedingte Long-/Short-Einstiege, Stops, Teilgewinn-/Ausstiegsmarken und Zeit-/Trailing-Stop-Regeln.
-- Eigenes Schema, eigene Historie, Feedregeln und eigener manueller Deployworkflow.
-- OHLCV-CSV für lokale Berechnung; kein Scraping von TradingView-Widgets.
+- KI-Aufruf ausschließlich nach ausdrücklicher manueller Analyse. Telegram-Link, Login, Navigation, Feedupdate und Auswahl einer Trigger-Meldung bereiten Daten vor und starten keine KI.
+- Die bereits vorgesehene Telegram-Portfolio-News erhält zusätzlich **TRIGGER KI** und einen URL-Button. Empfänger, Nachrichtenfilter, Schwellenwerte, 8-Stunden-Fenster, bestehende Duplikatsprüfung und Versandplan bleiben gleich. Keine zweite Nachricht.
+- Neue eigene Triggerliste mit Zuordnung zur Originalmeldung, zugestellten Meldungen, Vorbereitung, Zurückstellen und erfolgreicher Analyse. Fehler der neuen Speicherung blockieren den ursprünglichen Telegram-Versand nicht.
+- Der Server prüft Trigger-Eigentümer und veröffentlichte Originalmeldung vor Kontingentreservierung. Eine Analyse kann nur den eigenen Trigger als analysiert markieren.
+- Informativ angezeigte Charttechniken, reproduzierbare Modellpfade, illustrative Szenarien sowie bedingte Long-/Short-Einstiegs-, Stop- und Ausstiegsmarken.
+- Gemini-Auswahl ausschließlich über serverseitige Secrets; sichtbarer Chartmodus bei Kontingentfehlern, ohne automatische Wiederholung oder Wechsel zu OpenAI.
+- Frühere automatische Feedregeln sind entfernt. Bereits gespeicherte Ergebnisse bleiben lesbar; vorhandene alte Feedregeltabellen bleiben ungenutzt.
+- Zwei additive V31-SQL-Dateien; keine Migration bestehender Basistabellen und keine neuen Cronjobs.
+- Neuer manueller Workflow deployt ausschließlich die Signal-Function und die zugelassene Ergänzung des bestehenden News-Bots. Bisheriger Deployworkflow unverändert.
+- Cacheversion V31.2, aktualisierte Installation und ergänzte Tests des tatsächlichen UI-, Edge- und Telegram-Codes.
 
-Notwendige Änderungen vorhandener Dateien: `index.html` (neue Seite/Assets), `news.js` (Navigation), `app.js` (nur Service-Worker-Versionskennung), `service-worker.js` / `reset.html` (Cache), `supabase/config.toml` (neue Function), Regressionstest-Cachekennungen und README.
+## Änderungen vorhandener Dateien
 
-Bestehende Analyse- und Newsfunctions sowie bisheriger Deploymentworkflow unverändert. Keine produktive Installation vorgenommen.
+`index.html` ergänzt Seite/Assets, `news.js` die Navigation; `app.js`, `service-worker.js` und `reset.html` erhalten neue Cachekennungen. `supabase/config.toml` ergänzt die neue Function. `send-news-alerts/index.ts` ergänzt den Inhalt der bestehenden Meldung und speichert ausschließlich Daten des neuen Moduls.
+
+Die bisherigen News-Sync-, Digest- und Eventanalyse-Functions, Shared-Quellen, V29.4-/V30-SQLs, Analyse-/Decision-Komponenten und der bisherige Deployworkflow bleiben byteweise identisch. Keine produktive Installation vorgenommen.

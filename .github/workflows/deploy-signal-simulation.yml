@@ -1,4 +1,4 @@
-name: V31 Signal-Simulation deployen
+name: V31.2 TRIGGER KI deployen
 on:
   workflow_dispatch:
 permissions:
@@ -31,7 +31,7 @@ jobs:
             echo "::error::GitHub Secret SUPABASE_ACCESS_TOKEN fehlt."
             exit 1
           fi
-          for file in signal-simulation.js signal-simulation.css setup-v31-signal-simulation.sql supabase/functions/analyze-signal-path/index.ts supabase/functions/_shared/signal-engine.mjs supabase/functions/_shared/signal-service.mjs; do
+          for file in signal-simulation.js signal-simulation.css setup-v31-signal-simulation.sql setup-v31-2-manual-triggers.sql supabase/functions/analyze-signal-path/index.ts supabase/functions/_shared/signal-engine.mjs supabase/functions/_shared/signal-service.mjs supabase/functions/_shared/signal-trigger.mjs; do
             if [[ ! -f "$file" ]]; then
               echo "::error file=$file::V31-Datei fehlt."
               exit 1
@@ -39,3 +39,5 @@ jobs:
           done
       - name: Nur neue Signal-Function deployen
         run: supabase functions deploy analyze-signal-path --project-ref "$PROJECT_ID" --no-verify-jwt
+      - name: Telegram-Ergänzung deployen
+        run: supabase functions deploy send-news-alerts --project-ref "$PROJECT_ID" --no-verify-jwt

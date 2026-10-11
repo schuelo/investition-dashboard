@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2.49.8";
 import { corsHeaders, jsonHeaders } from "../_shared/cors.ts";
+import { signalTriggerSymbols, extendTelegramWithSignal } from "../_shared/signal-trigger.mjs";
 
 const BUILD_VERSION = "29.4-multisource-hybrid-portfolio-market-intelligence-alerts";
 
@@ -92,7 +93,7 @@ function matches(news: any, position: any, plan: any) {
     .some((token: string) => haystack.includes(token));
 }
 
-async function telegram(token: string, chatId: string, text: string) {
+async function telegram(token: string, chatId: string, text: string, replyMarkup?: unknown) {
   const response = await fetch(
     `https://api.telegram.org/bot${token}/sendMessage`,
     {
@@ -102,6 +103,7 @@ async function telegram(token: string, chatId: string, text: string) {
         chat_id: chatId,
         text,
         disable_web_page_preview: true,
+        ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
       }),
     },
   );
@@ -169,6 +171,7 @@ Deno.serve(async (req: Request) => {
 
     const botToken = required("TELEGRAM_BOT_TOKEN");
     const results: any[] = [];
+    const signalWarnings: string[] = [];
     for (const setting of settings || []) {
       const [
         { data: positions, error: positionsError },
@@ -248,11 +251,40 @@ Deno.serve(async (req: Request) => {
           }\n\n` +
           `${article.source_url || ""}`;
 
+        // All original eligibility checks above remain unchanged. This adds
+        // a preparation link to the SAME message; it never starts the AI.
+        const triggerSymbols = signalTriggerSymbols(affected, plans);
+        let triggerId: string | null = null;
+        try {
+          const recorded = await admin.rpc("record_signal_news_trigger", {
+            p_user_id: setting.user_id, p_news_id: article.id,
+            p_symbols: triggerSymbols,
+            p_reason: `Bestehender Portfolio-News-Alarm: Relevanz ${Math.round(relevanceScore)}/100, Dringlichkeit ${Math.round(urgencyScore)}/100.`,
+          });
+          if (recorded.error || !recorded.data) throw new Error("Triggerliste nicht verfügbar.");
+          triggerId = String(recorded.data);
+        } catch {
+          if (!signalWarnings.length) signalWarnings.push("TRIGGER-KI-Liste nicht verfügbar; V31.2-SQL prüfen. Telegram-Meldungen werden weiter versendet.");
+        }
+        const signalMessage = extendTelegramWithSignal({ originalText: text,
+          dashboardUrl: env("SIGNAL_DASHBOARD_URL"), triggerId,
+          newsId: article.id, symbols: triggerSymbols });
         await telegram(
           botToken,
           String(setting.telegram_chat_id),
-          text.slice(0, 3900),
+          signalMessage.text,
+          signalMessage.replyMarkup,
         );
+        if (triggerId) {
+          try {
+            const delivered = await admin.from("signal_news_triggers")
+              .update({ delivered_at: new Date().toISOString() })
+              .eq("id", triggerId).eq("user_id", setting.user_id);
+            if (delivered.error) throw delivered.error;
+          } catch {
+            signalWarnings.push("Telegram gesendet; TRIGGER-KI-Eintrag konnte nicht als zugestellt markiert werden.");
+          }
+        }
         const { error: logError } = await admin
           .from("news_notification_log")
           .insert({
@@ -276,6 +308,8 @@ Deno.serve(async (req: Request) => {
         request_id: requestId,
         alerts_sent: results.length,
         results,
+        signal_trigger_version: "31.2-manual-trigger-ki",
+        signal_warnings: signalWarnings,
       },
       { headers: jsonHeaders },
     );

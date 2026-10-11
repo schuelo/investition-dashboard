@@ -1,6 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2.49.8";
 import { corsHeaders, jsonHeaders } from "../_shared/cors.ts";
-import { runSignalAnalysis, callOpenAi, SignalError } from "../_shared/signal-service.mjs";
+import { runSignalAnalysis, callSignalAi, SignalError } from "../_shared/signal-service.mjs";
 
 const env = (name: string) => String(Deno.env.get(name) || "").trim();
 const respond = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: jsonHeaders });
@@ -21,6 +21,18 @@ Deno.serve(async (request: Request) => {
     let body: Record<string, unknown>;
     try { body = JSON.parse(text); } catch { return respond({ ok: false, error: "Ungültiges JSON." }, 400); }
     const result = await runSignalAnalysis(body, {
+      readOrigin: async (input: { trigger_id?: string; source_news_id?: string }) => {
+        let newsId = input.source_news_id;
+        if (input.trigger_id) {
+          const trigger = await admin.from("signal_news_triggers").select("news_id")
+            .eq("id", input.trigger_id).eq("user_id", userId).maybeSingle();
+          if (trigger.error || !trigger.data) return null;
+          newsId = trigger.data.news_id;
+          if (input.source_news_id && input.source_news_id !== newsId) return null;
+        }
+        const article = await admin.from("market_news").select("*").eq("id", newsId).eq("is_published", true).maybeSingle();
+        return article.error || !article.data ? null : { news: article.data };
+      },
       reserveRun: async () => {
         const { data, error } = await admin.rpc("reserve_signal_analysis_run", { p_user_id: userId });
         if (error) throw new SignalError("V31-Schema fehlt. setup-v31-signal-simulation.sql ausführen.", 503);
@@ -60,9 +72,12 @@ Deno.serve(async (request: Request) => {
         return [...(direct.data || []), ...(general.data || [])];
       },
       analyzeNews: async (input: unknown, chart: unknown, sources: unknown[]) => {
-        const apiKey = env("OPENAI_API_KEY"), model = env("OPENAI_MODEL");
-        if (!apiKey || !model) throw new Error("OPENAI_API_KEY oder OPENAI_MODEL fehlt. KI-Auswertung ist nicht aktiv.");
-        return await callOpenAi({ apiKey, model, input, chart, sources });
+        return await callSignalAi({ getEnv: env, input, chart, sources });
+      },
+      finishTrigger: async (triggerId: string, analysisId: string) => {
+        const { error } = await admin.from("signal_news_triggers")
+          .update({ state: "analyzed", analysis_id: analysisId }).eq("id", triggerId).eq("user_id", userId);
+        if (error) throw error;
       },
       saveResult: async (input: { symbol: string; currency: string; days: number }, analysis: unknown) => {
         const { data, error } = await admin.from("signal_simulations").insert({ user_id: userId, symbol: input.symbol, currency: input.currency, horizon_days: input.days, raw_result: analysis }).select("id").single();

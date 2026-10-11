@@ -22,8 +22,8 @@ test('Frontend behält V29.4 und lädt die integrierte V30-Erweiterung cache-sic
   const html = read('index.html');
   for (const [asset, version] of [
     ['supabase.js', '29.4'],
-    ['app.js', '31.0'],
-    ['news.js', '31.0'],
+    ['app.js', '31.2'],
+    ['news.js', '31.2'],
     ['decision.js', '29.4'],
     ['analytics.js', '29.4'],
     ['event-analysis.js', '30.1'],
@@ -31,7 +31,7 @@ test('Frontend behält V29.4 und lädt die integrierte V30-Erweiterung cache-sic
     assert.match(html, new RegExp(`${asset.replace('.', '\\.')}\\?v=${version.replace('.', '\\.')}`));
   }
   assert.match(read('service-worker.js'), /investition-dashboard-v29-4-event-analysis-v30-1/);
-  assert.match(read('reset.html'), /\?v=31\.0/);
+  assert.match(read('reset.html'), /\?v=31\.2/);
 });
 
 test('Eventanalyse ist eine eigene Seite in der vorhandenen Navigation', () => {

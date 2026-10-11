@@ -10,7 +10,6 @@
   "supabase/functions/_shared/event-idea-engine.mjs": "95f4f78dd20b0b80f8ce75c2f9ffc1b09ce8f05b8375d4a852ba2843888eb9f7",
   "supabase/functions/_shared/digest-logic.ts": "3188dcb0fe8300492752e9b1303d38ab216e0efd1d3ef1b12642150df3a3b34a",
   "supabase/functions/_shared/cors.ts": "8e1f40e1a1185431652fadfe65723ab60811386585a184cdc9307b17db0ad777",
-  "supabase/functions/send-news-alerts/index.ts": "7c941b3b739614ea38345f74af57fbbaa5ad58d58534028e38e43471fa948c59",
   "supabase/functions/sync-news/index.ts": "a81f4fd1ccaf5394be27967e9306eb89bad105352fe09a2cc1cff68f5991f502",
   "supabase/functions/analyze-market-event/index.ts": "d193f2c14d4f9c8c11d1526b865789f14e210a2fe8a715de48513c076e672ea8",
   "supabase/functions/send-digest/index.ts": "96a6599e0793baa472709d7ab6b061d14175984a3c42707cf7bda2ddc1bc7af9"

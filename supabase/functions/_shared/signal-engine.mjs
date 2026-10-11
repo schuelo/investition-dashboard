@@ -1,5 +1,5 @@
 // Identical engine in the browser and Edge Function. No external dependencies.
-export const SIGNAL_VERSION = '31.0-signal-simulation';
+export const SIGNAL_VERSION = '31.2-manual-signal-simulation';
 export const mean = a => a.reduce((s, v) => s + v, 0) / a.length;
 export const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const sd = a => Math.sqrt(mean(a.map(v => (v - mean(a)) ** 2)));
@@ -94,7 +94,7 @@ export function validateNarrative(raw, sourceIds) {
   return { mode: 'ai', summary: raw.summary.slice(0, 2000), bias: raw.bias, confidence: raw.confidence, evidence: raw.evidence.slice(0, 12), risks: raw.risks.slice(0, 8), watchpoints: raw.watchpoints.slice(0, 8) };
 }
 
-export function selectNews(rows, symbol, company = '', context = '', now = new Date()) {
+export function selectNews(rows, symbol, company = '', context = '', now = new Date(), selectedIds = []) {
   const normalize = v => String(v || '').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
   const name = normalize(company).trim(), keywords = normalize(context).split(/\W+/).filter(w => w.length >= 4), seen = new Set();
   return (rows || []).filter(n => {
@@ -105,8 +105,8 @@ export function selectNews(rows, symbol, company = '', context = '', now = new D
     const text = normalize(`${n.title || ''} ${n.summary || ''}`);
     const direct = symbols.some(s => String(s).toUpperCase() === symbol) || (name.length >= 4 && text.includes(name));
     const related = keywords.some(w => new RegExp(`(^|[^a-z0-9])${w}([^a-z0-9]|$)`).test(text));
-    return { ...n, match: direct ? 'direct' : related ? 'context' : null };
-  }).filter(n => n.match).sort((a, b) => Number(b.match === 'direct') - Number(a.match === 'direct') || Date.parse(b.published_at) - Date.parse(a.published_at)).filter(n => {
+    return { ...n, match: selectedIds.includes(String(n.id)) ? 'selected' : direct ? 'direct' : related ? 'context' : null };
+  }).filter(n => n.match).sort((a, b) => Number(b.match === 'selected') - Number(a.match === 'selected') || Number(b.match === 'direct') - Number(a.match === 'direct') || Date.parse(b.published_at) - Date.parse(a.published_at)).filter(n => {
     const key = normalize(n.title).replace(/\W/g, '');
     if (seen.has(key)) return false;
     seen.add(key); return true;

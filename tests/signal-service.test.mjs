@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { runSignalAnalysis, validateSignalInput, callOpenAi } from '../supabase/functions/_shared/signal-service.mjs';
 const now=new Date('2026-10-11T05:00:00Z');
 const bars=Array.from({length:220},(_,i)=>{const d=new Date('2026-10-09');d.setUTCDate(d.getUTCDate()-219+i);const c=100*Math.exp(.001*i+.01*Math.sin(i));return{date:d.toISOString().slice(0,10),open:c,high:c*1.02,low:c*.98,close:c,volume:1e6};});
-const input={symbol:'NVDA.US',currency:'USD',days:20};
+const input={symbol:'NVDA.US',currency:'USD',days:20,manual_start:true};
 const source={id:'news1',title:'Nvidia receives order',symbols:['NVDA.US'],published_at:'2026-10-10',is_published:true};
 function deps(overrides={}) { return {now,reserveRun:async()=>true,readCache:async()=>({bars,provider:'EODHD EOD',fetched_at:now.toISOString()}),fetchBars:async()=>{throw new Error('unexpected fetch');},writeCache:async()=>{},readNews:async()=>[source],analyzeNews:async()=>({summary:'Ableitung',bias:'bullish',confidence:65,evidence:[{source_id:'news1',inference:'Auftrag könnte Nachfrage stützen.'}],risks:['Einpreisung unklar'],watchpoints:['Unternehmen bestätigt']}),saveResult:async()=> 'saved1',...overrides}; }
 test('Fresh cache saves API calls and produces AI evidence with numeric levels',async()=> {

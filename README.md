@@ -1,11 +1,15 @@
-# V31.0 – Signal- & Verlaufssimulation
+# V31.2 – TRIGGER KI und manuelle Signal- & Verlaufssimulation
 
-Vollständiges Dashboard auf Basis V29.4 + V30.1.1. Neues getrenntes Modul: KI-News-Ableitungen, informative Chartmethoden, reproduzierbare Verlaufssimulation, bedingte Ein-/Ausstiegsschwellen, Feedregeln und eigene Historie.
+Vollständiges Dashboard auf Basis des originalen V29.4 + V30.1.1 Deployment-Fix. Neues getrenntes Modul: KI-News-Ableitungen, informative Chartmethoden, reproduzierbare Verlaufssimulation, bedingte Ein-/Ausstiegsschwellen und eigene Historie.
+
+Die bestehenden Funktionen bleiben erhalten. Die reguläre Telegram-Portfolio-News wird um **TRIGGER KI** und einen Button ergänzt. Der Button öffnet die vorbereitete Originalmeldung. **Erst „KI-Analyse manuell starten“ im Dashboard ruft Gemini auf.** Anmeldung, Feedupdates und Navigation starten keine KI.
+
+Gemini kann mit dem begrenzten Kontingent eines Free-Tier-Projekts ohne Billing verwendet werden. Bei fehlender KI oder erreichtem Kontingent läuft die sichtbar gekennzeichnete Chartberechnung weiter. Anbieter und Modell stehen im Ergebnis; es gibt keinen automatischen Anbieterwechsel.
 
 **Aktuelle Installation:** [INSTALLATION-V31.md](INSTALLATION-V31.md).
 **Prüfbericht:** [TESTPROTOKOLL-V31.md](TESTPROTOKOLL-V31.md).
 
-Die nachfolgenden Angaben beschreiben den unveränderten bisherigen Funktionsumfang.
+Die nachfolgenden Angaben beschreiben den bisherigen V29.4-/V30.1-Funktionsumfang. V31.2 ergänzt lediglich den Inhalt der bestehenden Telegram-News-Meldung und das separate Modul.
 
 ---
 

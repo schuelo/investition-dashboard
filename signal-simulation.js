@@ -1,5 +1,5 @@
-import { buildSignalAnalysis, parseOhlcvCsv, selectNews } from './supabase/functions/_shared/signal-engine.mjs?v=31.0';
-import { validateSignalInput } from './supabase/functions/_shared/signal-service.mjs?v=31.0';
+import { buildSignalAnalysis, parseOhlcvCsv } from './supabase/functions/_shared/signal-engine.mjs?v=31.2';
+import { validateSignalInput } from './supabase/functions/_shared/signal-service.mjs?v=31.2';
 
 const $ = id => document.getElementById(id);
 const page = $('signalSimulationPage');
@@ -7,22 +7,26 @@ const html = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'
 const num = v => v === null || v === undefined || !Number.isFinite(Number(v)) ? '—' : new Intl.NumberFormat('de-DE', { maximumFractionDigits:4 }).format(v);
 const safeUrl = v => { try { const u = new URL(v); return ['https:', 'http:'].includes(u.protocol) ? u.href : ''; } catch { return ''; } };
 const date = v => new Date(v).toLocaleString('de-DE', { timeZone:'Europe/Berlin' });
+const aiLabel = a => a.ai?.provider === 'gemini' ? 'Gemini' : a.ai?.provider === 'openai' ? 'OpenAI' : 'KI';
 const dashboard = () => window.InvestitionDashboard;
 const access = () => ({ sb:dashboard()?.getSupabase?.(), session:dashboard()?.getSession?.() });
-let current = null, imported = null, rules = [], busy = false, epoch = 0, checking = false;
+let current = null, imported = null, selectedOrigin = null, triggers = [], busy = false, epoch = 0;
+const launch = new URLSearchParams(window.location?.search || '');
+const validId = value => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(value || ''));
+const launchSymbol = /^[A-Z0-9_^+\-]{1,25}\.[A-Z0-9]{1,12}$/.test(launch.get('signal_symbol') || '') ? launch.get('signal_symbol') : null;
+let pendingLaunch = validId(launch.get('signal_trigger')) ? { triggerId: launch.get('signal_trigger') } : validId(launch.get('signal_news')) ? { newsId: launch.get('signal_news') } : null;
 
 function status(message, type = '') { $('ssStatus').textContent = message; $('ssStatus').className = `ss-status ${type}`; }
-function setBusy(v) { busy = v; page.setAttribute('aria-busy', String(v)); for (const id of ['ssRun','ssDemo','ssSaveRule','ssCheckRules','ssLoadHistory']) $(id).disabled = v; }
-function formInput() { return validateSignalInput({ symbol:$('ssSymbol').value, currency:$('ssCurrency').value, company:$('ssCompany').value, context:$('ssContext').value, days:Number($('ssDays').value), use_ai:$('ssUseAi').checked, news_impulse:$('ssNewsImpulse').checked, ...(imported ? {bars:imported} : {}) }); }
-function populateForm(input) { $('ssSymbol').value = input.symbol; $('ssCurrency').value = input.currency; $('ssCompany').value = input.company || ''; $('ssContext').value = input.context || ''; $('ssDays').value = input.days; $('ssUseAi').checked = input.use_ai !== false; $('ssNewsImpulse').checked = input.news_impulse === true; clearImport(); }
+function setBusy(v) { busy = v; page.setAttribute('aria-busy', String(v)); for (const id of ['ssRun','ssDemo','ssLoadTriggers','ssLoadHistory']) $(id).disabled = v; }
+function formInput() { return validateSignalInput({ symbol:$('ssSymbol').value, currency:$('ssCurrency').value, company:$('ssCompany').value, context:$('ssContext').value, days:Number($('ssDays').value), use_ai:$('ssUseAi').checked, manual_start:true, news_impulse:$('ssNewsImpulse').checked, ...(selectedOrigin?.id ? {trigger_id:selectedOrigin.id} : selectedOrigin?.news_id ? {source_news_id:selectedOrigin.news_id} : {}), ...(imported ? {bars:imported} : {}) }); }
 function clearImport() { imported = null; $('ssCsv').value = ''; $('ssCsvStatus').textContent = 'Kein Import; Kurse kommen aus dem Marktcache/EODHD.'; }
 async function errorText(error) { try { if (error?.context instanceof Response) return (await error.context.clone().json()).error || error.message; } catch {} return error?.message || String(error); }
 
-async function run(input = null, rule = null) {
+async function run() {
   if (busy) return false;
   const runEpoch = epoch;
   let body;
-  try { body = input || formInput(); } catch(e) { status(e.message, 'bad'); return false; }
+  try { body = formInput(); } catch(e) { status(e.message, 'bad'); return false; }
   const { sb, session } = access();
   if ((!sb || !session) && !(body.bars && !body.use_ai)) { status('Bitte das Dashboard anmelden. Alternativ CSV mit ausgeschalteter KI lokal berechnen.', 'bad'); return false; }
   setBusy(true); status('Kursdaten prüfen, Chartmethoden berechnen und Verlauf simulieren …');
@@ -40,14 +44,8 @@ async function run(input = null, rule = null) {
     }
     if (runEpoch !== epoch) return false;
     current = analysis; render(analysis);
-    status(`Analyse abgeschlossen · ${analysis.symbol} · ${analysis.narrative.mode === 'ai' ? 'KI + Chartberechnung' : 'Chartregeln; KI nicht aktiv'} · Kursstand ${analysis.price_date}`, analysis.quality.blocked || analysis.warnings?.length ? 'warn' : 'good');
-    if (rule && analysis.sources?.length) {
-      const latest = analysis.sources.map(n => n.published_at).sort().at(-1);
-      const update = await sb.from('signal_watch_rules').update({ last_news_at:latest }).eq('id', rule.id).eq('user_id', session.user.id);
-      if (update.error) status('Analyse berechnet; Trigger-Zeitpunkt konnte nicht gespeichert werden.', 'warn');
-      else rule.last_news_at = latest;
-    }
-    await loadHistory(); return true;
+    status(`Analyse abgeschlossen · ${analysis.symbol} · ${analysis.narrative.mode === 'ai' ? `${aiLabel(analysis)} + Chartberechnung` : 'Chartregeln; KI nicht aktiv'} · Kursstand ${analysis.price_date}`, analysis.quality.blocked || analysis.warnings?.length ? 'warn' : 'good');
+    await Promise.allSettled([loadHistory(), loadTriggers()]); return true;
   } catch (e) { if (runEpoch === epoch) status(`Analyse fehlgeschlagen: ${e.message}`, 'bad'); return false; }
   finally { setBusy(false); }
 }
@@ -79,7 +77,7 @@ function render(a) {
     ['Letzter Schlusskurs',`${num(a.chart.price)} ${a.currency}`,`${a.price_date} · ${a.provider}`],
     ['Chartscore',`${a.chart.score}/100`,'Trend 40 %, MACD 25 %, Ausbruch 20 %, RSI 15 %'],
     ['Mittlerer Modellwert',`${num(end.q50)} ${a.currency}`,'P50 am Horizontende; keine Zielkursprognose'],
-    ['News / Modus',`${a.sources.length} Quellen`,a.narrative.mode === 'ai' ? 'KI-Auswertung aktiv' : 'Regelbasierte Berechnung']
+    ['News / Modus',`${a.sources.length} Quellen`,a.narrative.mode === 'ai' ? `${aiLabel(a)}-Auswertung aktiv` : 'Regelbasierte Berechnung']
   ].map(([label,value,detail]) => `<article class="card ss-metric"><span class="ss-small">${html(label)}</span><strong>${html(value)}</strong><span class="ss-small">${html(detail)}</span></article>`).join('');
   $('ssQuality').innerHTML = `<div class="ss-note">${a.quality.blocked ? '<b class="ss-bad">Handelsschwellen gesperrt. </b>' : ''}Daten: ${a.quality.bars} Tageskerzen · ${a.quality.ageDays} Kalendertage seit letzter Kerze. ${html([...a.quality.notes,...(a.warnings || [])].join(' '))}<br>${html(a.limitations.join(' '))}</div>`;
   $('ssChart').innerHTML = chartSvg(a);
@@ -89,8 +87,8 @@ function render(a) {
   $('ssMethods').innerHTML = a.chart.methods.map(m => `<article class="ss-method"><h4>${html(m.name)}</h4><b>${html(m.finding)}</b><dl>${Object.entries(m.values).map(([k,v]) => `<dt>${html(k)}</dt><dd>${num(v)}</dd>`).join('')}</dl><p>${html(m.purpose)}</p><small>${html(m.limitation)}</small></article>`).join('');
   $('ssSetups').innerHTML = a.setups.map(s => `<article class="ss-method"><h4>${s.direction === 'long' ? 'Long / Einstieg' : 'Short / Absicherung prüfen'}</h4><b class="${s.status === 'gesperrt' ? 'ss-bad' : 'ss-warn'}">${html(s.status)}</b><p>${html(s.reason)}</p><dl><dt>Einstiegsschwelle</dt><dd>${num(s.entry)}</dd><dt>Stop / Ausstieg bei Verlust</dt><dd>${num(s.stop)}</dd><dt>Ziel 1 / Teilgewinn (2R)</dt><dd>${num(s.target1)}</dd><dt>Ziel 2 / Ausstieg (3R)</dt><dd>${num(s.target2)}</dd><dt>Abstand zum Stop</dt><dd>${num(s.riskPercent)} %</dd></dl><p>${html(s.trigger)} ${s.volumeAvailable ? '' : '<b>Volumen fehlt: Trigger kann nicht vollständig bestätigt werden.</b>'}</p><p><b>Ungültig bei:</b> ${html(s.invalidation)}</p><p>${html(s.exit)} ${html(s.trailingStop)}</p><small>${html(s.pricingBasis)} 2R/3R sind Risikomultiplikatoren, keine statistischen Renditeziele. Stops können bei Gaps übersprungen werden.</small></article>`).join('');
   const n = a.narrative, map = { bullish:'positiv',bearish:'negativ',mixed:'gemischt',neutral:'neutral' };
-  $('ssNarrative').innerHTML = `<b>${n.mode === 'ai' ? 'KI-News-Ableitung' : 'Chartregeln'} · ${html(map[n.bias] || n.bias)}</b><p>${html(n.summary)}</p>${n.mode === 'ai' ? `<small>Subjektives KI-Vertrauen ${num(n.confidence)}/100; keine Prognosegüte.</small>` : ''}${n.evidence.map(e => `<p><b>Quelle ${html(e.source_id)}</b>: ${html(e.inference)}</p>`).join('')}<p><b>Beobachten:</b> ${html(n.watchpoints.join(' · ') || 'Trend, Ausbruch und Volumen bestätigen.')}</p><p><b>Risiken:</b> ${html(n.risks.join(' · ') || 'Datenqualität, Fehlausbrüche und unerwartete Ereignisse.')}</p>`;
-  $('ssSources').innerHTML = a.sources.length ? a.sources.map(s => { const u = safeUrl(s.url); return `<p>${u ? `<a href="${html(u)}" target="_blank" rel="noopener noreferrer">${html(s.title)}</a>` : html(s.title)}<br><small>${html(s.source)} · ${html(date(s.published_at))} · ${s.match === 'direct' ? 'direkter Bezug' : 'Bezug zur Hypothese'} · Quelle ${html(s.id)}</small></p>`; }).join('') : '<p>Keine passenden aktuellen Feedquellen. Keine bestätigte News-These.</p>';
+  $('ssNarrative').innerHTML = `<b>${n.mode === 'ai' ? `${html(aiLabel(a))}-News-Ableitung` : 'Chartregeln'} · ${html(map[n.bias] || n.bias)}</b><p>${html(n.summary)}</p>${n.mode === 'ai' ? `<small>${a.ai?.model ? `Modell: ${html(a.ai.model)} · ` : ''}Subjektives KI-Vertrauen ${num(n.confidence)}/100; keine Prognosegüte.</small>` : ''}${n.evidence.map(e => `<p><b>Quelle ${html(e.source_id)}</b>: ${html(e.inference)}</p>`).join('')}<p><b>Beobachten:</b> ${html(n.watchpoints.join(' · ') || 'Trend, Ausbruch und Volumen bestätigen.')}</p><p><b>Risiken:</b> ${html(n.risks.join(' · ') || 'Datenqualität, Fehlausbrüche und unerwartete Ereignisse.')}</p>`;
+  $('ssSources').innerHTML = a.sources.length ? a.sources.map(s => { const u = safeUrl(s.url); return `<p>${u ? `<a href="${html(u)}" target="_blank" rel="noopener noreferrer">${html(s.title)}</a>` : html(s.title)}<br><small>${html(s.source)} · ${html(date(s.published_at))} · ${s.match === 'selected' ? 'manuell ausgewählte Meldung; Bezug zum Wert prüfen' : s.match === 'direct' ? 'direkter Bezug' : 'Bezug zur Hypothese'} · Quelle ${html(s.id)}</small></p>`; }).join('') : '<p>Keine passenden aktuellen Feedquellen. Keine bestätigte News-These.</p>';
 }
 
 async function loadHistory() {
@@ -102,55 +100,50 @@ async function loadHistory() {
   $('ssHistory').innerHTML = data?.length ? data.map((r,i) => `<button type="button" class="ss-history-item" data-ss-history="${i}">${html(r.symbol)} · ${r.horizon_days} Tage<small>${html(date(r.created_at))}</small></button>`).join('') : '<p>Noch keine Simulationen.</p>';
   $('ssHistory').querySelectorAll('[data-ss-history]').forEach(b => b.addEventListener('click',() => { current = data[Number(b.dataset.ssHistory)].raw_result; render(current); status('Gespeichertes Ergebnis geöffnet. Kursstand im Bericht beachten.','warn'); }));
 }
-async function saveRule() {
-  const { sb,session } = access();
-  if (!sb || !session) { status('Zum Speichern bitte anmelden.','bad'); return; }
-  try {
-    const input = formInput(); delete input.bars;
-    const baseline = new Date().toISOString();
-    const { error } = await sb.from('signal_watch_rules').insert({ user_id:session.user.id,label:`${input.symbol} · ${input.days} Tage`,config:input,last_news_at:baseline });
-    if (error) throw error;
-    await loadRules(); status('Feedregel gespeichert. Neue passende Meldungen ab jetzt lösen die Prüfung aus.','good');
-  } catch (e) { status(`Regel nicht gespeichert: ${e.message}`,'bad'); }
+function clearOrigin() { selectedOrigin=null; $('ssOrigin').textContent='Keine Meldung ausgewählt. Du kannst auch einen Wert direkt manuell analysieren.'; $('ssOriginSymbols').hidden=true; }
+function prepareOrigin(row) {
+  if (busy) return;
+  selectedOrigin=row; clearImport();
+  const symbols=Array.isArray(row.symbols)?row.symbols:[];
+  $('ssSymbol').value=symbols[0] || '';
+  $('ssCurrency').value=''; $('ssCompany').value=''; $('ssContext').value='';
+  $('ssUseAi').checked=true; $('ssRun').textContent='KI-Analyse manuell starten';
+  $('ssOriginSymbol').innerHTML=symbols.map(symbol=>`<option>${html(symbol)}</option>`).join('');
+  $('ssOriginSymbols').hidden=symbols.length<2;
+  $('ssOrigin').innerHTML=`<b>TRIGGER KI · ausgewählte Meldung</b><p>${html(row.news_title)}</p><small>${html(date(row.news_published_at))} · ${html(row.reason || 'Meldung aus Telegram. Bezug zum Basiswert prüfen.')}</small><p>Währung und Basiswert prüfen. Die KI startet erst über den Startknopf.</p>`;
+  status('TRIGGER KI vorbereitet. Basiswert und Notierungswährung bestätigen, dann KI-Analyse manuell starten.','warn');
 }
-async function loadRules() {
-  const { sb,session } = access(), loadEpoch = epoch;
-  if (!sb || !session) return;
-  const {data,error} = await sb.from('signal_watch_rules').select('*').eq('user_id',session.user.id).order('created_at',{ascending:false}).limit(30);
-  if (loadEpoch !== epoch) return;
-  if (error) { $('ssRules').textContent = 'Regeln noch nicht verfügbar. V31-SQL ausführen.'; return; }
-  rules = data || [];
-  $('ssRules').innerHTML = rules.length ? rules.map((r,i) => `<div class="ss-rule"><b>${html(r.label)}</b><div class="ss-small">Prüft neue Feedquellen nach ${html(date(r.last_news_at || r.created_at))}.</div><button type="button" class="btn" data-ss-open="${i}">Übernehmen</button><button type="button" class="btn" data-ss-delete="${i}">Entfernen</button></div>`).join('') : '<p>Noch keine Feedregeln gespeichert.</p>';
-  $('ssRules').querySelectorAll('[data-ss-open]').forEach(b => b.addEventListener('click',() => populateForm(rules[Number(b.dataset.ssOpen)].config)));
-  $('ssRules').querySelectorAll('[data-ss-delete]').forEach(b => b.addEventListener('click',async () => {
-    const result = await sb.from('signal_watch_rules').delete().eq('id',rules[Number(b.dataset.ssDelete)].id).eq('user_id',session.user.id);
-    if (result.error) status('Regel konnte nicht entfernt werden.','bad'); else await loadRules();
+async function loadTriggers() {
+  const {sb,session}=access(), loadEpoch=epoch;
+  if (!sb || !session) { $('ssTriggerList').textContent='Nach Anmeldung verfügbar.'; return; }
+  const {data,error}=await sb.from('signal_news_triggers').select('*').eq('user_id',session.user.id).not('delivered_at','is',null).order('created_at',{ascending:false}).limit(30);
+  if (loadEpoch!==epoch) return;
+  if (error) { $('ssTriggerList').textContent='Triggerliste nicht verfügbar. setup-v31-2-manual-triggers.sql prüfen.'; return; }
+  triggers=data || [];
+  $('ssTriggerList').innerHTML=triggers.length?triggers.map((row,i)=>`<div class="ss-rule"><b>TRIGGER KI · ${html(row.news_title)}</b><div class="ss-small">${html(date(row.news_published_at))} · ${row.state==='analyzed'?'KI-Analyse erfolgt':row.state==='dismissed'?'Zurückgestellt':'Manueller Start ausstehend'}</div><button type="button" class="btn" data-ss-trigger="${i}">Analyse vorbereiten</button><button type="button" class="btn" data-ss-dismiss="${i}">Zurückstellen</button></div>`).join(''):'<p>Noch keine TRIGGER-KI-Meldungen. Sie erscheinen mit den nächsten regulären Telegram-Portfolio-News.</p>';
+  $('ssTriggerList').querySelectorAll('[data-ss-trigger]').forEach(button=>button.addEventListener('click',()=>prepareOrigin(triggers[Number(button.dataset.ssTrigger)])));
+  $('ssTriggerList').querySelectorAll('[data-ss-dismiss]').forEach(button=>button.addEventListener('click',async()=>{
+    const row=triggers[Number(button.dataset.ssDismiss)];
+    const result=await sb.from('signal_news_triggers').update({state:'dismissed'}).eq('id',row.id).eq('user_id',session.user.id);
+    if (loadEpoch!==epoch) return;
+    if (result.error) status('Meldung konnte nicht zurückgestellt werden.','bad');else await loadTriggers();
   }));
 }
-async function checkRules() {
-  if (checking || busy) return;
-  const {sb,session} = access(); if (!sb || !session) return;
-  checking = true;
-  const checkEpoch = epoch;
-  try {
-    await loadRules();
-    const {data,error} = await sb.from('market_news').select('*').eq('is_published',true).gte('published_at',new Date(Date.now()-14*86400000).toISOString()).order('published_at',{ascending:false}).limit(1000);
-    if (error) throw error;
-    let triggered = 0;
-    for (const rule of [...rules]) {
-      if (checkEpoch !== epoch || triggered >= 3) break;
-      const cfg = validateSignalInput(rule.config), fresh = selectNews(data,cfg.symbol,cfg.company,cfg.context).filter(n => Date.parse(n.published_at)>Date.parse(rule.last_news_at || rule.created_at));
-      if (!fresh.length) continue;
-      triggered++;
-      status(`Neue Feedmeldung für ${cfg.symbol}; Analyse ${triggered}/3 wird gestartet …`);
-      await run(cfg,rule);
-    }
-    if (checkEpoch !== epoch) return;
-    await loadRules();
-    if (!triggered) status('Keine neuen passenden Feedmeldungen für gespeicherte Regeln.','good');
-    else status(`${triggered} Regeln ausgelöst (maximal 3 pro Prüfung). Ergebnisse und KI-Modus im Bericht prüfen.`, 'warn');
-  } catch(e) { if (checkEpoch === epoch) status(`Feedprüfung nicht abgeschlossen: ${e.message}`,'bad'); }
-  finally { checking = false; }
+async function loadLaunch() {
+  const {sb,session}=access(), loadEpoch=epoch;
+  if (!pendingLaunch || !sb || !session || busy) return;
+  let row,error;
+  if (pendingLaunch.triggerId) {
+    const result=await sb.from('signal_news_triggers').select('*').eq('id',pendingLaunch.triggerId).eq('user_id',session.user.id).maybeSingle();
+    row=result.data; error=result.error;
+  } else {
+    const result=await sb.from('market_news').select('id,title,published_at,symbols').eq('id',pendingLaunch.newsId).eq('is_published',true).maybeSingle();
+    error=result.error;
+    if (result.data) row={news_id:result.data.id,news_title:result.data.title,news_published_at:result.data.published_at,symbols:launchSymbol?[launchSymbol]:(result.data.symbols || []).filter(symbol=>/^[A-Z0-9_^+\-]{1,25}\.[A-Z0-9]{1,12}$/.test(symbol))};
+  }
+  if (loadEpoch!==epoch || busy) return;
+  if (error || !row) { status('TRIGGER-KI-Link nicht verfügbar oder gehört zu einer anderen Anmeldung.','warn'); return; }
+  prepareOrigin(row); pendingLaunch=null;
 }
 
 function demo() {
@@ -171,12 +164,16 @@ function useSelected() {
   const derivative = /knock|\bko\b|zertifikat/i.test(t.type || '');
   $('ssCurrency').value = derivative ? '' : t.currency || '';
   clearImport();
+  clearOrigin();
   status(derivative ? 'Basiswert übernommen. Notierungswährung des Basiswerts bestätigen; die Produktwährung wird nicht übernommen.' : 'Wert übernommen. Notierungswährung prüfen.', 'warn');
 }
 if (page) {
-  $('ssForm').addEventListener('submit',e => { e.preventDefault(); run(); });
+  $('ssForm').addEventListener('submit',e => { e.preventDefault(); return run(); });
   $('ssDemo').addEventListener('click',demo); $('ssSelected').addEventListener('click',useSelected);
-  $('ssSaveRule').addEventListener('click',saveRule); $('ssCheckRules').addEventListener('click',checkRules); $('ssLoadHistory').addEventListener('click',loadHistory);
+  $('ssLoadTriggers').addEventListener('click',loadTriggers); $('ssLoadHistory').addEventListener('click',loadHistory);
+  $('ssClearOrigin').addEventListener('click',clearOrigin);
+  $('ssOriginSymbol').addEventListener('change',()=>{if (!busy) {$('ssSymbol').value=$('ssOriginSymbol').value;clearImport();}});
+  $('ssUseAi').addEventListener('change',()=>{$('ssRun').textContent=$('ssUseAi').checked?'KI-Analyse manuell starten':'Chartsimulation starten';});
   $('ssClearCsv').addEventListener('click',clearImport);
   $('ssCsv').addEventListener('change',async e => {
     try { const f=e.target.files[0]; if (!f) return; if (f.size>600000) throw new Error('CSV darf höchstens 600 kB groß sein.'); imported=parseOhlcvCsv(await f.text()); $('ssCsvStatus').textContent=`${imported.length} importierte Tageszeilen. Für lokale Berechnung KI ausschalten.`; }
@@ -184,12 +181,12 @@ if (page) {
   });
   $('ssSymbol').addEventListener('change',clearImport);
   $('ssChartDirection').addEventListener('change',() => { if (current) $('ssChart').innerHTML=chartSvg(current); });
-  window.addEventListener('investition:signal-simulation-visible',async () => { await loadHistory(); await loadRules(); });
-  window.addEventListener('investition:news-changed',() => { if ($('ssAutoFeed').checked && !document.hidden) checkRules(); });
+  window.addEventListener('investition:signal-simulation-visible',() => Promise.allSettled([loadHistory(),loadTriggers(),loadLaunch()]));
+  window.addEventListener('investition:news-changed',() => { if (!page.hidden) return Promise.allSettled([loadTriggers()]); });
   window.addEventListener('investition:auth-changed',() => {
-    epoch++; current=null; imported=null; rules=[]; $('ssResults').hidden=true; $('ssHistory').textContent='Nach Anmeldung neu laden.'; $('ssRules').textContent='Nach Anmeldung neu laden.'; $('ssAutoFeed').checked=false; clearImport();
-    if (!page.hidden) { loadHistory(); loadRules(); }
+    epoch++; current=null; imported=null; triggers=[]; $('ssResults').hidden=true; $('ssHistory').textContent='Nach Anmeldung neu laden.'; $('ssTriggerList').textContent='Nach Anmeldung neu laden.'; clearImport(); clearOrigin();
+    if (!page.hidden) return Promise.allSettled([loadHistory(),loadTriggers(),loadLaunch()]);
   });
   // Deferred navigation can select #signals before this module finishes loading.
-  if (!page.hidden) { loadHistory(); loadRules(); }
+  if (!page.hidden) Promise.allSettled([loadHistory(),loadTriggers(),loadLaunch()]);
 }
