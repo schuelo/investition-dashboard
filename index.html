@@ -1009,6 +1009,7 @@
 
   </style>
   <link rel="stylesheet" href="./signal-simulation.css?v=31.2" />
+  <link rel="stylesheet" href="./deep-analysis.css?v=32.0" />
 </head>
 <body class="auth-locked">
 <div id="appError" hidden style="position:sticky;top:0;z-index:9999;background:#7f1d1d;color:#fff;padding:12px 16px;font:600 14px system-ui;text-align:center"></div>
@@ -1318,6 +1319,7 @@ setTimeout(function(){
       <h2>Signal- &amp; Verlaufssimulation</h2>
       <p>TRIGGER-KI-Meldung auswählen, KI manuell starten, News und Charttechniken auswerten und mögliche Verläufe sowie bedingte Ein-/Ausstiege prüfen.</p>
       <span class="ss-small">Tageskurse · getrennte Analyse · sichtbar begründete Chartmethoden · Ergebnisse mit Quellen und Datenstand</span>
+      <div class="ss-actions"><button class="btn" type="button" id="daOpen">V32 · Deep-Analyse öffnen</button></div>
     </section>
     <section class="ss-layout">
       <article class="card ss-panel">
@@ -1361,6 +1363,133 @@ setTimeout(function(){
       <article class="card ss-section"><h3>KI-Auswertung &amp; Bestätigungspunkte</h3><div id="ssNarrative"></div></article>
       <article class="card ss-section ss-sources"><h3>Verwendete Feedquellen</h3><div id="ssSources"></div></article>
     </section>
+<!-- Embedded into index.html by the release build; do not navigate to this fragment. -->
+<section class="da-module" id="deepAnalysisModule">
+  <article class="card da-hero">
+    <div><span class="da-eyebrow">V32.0 · DEEP-ANALYSE</span><h2>These prüfen. Szenarien vergleichen. Risiken verstehen.</h2>
+    <p>News und Quellen, Tages- und Wochencharts, sechs Verläufe und Produktstress. Jede gespeicherte Analyse behält ihren ursprünglichen Datenstand.</p></div>
+    <span class="chip">Manueller Start</span>
+  </article>
+  <div class="da-layout">
+    <article class="card da-panel">
+      <form id="daForm">
+        <h3>Neue Deep-Analyse</h3>
+        <div class="da-grid">
+          <label>Symbol mit Handelsplatz<input id="daSymbol" required maxlength="38" value="NVDA.US"></label>
+          <label>Basiswertwährung<select id="daCurrency"><option>USD</option><option>EUR</option><option>GBP</option><option>GBX</option><option>CHF</option><option>JPY</option><option>KRW</option><option>CNY</option><option>HKD</option><option>SEK</option><option>AUD</option><option>CAD</option><option>INR</option></select></label>
+          <label>Unternehmen<input id="daCompany" maxlength="120" placeholder="NVIDIA"></label>
+          <label>Branche / Kontext<input id="daSector" maxlength="100" placeholder="Halbleiter, Energie …"></label>
+          <label>Prognosehorizont<select id="daDays"><option value="5">5 Handelstage</option><option value="20" selected>20 Handelstage</option><option value="60">60 Handelstage</option><option value="120">120 Handelstage</option><option value="252">252 Handelstage</option></select></label>
+          <label>Historischer Vergleich<select id="daLookback"><option value="60">60 Tageskerzen</option><option value="126">126 Tageskerzen</option><option value="252" selected>252 Tageskerzen</option><option value="756">756 Tageskerzen (~3 Jahre)</option><option value="1260">1260 Tageskerzen (~5 Jahre)</option><option value="2000">Bis 2000 Tageskerzen</option></select></label>
+          <label>Nachrichtenfenster<select id="daNewsDays"><option value="3">3 Kalendertage</option><option value="7">7 Kalendertage</option><option value="14" selected>14 Kalendertage</option><option value="30">30 Kalendertage</option><option value="90">90 Kalendertage</option></select></label>
+          <label>Hypothetischer Schock (%)<input id="daShock" type="number" min="0" max="40" step=".5" value="5"></label>
+        </div>
+        <label>These / Ereignis<textarea id="daContext" maxlength="2000" placeholder="Welche Annahme soll geprüft werden?"></textarea></label>
+        <label>Ereignisrichtung für den separaten Modellvergleich<select id="daEventDirection"><option value="neutral">Neutral / unbekannt</option><option value="bullish">Positive Nutzerannahme</option><option value="bearish">Negative Nutzerannahme</option></select></label>
+        <label class="da-check"><input id="daUseAi" type="checkbox" checked> Gemini beim manuellen Start verwenden</label>
+        <label class="da-check"><input id="daResearch" type="checkbox" checked> Kostenlose öffentliche Quellen recherchieren und hinterlegen</label>
+        <p class="da-help">Längere Kurshistorien kommen aus deinem CSV-Import. Die kostenlose Kursabfrage bleibt auf ein Jahr begrenzt. Links und Seitenwechsel starten keine KI.</p>
+        <details><summary>TRIGGER KI und Kursdaten</summary>
+          <div class="da-actions"><button class="btn" type="button" id="daCopy">Eingaben aus Signalanalyse übernehmen</button><button class="btn" type="button" id="daLoadTriggers">TRIGGER KI laden</button></div>
+          <label>Ausgangsmeldung<select id="daTrigger"><option value="">Ohne ausgewählte Meldung</option></select></label>
+          <label>OHLCV-Datei<input id="daCsv" type="file" accept=".csv,text/csv"></label>
+          <p class="da-help" id="daCsvStatus">Kein Import. 60–2000 abgeschlossene tägliche OHLCV-Kerzen; optional adjusted_close.</p>
+          <button class="btn" id="daClearCsv" type="button">Import entfernen</button>
+        </details>
+        <details><summary>Kostenlose SEC-Unternehmenshistorie (optional)</summary>
+          <label>US-CIK des Unternehmens<input id="daCik" inputmode="numeric" maxlength="10" placeholder="CIK aus SEC EDGAR"></label>
+          <label class="da-check"><input id="daCikVerified" type="checkbox">CIK-Zuordnung zum gewählten Unternehmen geprüft</label>
+          <p class="da-help">Jahres-EPS und Umsatz aus verfügbaren US-GAAP-Meldungen. SEC_USER_AGENT mit Kontakt-E-Mail muss serverseitig eingerichtet sein. Keine Konsens- oder Analystenschätzungen.</p>
+        </details>
+        <details><summary>Bewertung &amp; fundamentale Annahmen</summary>
+          <p class="da-help">Eingaben in der Basiswertwährung je Aktie. Quellenverweis macht eine Eingabe prüfbar; er bestätigt den Zahlenwert nicht automatisch. Keine automatisch abgerufenen Analystenrevisionen.</p>
+          <div class="da-grid">
+            <label>EPS / Gewinn je Aktie<input id="daEps" type="number" step=".01" value="0"></label>
+            <label>Gewinnwachstum p.a. (%)<input id="daGrowth" type="number" min="-95" max="200" step=".5" value="5"></label>
+            <label>Angenommenes KGV<input id="daMultiple" type="number" min="0" max="500" step=".5" value="20"></label>
+            <label>Zahlenstand<input id="daValDate" type="date"></label>
+            <label>Quellen-ID aus Bericht<input id="daValSource" maxlength="160" placeholder="s-…"></label>
+            <label>Herkunft<select id="daValProvenance"><option value="assumption">Hypothetische Annahme</option><option value="source">Nutzereingabe mit Quellenverweis</option></select></label>
+          </div>
+        </details>
+        <details><summary>Risikobudget &amp; Ausführungskosten</summary>
+          <div class="da-grid">
+            <label>Analysekapital<input id="daCapital" type="number" min="0" value="0"></label>
+            <label>Kontowährung<input id="daAccountCurrency" maxlength="5" value="USD"></label>
+            <label>Risikobudget (%)<input id="daBudget" type="number" min=".01" max="5" step=".1" value=".5"></label>
+            <label>Bestehendes Exposure der Risikogruppe<input id="daExposure" type="number" min="0" value="0"></label>
+            <label>Max. Exposure der Risikogruppe (%)<input id="daMaxExposure" type="number" min="1" max="100" value="20"></label>
+            <label>FX: Kontowährung je Basiswertwährung<input id="daRiskFx" type="number" min=".000001" step=".0001" value="1"></label>
+            <label>Gebühren je Seite (bp)<input id="daFee" type="number" min="0" max="500" value="10"></label>
+            <label>Slippage je Seite (bp)<input id="daSlippage" type="number" min="0" max="500" value="15"></label>
+          </div>
+          <label class="da-check"><input id="daRiskFxVerified" type="checkbox">FX-Umrechnung geprüft, falls Währungen abweichen</label>
+          <p class="da-help">1 Basispunkt = 0,01 %. Exposure und Zusammenhang mit anderen Positionen werden von dir eingegeben; keine automatische Korrelationserkennung. Kein garantierter Maximalverlust.</p>
+        </details>
+        <details><summary>Knock-out / Faktor / Option prüfen</summary>
+          <label>Produkttyp<select id="daProductType"><option value="none">Kein Produkt</option><option value="ko">Knock-out / Turbo / Mini-Future</option><option value="factor">Faktorzertifikat</option><option value="option">Europäische Vanilla-Option / Optionsschein</option></select></label>
+          <div class="da-grid">
+            <label>WKN / ISIN / Referenz<input id="daProductRef" maxlength="160"></label>
+            <label>Richtung<select id="daProductDirection"><option value="long">Long / Call</option><option value="short">Short / Put</option></select></label>
+            <label>Produktwährung<input id="daProductCurrency" maxlength="5" value="USD"></label>
+            <label>FX: Produktwährung je Basiswertwährung<input id="daProductFx" type="number" min=".000001" step=".0001" value="1"></label>
+            <label>Produktpreis<input id="daPremium" type="number" min="0" step=".001" value="0"></label>
+            <label>Bezugsverhältnis<input id="daRatio" type="number" min=".000001" step=".001" value=".1"></label>
+            <label>Spread / Handelskosten (%)<input id="daSpread" type="number" min="0" max="50" step=".1" value="1"></label>
+            <label>Finanzierung p.a. (%)<input id="daFinancePct" type="number" min="0" max="100" step=".1" value="5"></label>
+            <label>KO-Barriere im Basiswert<input id="daBarrier" type="number" min="0" step=".01" value="0"></label>
+            <label>KO-Finanzierungslevel<input id="daFinance" type="number" min="0" step=".01" value="0"></label>
+            <label>Barrierenbeobachtung<select id="daObservation"><option value="unknown">Unbekannt</option><option value="continuous">Hoch/Tief über den Handelstag</option><option value="close">Nur Schlusskurs laut Bedingungen</option></select></label>
+            <label>Täglicher Faktor<input id="daFactor" type="number" min="1" max="100" value="3"></label>
+            <label>Options-Strike<input id="daStrike" type="number" min="0" step=".01" value="0"></label>
+            <label>Restlaufzeit (Kalendertage)<input id="daExpiry" type="number" min="1" max="3650" value="90"></label>
+            <label>Implizite Volatilität (%)<input id="daIv" type="number" min=".01" max="500" step=".1" value="30"></label>
+            <label>Zins p.a. (%)<input id="daRate" type="number" min="-5" max="30" step=".1" value="3"></label>
+            <label>Dividendenrendite (%)<input id="daDividend" type="number" min="0" max="30" step=".1" value="0"></label>
+          </div>
+          <label class="da-check"><input id="daTermsVerified" type="checkbox">Aktuelle Emittentenbedingungen, Handelszeiten und Produktdaten geprüft</label>
+          <label class="da-check"><input id="daProductFxVerified" type="checkbox">Abweichende Produktwährung und FX geprüft</label>
+          <label class="da-check"><input id="daIvVerified" type="checkbox">IV mit aktuellen Marktdaten geprüft (Option)</label>
+          <p class="da-help">Produktdaten werden manuell eingegeben. Preise sind Modellwerte; KO-Ereignisse, Emittentenrisiko und Handelsausfälle können zu Totalverlust führen.</p>
+        </details>
+        <div class="da-actions"><button id="daRun" class="btn primary" type="submit">Deep-Analyse manuell starten</button><button id="daDemo" class="btn" type="button">Synthetische Demo</button></div>
+      </form>
+      <p id="daStatus" class="da-status" role="status" aria-live="polite">Bereit. Frühere Analysen kannst du rechts als Vergleichskontext auswählen.</p>
+    </article>
+    <aside class="card da-panel">
+      <h3>Deine Analysehistorie</h3>
+      <div class="da-grid">
+        <label>Symbolfilter<input id="daHistorySymbol" maxlength="38" placeholder="NVDA.US"></label>
+        <label>Modus<select id="daHistoryMode"><option value="">Alle</option><option value="ai">Gemini</option><option value="rules">Regeln</option></select></label>
+        <label>Ab Datum<input id="daHistoryFrom" type="date"></label>
+        <label>Bis Datum<input id="daHistoryTo" type="date"></label>
+      </div>
+      <div class="da-actions"><button id="daHistoryLoad" class="btn" type="button">Historie laden</button><button id="daCompare" class="btn" type="button">Auswahl vergleichen</button></div>
+      <p class="da-help">Bis zu fünf Analysen desselben Symbols als Kontext wählen. Das Öffnen oder Vergleichen verbraucht keine KI.</p>
+      <div id="daHistory">Nach Anmeldung verfügbar.</div>
+      <div class="da-actions"><button id="daPrev" class="btn" type="button" disabled>Zurück</button><span id="daPageLabel">Seite 1</span><button id="daNext" class="btn" type="button" disabled>Weiter</button></div>
+      <div id="daComparison"></div>
+      <h3>Quellenarchiv</h3><button id="daSourceLoad" class="btn" type="button">Quellen für Symbol laden</button><div id="daArchive"></div>
+      <h3>Prognosejournal</h3><button id="daJournalLoad" class="btn" type="button">Journal laden</button><div id="daJournal"><p class="da-help">Ergebnisse werden erst nach ihrem Horizont ausgewertet. Kein automatischer KI-Aufruf.</p></div>
+    </aside>
+  </div>
+  <section id="daResults" hidden>
+    <div class="da-result-head"><h3 id="daTitle"></h3><button class="btn" type="button" id="daExport">Bericht als JSON exportieren</button></div>
+    <div id="daMetrics" class="da-metrics"></div><div id="daQuality"></div>
+    <article class="card da-section"><h3>Sechs bedingte Verläufe</h3><label>Chart-Szenario<select id="daScenario"></select></label><div id="daChart"></div><p class="da-help">Historie und P10–P90-Band des gewählten Modells. Band und Modellhäufigkeit sind keine verifizierten Wahrscheinlichkeiten.</p><div id="daScenarios" class="da-cards"></div></article>
+    <article class="card da-section"><h3>KI-Auswertung &amp; Gegenargumente</h3><div id="daNarrative"></div></article>
+    <article class="card da-section"><h3>Methodenvergleich &amp; Bewertung</h3><div id="daModels"></div><div id="daValuation"></div><div id="daAnalogs"></div><div id="daSensitivity"></div></article>
+    <article class="card da-section"><h3>Bedingte Ein-/Ausstiege &amp; Budget</h3><div id="daSetups" class="da-cards"></div></article>
+    <article class="card da-section"><h3>Hebelprodukt &amp; Reverse-Stress</h3><div id="daProduct"></div></article>
+    <article class="card da-section"><h3>Angewendete Charttechniken</h3><div id="daMethods" class="da-cards"></div><div id="daWeekly"></div></article>
+    <article class="card da-section"><h3>Änderung zur vorherigen Analyse</h3><div id="daDelta"></div><p id="daReassess"></p></article>
+    <article class="card da-section"><h3>Quellen &amp; Datenstand</h3><div id="daSources"></div></article>
+    <article class="card da-section"><h3>Notiz &amp; spätere Auswertung</h3><label>Eigene Notiz<textarea id="daNote" maxlength="4000" placeholder="Entscheidung, Beobachtung oder widerlegte Annahme …"></textarea></label>
+      <div class="da-actions"><button id="daNoteSave" class="btn" type="button">Notiz speichern</button><button id="daEvaluate" class="btn" type="button">Verlauf jetzt auswerten (ohne KI)</button></div><div id="daEvaluation"></div>
+    </article>
+  </section>
+</section>
+
   </main>
 
   <main class="page app-page" id="eventAnalysisPage" hidden>
@@ -1601,6 +1730,7 @@ setTimeout(function(){
 <script defer src="./event-analysis.js?v=30.1"></script>
 
 <script type="module" src="./signal-simulation.js?v=31.2"></script>
+<script type="module" src="./deep-analysis.js?v=32.0"></script>
 
 </body>
 </html>

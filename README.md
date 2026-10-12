@@ -1,15 +1,18 @@
-# V31.2 – TRIGGER KI und manuelle Signal- & Verlaufssimulation
+# V32.0 – Deep-Analyse, Szenarien und Prognosehistorie
 
-Vollständiges Dashboard auf Basis des originalen V29.4 + V30.1.1 Deployment-Fix. Neues getrenntes Modul: KI-News-Ableitungen, informative Chartmethoden, reproduzierbare Verlaufssimulation, bedingte Ein-/Ausstiegsschwellen und eigene Historie.
+Vollständiges Dashboard auf dem verfügbaren V31.2-Stand. Neues eigenständiges Modul: sechs Szenarien, Tages-/Wochenmethoden, Quellenregister, frühere Analysen als Kontext, Risikobudget sowie KO-/Faktor-/Optionsprüfung. Originalberichte bleiben unverändert; Notizen und Auswertungen werden getrennt gespeichert.
 
-Die bestehenden Funktionen bleiben erhalten. Die reguläre Telegram-Portfolio-News wird um **TRIGGER KI** und einen Button ergänzt. Der Button öffnet die vorbereitete Originalmeldung. **Erst „KI-Analyse manuell starten“ im Dashboard ruft Gemini auf.** Anmeldung, Feedupdates und Navigation starten keine KI.
+Gemini startet ausschließlich manuell. Im neuen Modul sind nur ausdrücklich freigegebene Free-Tier-Modelle erlaubt; ohne Tarifbestätigung oder bei erreichtem Kontingent bleibt die Regelberechnung aktiv. Suchlinks werden automatisch als Metadaten archiviert, nicht als gelesene Expertenmeinungen. Keine automatischen kostenpflichtigen Quellen oder Anbieterwechsel.
 
-Gemini kann mit dem begrenzten Kontingent eines Free-Tier-Projekts ohne Billing verwendet werden. Bei fehlender KI oder erreichtem Kontingent läuft die sichtbar gekennzeichnete Chartberechnung weiter. Anbieter und Modell stehen im Ergebnis; es gibt keinen automatischen Anbieterwechsel.
+Die bisherigen Funktionen und der V31.2-News-Bot bleiben unverändert. Telegram behält **TRIGGER KI**; Links, Anmeldung und Feedupdates starten keine KI.
 
-**Aktuelle Installation:** [INSTALLATION-V31.md](INSTALLATION-V31.md).
-**Prüfbericht:** [TESTPROTOKOLL-V31.md](TESTPROTOKOLL-V31.md).
+**Installation:** [INSTALLATION-V32.md](INSTALLATION-V32.md).  
+**Prüfbericht und Grenzen:** [TESTPROTOKOLL-V32.md](TESTPROTOKOLL-V32.md).  
+**V31-Erstinstallation:** [INSTALLATION-V31.md](INSTALLATION-V31.md).
 
-Die nachfolgenden Angaben beschreiben den bisherigen V29.4-/V30.1-Funktionsumfang. V31.2 ergänzt lediglich den Inhalt der bestehenden Telegram-News-Meldung und das separate Modul.
+162 lokale Tests erfolgreich. Noch nicht produktiv installiert. Unter Signal- & Verlaufssimulation den Button **V32 · Deep-Analyse öffnen** wählen. Produkt-/Bewertungsdaten werden eingegeben; fehlende kostenlose Daten werden angezeigt.
+
+Die folgenden Abschnitte beschreiben den bisherigen V29.4-/V30.1-Umfang.
 
 ---
 

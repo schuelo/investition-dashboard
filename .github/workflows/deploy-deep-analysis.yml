@@ -1,0 +1,41 @@
+name: V32.0 Deep-Analyse deployen
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      PROJECT_ID: pzhfybtoyfttftgcrcxk
+    steps:
+      - name: Repository laden
+        uses: actions/checkout@v6
+      - name: Node einrichten
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - name: Regressionen und Deep-Analyse prüfen
+        run: node --test tests/*.test.mjs
+      - name: Supabase CLI einrichten
+        uses: supabase/setup-cli@v1
+        with:
+          version: 2.110.0
+      - name: Zugang prüfen
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "$SUPABASE_ACCESS_TOKEN" ]]; then
+            echo "::error::GitHub Secret SUPABASE_ACCESS_TOKEN fehlt."
+            exit 1
+          fi
+          for file in deep-analysis.js deep-analysis.css setup-v32-deep-analysis.sql supabase/functions/analyze-deep-signal/index.ts; do
+            if [[ ! -f "$file" ]]; then
+              echo "::error file=$file::V32-Datei fehlt."
+              exit 1
+            fi
+          done
+      - name: Eigenständiges V32-Modul deployen
+        run: supabase functions deploy analyze-deep-signal --project-ref "$PROJECT_ID" --no-verify-jwt

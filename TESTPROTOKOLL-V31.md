@@ -10,6 +10,7 @@ Geprüfter Stand: originales V29.4 + V30.1.1 Deployment-Fix + separates V31.2-Si
 - 172 eindeutige HTML-IDs, sechs getrennte Navigationsseiten, acht referenzierte lokale Frontendassets geprüft.
 - 14 bestehende Kern-Dateien per SHA-256 unverändert gegenüber dem originalen V30.1.1-Paket. Die zulässige Telegram-Ergänzung ist separat gegen den Originalhandler geprüft.
 - ZIP auf Lesbarkeit und CRC-Integrität geprüft.
+- Deploymentkorrektur: Fehler aus dem GitHub-Protokoll lokal mit einer zusätzlich vorhandenen `event-analysis.html` reproduziert. Nach der Testkorrektur bestehen auch in dieser Update-Situation alle 124 Tests. Die alte Datei wird beibehalten; Anwendung und Functions bleiben unverändert.
 
 ## Prüfbereiche
 

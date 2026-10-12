@@ -12,3 +12,7 @@ verify_jwt = false
 
 [functions.analyze-signal-path]
 verify_jwt = false
+
+[functions.analyze-deep-signal]
+# Handler verifies the Bearer token with auth.getUser before any data access.
+verify_jwt = false

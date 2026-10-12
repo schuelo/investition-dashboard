@@ -1,5 +1,7 @@
 # Änderungen V31.2 – manueller Start und TRIGGER KI
 
+Deploymentkorrektur vom 11.10.2026: Der Pakettest lässt eine verbliebene `event-analysis.html` aus älteren Installationen zu. Geprüft wird weiterhin die integrierte Eventnavigation ohne Abhängigkeit von der alten Datei. Nur Test und Dokumentation geändert; keine Änderungen an Dashboard, Functions, SQL oder Versandlogik.
+
 Ausgangsbasis ist das unveränderte originale V29.4-/V30.1.1-Deployment-Fix-Paket. Das getrennte Signalmodul ergänzt die bisherige Oberfläche.
 
 - KI-Aufruf ausschließlich nach ausdrücklicher manueller Analyse. Telegram-Link, Login, Navigation, Feedupdate und Auswahl einer Trigger-Meldung bereiten Daten vor und starten keine KI.

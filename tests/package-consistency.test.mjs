@@ -44,7 +44,10 @@ test('Eventanalyse ist eine eigene Seite in der vorhandenen Navigation', () => {
   assert.match(navigation, /eventAnalysisPage/);
   assert.match(navigation, /showPage\('events'\)/);
   assert.match(navigation, /investition:event-analysis-visible/);
-  assert.equal(existsSync(resolve(root, 'event-analysis.html')), false, 'Standalone-Seite darf im integrierten Paket nicht nötig sein');
+  // Updating an existing repository can leave a legacy standalone file behind.
+  // Verify that the integrated UI does not depend on it, rather than forbidding it.
+  assert.doesNotMatch(html, /(?:href|src)\s*=\s*["'][^"']*event-analysis\.html(?:[?#][^"']*)?["']/i, 'Integrierte Navigation darf keine Standalone-Seite laden');
+  assert.doesNotMatch(navigation, /(?:location(?:\.href)?|window\.open)[^;\n]*event-analysis\.html/i, 'Eventnavigation muss die integrierte Seite öffnen');
 });
 
 test('Alle serverseitigen Komponenten tragen den vorgesehenen Release-Stand', () => {

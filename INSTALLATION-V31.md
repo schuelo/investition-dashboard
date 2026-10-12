@@ -133,6 +133,12 @@ Zusätzlich zum Gemini-Kontingent gelten maximal **20 serverseitige Analyseversu
 
 Lokale Tests ersetzen diesen Livecheck nicht. Es wurden keine produktiven Schlüssel verwendet, Live-Nachrichten verschickt, SQL-Migrationen ausgeführt oder Functions deployt. DOM-/Handler-Tests ersetzen keine visuelle Prüfung im Browser.
 
+## Deployment-Abbruch: „Standalone-Seite darf im integrierten Paket nicht nötig sein“
+
+Ursache ist eine noch vorhandene `event-analysis.html` aus einer früheren Version. Der ursprüngliche Pakettest hat deren bloße Existenz unnötig als Fehler bewertet. Die korrigierte Prüfung erlaubt die verbliebene Datei und kontrolliert weiterhin, dass die aktuelle Oberfläche ihre Eventanalyse über die integrierte Navigation öffnet.
+
+Nur `tests/package-consistency.test.mjs` durch die korrigierte Datei aus diesem Paket ersetzen und in GitHub committen/pushen. Danach unter Actions **V31.2 TRIGGER KI deployen → Run workflow → main** einen neuen Lauf starten. Ein erneuter Lauf des alten fehlgeschlagenen Commits verwendet noch den alten Test. SQL und Secrets sind für diese Testkorrektur nicht erneut einzurichten. Die alte HTML-Datei muss nicht gelöscht werden.
+
 ## Technische Quellen
 
 - [Gemini: Billing / Free Tier](https://ai.google.dev/gemini-api/docs/billing)
