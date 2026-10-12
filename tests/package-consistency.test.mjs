@@ -28,7 +28,10 @@ test('Frontend behält V29.4 und lädt die integrierte V30-Erweiterung cache-sic
     ['analytics.js', '29.4'],
     ['event-analysis.js', '30.1'],
   ]) {
-    assert.match(html, new RegExp(`${asset.replace('.', '\\.')}\\?v=${version.replace('.', '\\.')}`));
+    assert.match(
+      html,
+      new RegExp(`${asset.replace('.', '\\.')}\\?v=${version.replace('.', '\\.')}`)
+    );
   }
   assert.match(read('service-worker.js'), /investition-dashboard-v29-4-event-analysis-v30-1/);
   assert.match(read('reset.html'), /\?v=31\.2/);
@@ -37,6 +40,7 @@ test('Frontend behält V29.4 und lädt die integrierte V30-Erweiterung cache-sic
 test('Eventanalyse ist eine eigene Seite in der vorhandenen Navigation', () => {
   const html = read('index.html');
   const navigation = read('news.js');
+
   assert.match(html, /id="navEventAnalysisBtn"[^>]+data-page="events"/);
   assert.match(html, /id="eventAnalysisPage"[^>]+hidden/);
   assert.match(html, /id="eventAnalysisInput"/);
@@ -44,43 +48,83 @@ test('Eventanalyse ist eine eigene Seite in der vorhandenen Navigation', () => {
   assert.match(navigation, /eventAnalysisPage/);
   assert.match(navigation, /showPage\('events'\)/);
   assert.match(navigation, /investition:event-analysis-visible/);
-<<<<<<< HEAD
-  // Updating an existing repository can leave a legacy standalone file behind.
-  // Verify that the integrated UI does not depend on it, rather than forbidding it.
-=======
->>>>>>> 0ab4385f75d1fca261ab6146e4e6ccac9dc4a0a4
-  assert.doesNotMatch(html, /(?:href|src)\s*=\s*["'][^"']*event-analysis\.html(?:[?#][^"']*)?["']/i, 'Integrierte Navigation darf keine Standalone-Seite laden');
-  assert.doesNotMatch(navigation, /(?:location(?:\.href)?|window\.open)[^;\n]*event-analysis\.html/i, 'Eventnavigation muss die integrierte Seite öffnen');
+
+  // Eine ältere Standalone-Datei darf beim Update übrig bleiben.
+  // Die integrierte Oberfläche darf sie aber nicht verwenden.
+  assert.doesNotMatch(
+    html,
+    /(?:href|src)\s*=\s*["'][^"']*event-analysis\.html(?:[?#][^"']*)?["']/i,
+    'Integrierte Navigation darf keine Standalone-Seite laden'
+  );
+  assert.doesNotMatch(
+    navigation,
+    /(?:location(?:\.href)?|window\.open)[^;\n]*event-analysis\.html/i,
+    'Eventnavigation muss die integrierte Seite öffnen'
+  );
 });
 
 test('Alle serverseitigen Komponenten tragen den vorgesehenen Release-Stand', () => {
-  assert.match(read('supabase/functions/sync-news/index.ts'), /29\.4-multisource-hybrid-market-intelligence-sync/);
-  assert.match(read('supabase/functions/send-news-alerts/index.ts'), /29\.4-multisource-hybrid-portfolio-market-intelligence-alerts/);
-  assert.match(read('supabase/functions/send-digest/index.ts'), /29\.4-multisource-hybrid-digest/);
-  assert.match(read('supabase/functions/_shared/market-intelligence.ts'), /29\.4-multisource-hybrid-rule-market-intelligence/);
+  assert.match(
+    read('supabase/functions/sync-news/index.ts'),
+    /29\.4-multisource-hybrid-market-intelligence-sync/
+  );
+  assert.match(
+    read('supabase/functions/send-news-alerts/index.ts'),
+    /29\.4-multisource-hybrid-portfolio-market-intelligence-alerts/
+  );
+  assert.match(
+    read('supabase/functions/send-digest/index.ts'),
+    /29\.4-multisource-hybrid-digest/
+  );
+  assert.match(
+    read('supabase/functions/_shared/market-intelligence.ts'),
+    /29\.4-multisource-hybrid-rule-market-intelligence/
+  );
+
   const eventFunction = read('supabase/functions/analyze-market-event/index.ts');
   assert.match(eventFunction, /30\.1-independent-market-ideas/);
   assert.match(eventFunction, /safeSelect\(admin, "market_news"/);
   assert.match(eventFunction, /eq\("is_open", true\)/);
   assert.match(eventFunction, /buildIndependentMarketIdeas/);
-  assert.match(eventFunction, /const track = isPortfolio \? "portfolio" : isWatchlist \? "watchlist" : "market"/);
-  assert.match(eventFunction, /Marktideen sind ein eigener Analysepfad und werden immer erzeugt/);
-  assert.equal(existsSync(resolve(root, 'supabase/functions/_shared/event-idea-engine.mjs')), true);
+  assert.match(
+    eventFunction,
+    /const track = isPortfolio \? "portfolio" : isWatchlist \? "watchlist" : "market"/
+  );
+  assert.match(
+    eventFunction,
+    /Marktideen sind ein eigener Analysepfad und werden immer erzeugt/
+  );
+  assert.equal(
+    existsSync(resolve(root, 'supabase/functions/_shared/event-idea-engine.mjs')),
+    true
+  );
 });
 
 test('Deployment ist gepinnt und umfasst drei Hintergrund- plus eine Benutzer-Function', () => {
   const workflow = read('.github/workflows/deploy-supabase-functions.yml');
+
   assert.match(workflow, /version: 2\.110\.0/);
   assert.doesNotMatch(workflow, /version:\s*latest/);
   assert.equal([...workflow.matchAll(/supabase functions deploy /g)].length, 4);
-  for (const name of ['sync-news', 'send-news-alerts', 'send-digest', 'analyze-market-event']) {
+
+  for (const name of [
+    'sync-news',
+    'send-news-alerts',
+    'send-digest',
+    'analyze-market-event',
+  ]) {
     assert.match(workflow, new RegExp(`functions deploy ${name}`));
   }
-  assert.match(read('supabase/config.toml'), /\[functions\.analyze-market-event\]/);
+
+  assert.match(
+    read('supabase/config.toml'),
+    /\[functions\.analyze-market-event\]/
+  );
 });
 
 test('V30-SQL bleibt von den drei bestehenden Cronjobs getrennt', () => {
   const sql = read('setup-v30-event-analysis.sql');
+
   for (const table of [
     'event_analyses',
     'event_analysis_assets',
@@ -90,8 +134,16 @@ test('V30-SQL bleibt von den drei bestehenden Cronjobs getrennt', () => {
   ]) {
     assert.match(sql, new RegExp(`public\\.${table}`));
   }
+
   assert.doesNotMatch(sql, /cron\.schedule|cron\.unschedule|vault\./);
-  for (const column of ['idea_type', 'idea_rank', 'is_fallback_idea', 'overlaps_portfolio', 'overlaps_watchlist']) {
+
+  for (const column of [
+    'idea_type',
+    'idea_rank',
+    'is_fallback_idea',
+    'overlaps_portfolio',
+    'overlaps_watchlist',
+  ]) {
     assert.match(sql, new RegExp(column));
   }
 
