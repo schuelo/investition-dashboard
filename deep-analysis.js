@@ -15,7 +15,24 @@ const validId=v=>/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$
 if(validId(launch.get('signal_trigger'))) launchOrigin={trigger_id:launch.get('signal_trigger')};
 else if(validId(launch.get('signal_news'))) launchOrigin={source_news_id:launch.get('signal_news')};
 const launchSymbol=launch.get('signal_symbol');
-function status(message,type=''){ $('daStatus').textContent=message;$('daStatus').className='da-status '+type; }
+function status(message,type='',reveal=false){
+  const el=$('daStatus');el.textContent=message;el.className='da-status '+type;
+  if(reveal)el.scrollIntoView?.({behavior:'smooth',block:'center'});
+}
+let invalidBatch=false;
+function invalidInput(event){
+  event.preventDefault();
+  const field=event.target;field.setAttribute('aria-invalid','true');
+  // Native validation runs before submit, including inputs in closed details.
+  // Reveal every invalid section, but report/focus only the first invalid field.
+  let details=field.closest?.('details');
+  while(details){details.open=true;details=details.parentElement?.closest('details');}
+  if(invalidBatch)return;
+  invalidBatch=true;setTimeout(()=>{invalidBatch=false;},0);
+  const label=(field.labels?.[0]?.textContent || field.getAttribute?.('aria-label') || field.id || 'Eingabe').replace(/\s+/g,' ').trim().slice(0,100);
+  status('Eingabe prüfen – '+label+': '+(field.validationMessage || 'Bitte einen gültigen Wert eingeben.'),'bad',true);
+  field.focus?.({preventScroll:true});
+}
 function setBusy(on) {
   busy=on;root.setAttribute('aria-busy',String(on));
   $('daForm').querySelectorAll('input,select,textarea,button').forEach(el=>el.disabled=on);
@@ -54,9 +71,9 @@ async function invoke(body){
 }
 async function run(){
   if(busy)return;
-  let body;try{body=input();}catch(e){status(e.message,'bad');return;}
-  if([...selected.values()].some(a=>a.symbol!==body.symbol)){status('Vergleichskontext enthält ein anderes Symbol. Auswahl in der Historie entfernen.','bad');return;}
-  const runEpoch=epoch;setBusy(true);status('Kurse und Quellen prüfen, Szenarien berechnen und Analyse speichern …');
+  let body;try{body=input();}catch(e){status(e.message,'bad',true);return;}
+  if([...selected.values()].some(a=>a.symbol!==body.symbol)){status('Vergleichskontext enthält ein anderes Symbol. Auswahl in der Historie entfernen.','bad',true);return;}
+  const runEpoch=epoch;setBusy(true);status('Analyse gestartet: Kurse und Quellen prüfen, Szenarien berechnen und Analyse speichern …','',true);
   try{
     let a;const {sb,session}=access();
     if(!sb||!session){
@@ -66,7 +83,7 @@ async function run(){
     if(runEpoch!==epoch)return;
     open(a);status('Deep-Analyse abgeschlossen · '+(a.ai?.provider==='gemini'?'Gemini '+a.ai.model:'Regelberechnung')+' · Kursstand '+a.price_date,a.warnings?.length||a.quality.blocked?'warn':'good');
     if(a.id){page=0;await loadHistory(false);}
-  }catch(e){if(runEpoch===epoch)status(e.message,'bad');}
+  }catch(e){if(runEpoch===epoch)status(e.message,'bad',true);}
   finally{if(runEpoch===epoch)setBusy(false);}
 }
 const table=(headers,rows)=>'<div class="da-scroll"><table class="da-table"><thead><tr>'+headers.map(h=>'<th>'+esc(h)+'</th>').join('')+'</tr></thead><tbody>'+
@@ -250,6 +267,10 @@ function demo(){
   a.warnings=['Synthetische Testdaten; keine Investmentidee, echten Kurse oder realen Produktpreise.'];open(a);status('Synthetische Demonstration · keine echten Preise oder Produktdaten.','warn');
 }
 if(root){
+  $('daForm').addEventListener('invalid',invalidInput,true);
+  $('daForm').addEventListener('input',event=>{
+    if(event.target.validity?.valid)event.target.removeAttribute('aria-invalid');
+  });
   $('daOpen').addEventListener('click',()=>root.scrollIntoView({behavior:'smooth',block:'start'}));
   if(launchSymbol&&/^[A-Z0-9_^+\-]{1,25}\.[A-Z0-9]{1,12}$/.test(launchSymbol))$('daSymbol').value=launchSymbol;
   $('daForm').addEventListener('submit',e=>{e.preventDefault();return run();});
@@ -282,4 +303,5 @@ if(root){
     status('Anmeldung geändert. Analyse und Kontextauswahl zurückgesetzt.');
   });
   // Deliberately no invoke on auth, news, visibility, link opening, history or context selection.
+  status('V32.0.1 bereit. Deep-Analyse über den Startknopf manuell starten.');
 }

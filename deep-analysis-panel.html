@@ -1,13 +1,13 @@
 <!-- Embedded into index.html by the release build; do not navigate to this fragment. -->
 <section class="da-module" id="deepAnalysisModule">
   <article class="card da-hero">
-    <div><span class="da-eyebrow">V32.0 · DEEP-ANALYSE</span><h2>These prüfen. Szenarien vergleichen. Risiken verstehen.</h2>
+    <div><span class="da-eyebrow">V32.0.1 · DEEP-ANALYSE</span><h2>These prüfen. Szenarien vergleichen. Risiken verstehen.</h2>
     <p>News und Quellen, Tages- und Wochencharts, sechs Verläufe und Produktstress. Jede gespeicherte Analyse behält ihren ursprünglichen Datenstand.</p></div>
     <span class="chip">Manueller Start</span>
   </article>
   <div class="da-layout">
     <article class="card da-panel">
-      <form id="daForm">
+      <form id="daForm" aria-describedby="daStatus">
         <h3>Neue Deep-Analyse</h3>
         <div class="da-grid">
           <label>Symbol mit Handelsplatz<input id="daSymbol" required maxlength="38" value="NVDA.US"></label>
@@ -51,10 +51,10 @@
           <div class="da-grid">
             <label>Analysekapital<input id="daCapital" type="number" min="0" value="0"></label>
             <label>Kontowährung<input id="daAccountCurrency" maxlength="5" value="USD"></label>
-            <label>Risikobudget (%)<input id="daBudget" type="number" min=".01" max="5" step=".1" value=".5"></label>
+            <label>Risikobudget (%)<input id="daBudget" type="number" min=".01" max="5" step=".01" value=".5"></label>
             <label>Bestehendes Exposure der Risikogruppe<input id="daExposure" type="number" min="0" value="0"></label>
             <label>Max. Exposure der Risikogruppe (%)<input id="daMaxExposure" type="number" min="1" max="100" value="20"></label>
-            <label>FX: Kontowährung je Basiswertwährung<input id="daRiskFx" type="number" min=".000001" step=".0001" value="1"></label>
+            <label>FX: Kontowährung je Basiswertwährung<input id="daRiskFx" type="number" min=".000001" step=".000001" value="1"></label>
             <label>Gebühren je Seite (bp)<input id="daFee" type="number" min="0" max="500" value="10"></label>
             <label>Slippage je Seite (bp)<input id="daSlippage" type="number" min="0" max="500" value="15"></label>
           </div>
@@ -67,9 +67,9 @@
             <label>WKN / ISIN / Referenz<input id="daProductRef" maxlength="160"></label>
             <label>Richtung<select id="daProductDirection"><option value="long">Long / Call</option><option value="short">Short / Put</option></select></label>
             <label>Produktwährung<input id="daProductCurrency" maxlength="5" value="USD"></label>
-            <label>FX: Produktwährung je Basiswertwährung<input id="daProductFx" type="number" min=".000001" step=".0001" value="1"></label>
+            <label>FX: Produktwährung je Basiswertwährung<input id="daProductFx" type="number" min=".000001" step=".000001" value="1"></label>
             <label>Produktpreis<input id="daPremium" type="number" min="0" step=".001" value="0"></label>
-            <label>Bezugsverhältnis<input id="daRatio" type="number" min=".000001" step=".001" value=".1"></label>
+            <label>Bezugsverhältnis<input id="daRatio" type="number" min=".000001" step=".000001" value=".1"></label>
             <label>Spread / Handelskosten (%)<input id="daSpread" type="number" min="0" max="50" step=".1" value="1"></label>
             <label>Finanzierung p.a. (%)<input id="daFinancePct" type="number" min="0" max="100" step=".1" value="5"></label>
             <label>KO-Barriere im Basiswert<input id="daBarrier" type="number" min="0" step=".01" value="0"></label>
@@ -78,7 +78,7 @@
             <label>Täglicher Faktor<input id="daFactor" type="number" min="1" max="100" value="3"></label>
             <label>Options-Strike<input id="daStrike" type="number" min="0" step=".01" value="0"></label>
             <label>Restlaufzeit (Kalendertage)<input id="daExpiry" type="number" min="1" max="3650" value="90"></label>
-            <label>Implizite Volatilität (%)<input id="daIv" type="number" min=".01" max="500" step=".1" value="30"></label>
+            <label>Implizite Volatilität (%)<input id="daIv" type="number" min=".01" max="500" step=".01" value="30"></label>
             <label>Zins p.a. (%)<input id="daRate" type="number" min="-5" max="30" step=".1" value="3"></label>
             <label>Dividendenrendite (%)<input id="daDividend" type="number" min="0" max="30" step=".1" value="0"></label>
           </div>
@@ -89,7 +89,7 @@
         </details>
         <div class="da-actions"><button id="daRun" class="btn primary" type="submit">Deep-Analyse manuell starten</button><button id="daDemo" class="btn" type="button">Synthetische Demo</button></div>
       </form>
-      <p id="daStatus" class="da-status" role="status" aria-live="polite">Bereit. Frühere Analysen kannst du rechts als Vergleichskontext auswählen.</p>
+      <p id="daStatus" class="da-status" role="status" aria-live="polite">V32.0.1 wird geladen … Falls dieser Text stehen bleibt, die Seite vollständig neu laden.</p>
     </article>
     <aside class="card da-panel">
       <h3>Deine Analysehistorie</h3>

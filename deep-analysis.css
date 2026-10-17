@@ -8,6 +8,7 @@
 .da-module label{display:flex;flex-direction:column;gap:7px;font-size:13px;color:var(--da-muted);margin:10px 0}
 .da-module input:not([type=checkbox]),.da-module select,.da-module textarea{background:#101b29;border:1px solid var(--da-border);border-radius:8px;padding:10px;color:#e9f0f8;width:100%;box-sizing:border-box;min-width:0;font:inherit}
 .da-module textarea{min-height:85px;resize:vertical}.da-module .da-check{flex-direction:row;align-items:center;gap:10px}.da-check input{accent-color:var(--da-accent)}
+.da-module [aria-invalid="true"]{border-color:#ff96a4!important;outline:1px solid #ff96a4}
 .da-module details{border-top:1px solid var(--da-border);padding:16px 0}.da-module summary{cursor:pointer;color:#e9f0f8;font-weight:600;line-height:1.4}
 .da-help{font-size:12px;color:var(--da-muted);line-height:1.6}.da-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:12px}
 .da-status,.da-note{padding:14px;border:1px solid var(--da-border);border-radius:10px;line-height:1.6;background:#101d2b;margin:16px 0}
