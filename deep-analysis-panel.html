@@ -1,7 +1,7 @@
 <!-- Embedded into index.html by the release build; do not navigate to this fragment. -->
 <section class="da-module" id="deepAnalysisModule">
   <article class="card da-hero">
-    <div><span class="da-eyebrow">V32.0.1 · DEEP-ANALYSE</span><h2>These prüfen. Szenarien vergleichen. Risiken verstehen.</h2>
+    <div><span class="da-eyebrow">V34.0.0 · DEEP-ANALYSE</span><h2>These prüfen. Szenarien vergleichen. Risiken verstehen.</h2>
     <p>News und Quellen, Tages- und Wochencharts, sechs Verläufe und Produktstress. Jede gespeicherte Analyse behält ihren ursprünglichen Datenstand.</p></div>
     <span class="chip">Manueller Start</span>
   </article>
@@ -23,6 +23,8 @@
         <label>Ereignisrichtung für den separaten Modellvergleich<select id="daEventDirection"><option value="neutral">Neutral / unbekannt</option><option value="bullish">Positive Nutzerannahme</option><option value="bearish">Negative Nutzerannahme</option></select></label>
         <label class="da-check"><input id="daUseAi" type="checkbox" checked> Gemini beim manuellen Start verwenden</label>
         <label class="da-check"><input id="daResearch" type="checkbox" checked> Kostenlose öffentliche Quellen recherchieren und hinterlegen</label>
+        <label>Eigene Quellen-URLs (optional, eine je Zeile)<textarea id="daManualUrls" rows="5" maxlength="18010" placeholder="https://www.unternehmen.de/investor-relations/meldung&#10;https://www.nachrichtenquelle.de/artikel" aria-describedby="daManualUrlsHelp"></textarea></label>
+        <p class="da-help" id="daManualUrlsHelp">Bis zu 10 öffentliche HTTPS-Links. Deine Links ergänzen die automatische Suche und werden auch bei ausgeschalteter Recherche geprüft. Lesbare HTML-/Textauszüge fließen beim manuellen KI-Start ein. PDF, Anmeldung, Paywall oder Bot-Sperre werden als nicht gelesen ausgewiesen.</p>
         <p class="da-help">Längere Kurshistorien kommen aus deinem CSV-Import. Die kostenlose Kursabfrage bleibt auf ein Jahr begrenzt. Links und Seitenwechsel starten keine KI.</p>
         <details><summary>TRIGGER KI und Kursdaten</summary>
           <div class="da-actions"><button class="btn" type="button" id="daCopy">Eingaben aus Signalanalyse übernehmen</button><button class="btn" type="button" id="daLoadTriggers">TRIGGER KI laden</button></div>
@@ -89,7 +91,7 @@
         </details>
         <div class="da-actions"><button id="daRun" class="btn primary" type="submit">Deep-Analyse manuell starten</button><button id="daDemo" class="btn" type="button">Synthetische Demo</button></div>
       </form>
-      <p id="daStatus" class="da-status" role="status" aria-live="polite">V32.0.1 wird geladen … Falls dieser Text stehen bleibt, die Seite vollständig neu laden.</p>
+      <p id="daStatus" class="da-status" role="status" aria-live="polite">V34.0.0 wird geladen … Falls dieser Text stehen bleibt, die Seite vollständig neu laden.</p>
     </article>
     <aside class="card da-panel">
       <h3>Deine Analysehistorie</h3>
@@ -118,7 +120,7 @@
     <article class="card da-section"><h3>Hebelprodukt &amp; Reverse-Stress</h3><div id="daProduct"></div></article>
     <article class="card da-section"><h3>Angewendete Charttechniken</h3><div id="daMethods" class="da-cards"></div><div id="daWeekly"></div></article>
     <article class="card da-section"><h3>Änderung zur vorherigen Analyse</h3><div id="daDelta"></div><p id="daReassess"></p></article>
-    <article class="card da-section"><h3>Quellen &amp; Datenstand</h3><div id="daSources"></div></article>
+    <article class="card da-section"><h3>Quellen &amp; Datenstand</h3><div id="daManualSourceResults"></div><div id="daSources"></div></article>
     <article class="card da-section"><h3>Notiz &amp; spätere Auswertung</h3><label>Eigene Notiz<textarea id="daNote" maxlength="4000" placeholder="Entscheidung, Beobachtung oder widerlegte Annahme …"></textarea></label>
       <div class="da-actions"><button id="daNoteSave" class="btn" type="button">Notiz speichern</button><button id="daEvaluate" class="btn" type="button">Verlauf jetzt auswerten (ohne KI)</button></div><div id="daEvaluation"></div>
     </article>

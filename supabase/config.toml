@@ -16,3 +16,7 @@ verify_jwt = false
 [functions.analyze-deep-signal]
 # Handler verifies the Bearer token with auth.getUser before any data access.
 verify_jwt = false
+
+[functions.paper-benchmark]
+# Strict auth.getUser check in handler; no anonymous or cron entry point.
+verify_jwt = false

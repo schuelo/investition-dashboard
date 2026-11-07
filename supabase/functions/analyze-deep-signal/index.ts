@@ -6,6 +6,8 @@ import { SignalError } from "../_shared/signal-service.mjs";
 import { discoverFreeSources } from "../_shared/deep-sources.mjs";
 import { parseRss } from "../_shared/multisource-sources-v294.ts";
 import { loadSecFundamentals } from "../_shared/deep-fundamentals.mjs";
+import { loadManualSources } from "../_shared/manual-sources.mjs";
+import { pinnedHttpsPage } from "../_shared/pinned-https.mjs";
 
 const env = (name: string) => String(Deno.env.get(name) || "").trim();
 const reply = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: jsonHeaders });
@@ -25,6 +27,7 @@ Deno.serve(async (request: Request) => {
     let body: Record<string,any>;
     try{body=JSON.parse(raw);}catch{return reply({ok:false,error:"Ungültiges JSON."},400);}
     if(!body || typeof body!=="object" || Array.isArray(body)) return reply({ok:false,error:"JSON-Objekt erforderlich."},400);
+    if(body.action==='capabilities')return reply({ok:true,features:['manual_urls_v34']});
     const ownAnalysis=async(id:string)=>{
       const {data,error}=await admin.from("deep_analyses").select("id,raw_result")
         .eq("id",id).eq("user_id",userId).maybeSingle();
@@ -110,6 +113,7 @@ Deno.serve(async (request: Request) => {
         return results.flatMap(r=>r.data || []);
       },
       discoverSources:async(input:any,now:Date)=>discoverFreeSources(input,{parseRss,now}),
+      loadManualSources:async(input:any,now:Date)=>loadManualSources(input,{getPage:pinnedHttpsPage,now}),
       loadFundamentals:async(input:any,now:Date)=>loadSecFundamentals(input,{userAgent:env("SEC_USER_AGENT"),now}),
       archiveSources:async(input:any,sources:any[])=>{
         if(!sources.length) return;

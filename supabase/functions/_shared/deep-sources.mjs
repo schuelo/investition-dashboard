@@ -27,21 +27,29 @@ export function normalizeSource(row, now = new Date()) {
   if(dt && (!Number.isFinite(dt.getTime()) || dt>now)) return null;
   const text=row.content_status==='metadata'?'':clean(row.excerpt || row.description || row.summary || '');
   const excerpt=text.split(/\s+/).slice(0,25).join(' '); // short feed excerpt; never archive publisher full text
-  const status=row.content_status==='structured_data' && row.facts?'structured_data':excerpt?'feed_excerpt':'metadata';
+  const status=row.content_status==='structured_data' && row.facts?'structured_data':row.content_status==='page_excerpt'&&excerpt?'page_excerpt':excerpt?'feed_excerpt':'metadata';
   const id='s-'+hashSeed(url).toString(16)+'-'+hashSeed([...url].reverse().join('')).toString(16);
   return {id,canonical_url:url,url,title:clean(row.title || row.name || url).slice(0,300),
     source:clean(row.source || row.source_name || row.sourceName || new URL(url).hostname).slice(0,120),
     kind:row.kind || 'news',published_at:dt?.toISOString() || null,retrieved_at:now.toISOString(),
     content_status:status,excerpt,own_summary:clean(row.own_summary || row.note).slice(0,1000),...(status==='structured_data'?{facts:row.facts}:{}),
-    match:row.match || 'research',rights:'Link/Metadaten und kurzer Feed-Auszug; kein gespeicherter Volltext.',
-    discovery:row.discovery || 'existing_feed'};
+    match:row.match || 'research',rights:status==='page_excerpt'?'Link und maximal 25 Wörter aus einem begrenzten Seitenauszug; kein gespeicherter Volltext.':'Link/Metadaten und kurzer Feed-Auszug; kein gespeicherter Volltext.',
+    discovery:row.discovery || 'existing_feed',
+    ...(row.manual||row.discovery==='manual_url'?{manual:true,retrieval_status:row.retrieval_status||'unavailable',retrieval_message:clean(row.retrieval_message).slice(0,350),
+      final_url:canonicalUrl(row.final_url)||null,text_sha256:/^[a-f0-9]{64}$/.test(row.text_sha256||'')?row.text_sha256:null,analysis_chars:Number(row.analysis_chars)||0}: {})};
 }
 export function dedupeSources(rows, now = new Date()) {
   const byUrl=new Map();
   for(const r of rows) {
     const s=normalizeSource(r,now);if(!s) continue;
     const old=byUrl.get(s.canonical_url);
-    if(!old || old.content_status==='metadata'&&s.content_status!=='metadata') byUrl.set(s.canonical_url,s);
+    if(!old)byUrl.set(s.canonical_url,s);
+    else {
+      const rank={metadata:0,feed_excerpt:1,page_excerpt:2,structured_data:3};
+      const winner=rank[s.content_status]>rank[old.content_status]?s:old;
+      const manual=s.manual?s:old.manual?old:null;
+      byUrl.set(s.canonical_url,manual?{...winner,manual:true,discovery:'manual_url',match:'manual',retrieval_status:manual.retrieval_status,retrieval_message:manual.retrieval_message,final_url:manual.final_url,text_sha256:manual.text_sha256,analysis_chars:manual.analysis_chars}:winner);
+    }
   }
   return [...byUrl.values()];
 }

@@ -1,5 +1,7 @@
 # V32.0 – Deep-Analyse installieren
 
+**Aktuelles Frontend V32.0.1:** Bei bereits funktionierendem V32.0 nur [HOTFIX-V32.0.1.md](HOTFIX-V32.0.1.md) ausführen. Die folgende Anleitung beschreibt die ursprüngliche vollständige V32-Installation.
+
 V32 ergänzt den vollständigen V31.2-Stand um ein eigenes Modul. Der vorhandene News-Bot und alle bisherigen Analyse-/Portfoliofunktionen sind gegenüber V31.2 unverändert. Telegram behält **TRIGGER KI**; keine zusätzlichen Empfänger, Versandbedingungen oder Zeitpläne.
 
 Das Paket ist vorbereitet und lokal geprüft, aber noch nicht in deinem GitHub-/Supabase-Projekt installiert.

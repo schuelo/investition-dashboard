@@ -28,9 +28,10 @@ fakeWindow.location={search:'?signal_trigger=11111111-1111-4111-8111-11111111111
 globalThis.window=fakeWindow;globalThis.document={getElementById:id=>elements[id]};
 await import('../deep-analysis.js');
 test('Module readiness is visible only after successful initialization',()=>{
-  assert.match(elements.daStatus.textContent,/V32\.0\.1 bereit/);
-  assert.match(html,/V32\.0\.1 wird geladen/);
-  assert.match(html,/deep-analysis\.js\?v=32\.0\.1/);
+  const release=JSON.parse(readFileSync(new URL('../release.json',import.meta.url),'utf8')).version;
+  assert.ok(elements.daStatus.textContent.includes('V'+release+' bereit'));
+  assert.ok(html.includes('V'+release+' wird geladen'));
+  assert.ok(html.includes('deep-analysis.js?v='+release));
 });
 test('All default numeric values satisfy native min/step rules including closed optional sections',()=>{
   const form=html.split('<form id="daForm"')[1].split('</form>')[0];

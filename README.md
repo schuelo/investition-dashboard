@@ -1,4 +1,24 @@
-# V32.0 – Deep-Analyse, Szenarien und Prognosehistorie
+# V34.0.0 — Gesamtpaket: eigene Analysequellen und Papierdepot
+
+Aktueller Einstieg: [INSTALLATION-V34.md](INSTALLATION-V34.md). Dieses vollständige Paket enthält den bisherigen Dashboard-Stand, die neue URL-Erweiterung der Deep-Analyse und das bislang noch nicht installierte V33-Papierdepot. V33 muss nicht separat heruntergeladen oder vorher installiert werden.
+
+Wertpapier mit Handelsplatz und Unternehmensnamen vorgeben, automatische öffentliche Recherche nutzen und optional bis zu zehn eigene HTTPS-Links ergänzen. Beim manuellen Start werden erreichbare HTML-/Textauszüge in dieselbe KI-Analyse einbezogen. Der Bericht zeigt Abrufstatus, Bereitstellung an die KI und tatsächliche Quellenbelege je Link. Fehlende Seiten, PDF, Anmelde- und Bot-Sperren werden sichtbar ausgewiesen.
+
+Gemini bleibt manuell. Bestehende Free-Tier-Konfiguration, Kontingente und Regel-Fallback bleiben bestehen. Telegram, reale Depotfunktionen und vorhandene Zeitpläne behalten ihren bisherigen Umfang. V33 enthält drei fiktive Vergleichskonten und wird separat per Button aktualisiert.
+
+Die Anmeldeseite und das Dashboard zeigen **34.0.0**. `release.json` ist die zentrale Versionsquelle. Nach einer Versionsänderung `node scripts/set-version.mjs` ausführen; der V34-Workflow prüft die Synchronisation vor dem Deployment. Die statische Versionsanzeige ist auch vor dem JavaScript-Start vorhanden.
+
+Für ein bestehendes V31.2-/V32-System: `setup-v34-gesamtupdate.sql` ausführen, **V34 Gesamtupdate deployen** starten und die statische Website über das bisherige Hosting veröffentlichen. Details und Reihenfolge stehen in der Installationsanleitung. Keine alten ZIPs kombinieren.
+
+228 automatisierte Tests bestanden. [Prüfprotokoll](TESTPROTOKOLL-V34.md). Noch kein Live-Deployment oder Test in deinem Supabase-Projekt erfolgt.
+
+---
+
+## Historischer Stand V32.0.1
+
+Die nachfolgenden Abschnitte dokumentieren ältere Releases. Für dieses Gesamtpaket gilt die V34-Anleitung oben.
+
+**Update von V32.0:** [HOTFIX-V32.0.1.md](HOTFIX-V32.0.1.md). Gültige Zahlenfelder, sichtbare Eingabefehler und Startmeldungen. Keine SQL-Ausführung oder Supabase-Bereitstellung erforderlich.
 
 Vollständiges Dashboard auf dem verfügbaren V31.2-Stand. Neues eigenständiges Modul: sechs Szenarien, Tages-/Wochenmethoden, Quellenregister, frühere Analysen als Kontext, Risikobudget sowie KO-/Faktor-/Optionsprüfung. Originalberichte bleiben unverändert; Notizen und Auswertungen werden getrennt gespeichert.
 
@@ -10,7 +30,7 @@ Die bisherigen Funktionen und der V31.2-News-Bot bleiben unverändert. Telegram 
 **Prüfbericht und Grenzen:** [TESTPROTOKOLL-V32.md](TESTPROTOKOLL-V32.md).  
 **V31-Erstinstallation:** [INSTALLATION-V31.md](INSTALLATION-V31.md).
 
-162 lokale Tests erfolgreich. Noch nicht produktiv installiert. Unter Signal- & Verlaufssimulation den Button **V32 · Deep-Analyse öffnen** wählen. Produkt-/Bewertungsdaten werden eingegeben; fehlende kostenlose Daten werden angezeigt.
+165 lokale Tests erfolgreich. Noch nicht produktiv installiert. Unter Signal- & Verlaufssimulation den Button **V32.0.1 · Deep-Analyse öffnen** wählen. Produkt-/Bewertungsdaten werden eingegeben; fehlende kostenlose Daten werden angezeigt.
 
 Die folgenden Abschnitte beschreiben den bisherigen V29.4-/V30.1-Umfang.
 

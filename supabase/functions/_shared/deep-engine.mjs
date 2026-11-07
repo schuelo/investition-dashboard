@@ -1,8 +1,9 @@
 // V32: independent deterministic engine. No orders, network calls or changes to V31.
 import { normalizeBars, technicals, tradeSetups, hashSeed, mean, clamp } from './signal-engine.mjs';
 import { validateSignalInput, SignalError } from './signal-service.mjs';
+import { validateManualUrls } from './manual-sources.mjs';
 
-export const DEEP_VERSION = '32.0-deep-analysis';
+export const DEEP_VERSION = '34.0.0-deep-analysis';
 export const HORIZONS = [5, 20, 60, 120, 252];
 export const LOOKBACKS = [60, 126, 252, 756, 1260, 2000];
 const finite = (v, fallback) => v === '' || v == null ? fallback : Number(v);
@@ -57,8 +58,10 @@ export function validateDeepInput(body = {}) {
     fx_verified:product.fx_verified === true
   };
   const valuation = body.valuation || {};
+  let manual_urls;try{manual_urls=validateManualUrls(body.manual_urls);}catch(e){throw new SignalError(e.message,422);}
   return {
     ...base, days, lookback, news_days, prior_ids,
+    manual_urls,
     research:body.research !== false,
     sector:String(body.sector || '').slice(0,100),
     cik:String(body.cik || '').replace(/\D/g,'').slice(0,10),

@@ -1,7 +1,17 @@
-const CACHE_NAME = 'investition-dashboard-v29-4-event-analysis-v30-1-signal-v31-2-manual';
+importScripts('./release.js?v=34.0.0');
+const CACHE_NAME = 'investition-dashboard-v'+self.InvestitionRelease.version;
 const CORE = [
   './',
   './index.html',
+  './release.js?v=34.0.0',
+  './deep-analysis.js?v=34.0.0',
+  './deep-analysis.css?v=34.0.0',
+  './paper-portfolio.js?v=33.0',
+  './paper-portfolio.css?v=33.0',
+  './supabase/functions/_shared/deep-engine.mjs?v=34.0.0',
+  './supabase/functions/_shared/deep-sources.mjs?v=34.0.0',
+  './supabase/functions/_shared/manual-sources.mjs',
+  './supabase/functions/_shared/paper-engine.mjs?v=33.0',
   './app.js?v=31.2',
   './supabase.js?v=29.4',
   './news.js?v=31.2',
@@ -27,7 +37,7 @@ self.addEventListener('install', event => {
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys()
-      .then(keys => Promise.all(keys.map(key => key === CACHE_NAME ? undefined : caches.delete(key))))
+      .then(keys => Promise.all(keys.map(key => key.startsWith('investition-dashboard-')&&key!==CACHE_NAME ? caches.delete(key) : undefined)))
       .then(() => self.clients.claim())
   );
 });
@@ -37,6 +47,15 @@ self.addEventListener('fetch', event => {
   if (request.method !== 'GET') return;
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+
+  // A loaded new page must never receive an older analysis/validation script from cache.
+  if(/\.(?:m?js|css|json)$/.test(url.pathname)){
+    event.respondWith(fetch(request,{cache:'no-cache'}).then(response=>{
+      if(response.ok){const copy=response.clone();caches.open(CACHE_NAME).then(cache=>cache.put(request,copy));}
+      return response;
+    }).catch(()=>caches.match(request)));
+    return;
+  }
 
   if (request.mode === 'navigate') {
     event.respondWith(

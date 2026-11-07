@@ -5,11 +5,12 @@ import {stripTypeScriptTypes} from 'node:module';
 import {runDeepAnalysis,runDeepEvaluation,callDeepGemini} from '../supabase/functions/_shared/deep-service.mjs';
 import {deepBars,validateDeepInput,buildDeepAnalysis} from '../supabase/functions/_shared/deep-engine.mjs';
 import {SignalError} from '../supabase/functions/_shared/signal-service.mjs';
+import {loadManualSources} from '../supabase/functions/_shared/manual-sources.mjs';
 const code=stripTypeScriptTypes(readFileSync(new URL('../supabase/functions/analyze-deep-signal/index.ts',import.meta.url),'utf8')).replace(/^import .*;$/gm,'');
 const bars=Array.from({length:250},(_,i)=>{const d=new Date();d.setUTCDate(d.getUTCDate()-260+i);const close=100*Math.exp(.001*i+.01*Math.sin(i));return {date:d.toISOString().slice(0,10),open:close,high:close*1.01,low:close*.99,close,volume:1e6};});
 const id='11111111-1111-4111-8111-111111111111';
 function harness({authenticated=true,analyses=[],triggers=[],quota=true}={}) {
-  let serve;const writes=[],reads=[],rpcs=[];
+  let serve;const writes=[],reads=[],rpcs=[],pageRequests=[];
   const chain=table=>{
     const filters=[];let inserted;
     const selected=()=>{
@@ -29,12 +30,23 @@ function harness({authenticated=true,analyses=[],triggers=[],quota=true}={}) {
   const Deno={env:{get:k=>({SUPABASE_URL:'https://example.supabase.co',SUPABASE_ANON_KEY:'public',SUPABASE_SERVICE_ROLE_KEY:'private'})[k]},serve:f=>{serve=f;}};
   const discoverFreeSources=async()=>{throw new Error('Research must be disabled in these tests.');};
   const loadSecFundamentals=async()=>{throw new Error('SEC must be disabled in these tests.');};
-  new Function('createClient','corsHeaders','jsonHeaders','runDeepAnalysis','runDeepEvaluation','callDeepGemini','deepBars','SignalError','discoverFreeSources','parseRss','loadSecFundamentals','Deno',code)(
-    createClient,{'Access-Control-Allow-Origin':'*'},{'Content-Type':'application/json'},runDeepAnalysis,runDeepEvaluation,callDeepGemini,deepBars,SignalError,discoverFreeSources,()=>[],loadSecFundamentals,Deno);
-  return {serve,writes,reads,rpcs};
+  const pinnedHttpsPage=async url=>{pageRequests.push(url);return{status:200,contentType:'text/html',url,text:'<title>NVIDIA test</title><article>'+('NVIDIA test text for the manual source reader. '.repeat(30))+'</article>'};};
+  new Function('createClient','corsHeaders','jsonHeaders','runDeepAnalysis','runDeepEvaluation','callDeepGemini','deepBars','SignalError','discoverFreeSources','parseRss','loadSecFundamentals','Deno','loadManualSources','pinnedHttpsPage',code)(
+    createClient,{'Access-Control-Allow-Origin':'*'},{'Content-Type':'application/json'},runDeepAnalysis,runDeepEvaluation,callDeepGemini,deepBars,SignalError,discoverFreeSources,()=>[],loadSecFundamentals,Deno,loadManualSources,pinnedHttpsPage);
+  return {serve,writes,reads,rpcs,pageRequests};
 }
 const req=body=>new Request('https://test',{method:'POST',headers:{Authorization:'Bearer valid'},body:JSON.stringify(body)});
 const body={action:'analyze',symbol:'NVDA.US',currency:'USD',days:20,use_ai:false,manual_start:true,research:false,bars};
+test('Actual V34 Edge capability check requires auth and performs no analysis or quota use',async()=>{
+  const h=harness();const r=await h.serve(req({action:'capabilities'}));assert.equal(r.status,200);assert.deepEqual((await r.json()).features,['manual_urls_v34']);assert.equal(h.writes.length,0);assert.equal(h.rpcs.length,0);assert.equal(h.pageRequests.length,0);
+  const a=harness({authenticated:false});assert.equal((await a.serve(req({action:'capabilities'}))).status,401);
+});
+test('Actual V34 Edge reads user URLs and saves owner-scoped source results without full passages',async()=>{
+  const h=harness(),url='https://www.publisher.com/report';const r=await h.serve(req({...body,manual_urls:[url]}));assert.equal(r.status,200);assert.deepEqual(h.pageRequests,[url]);const a=(await r.json()).analysis;assert.equal(a.manual_source_results[0].status,'read');assert.equal(a.sources[0].manual,true);assert.doesNotMatch(JSON.stringify(h.writes),/analysis_text/);assert.ok(h.writes.every(w=>w.table!=='signal_market_cache'));
+});
+test('Actual V34 Edge rejects invalid user URLs before quota use or remote requests',async()=>{
+  const h=harness();assert.equal((await h.serve(req({...body,manual_urls:['http://127.0.0.1']}))).status,422);assert.equal(h.pageRequests.length,0);assert.equal(h.rpcs.length,0);
+});
 test('Actual V32 edge validates user session before any data access',async()=>{
   const a=harness();assert.equal((await a.serve(new Request('https://test',{method:'POST',body:'{}'}))).status,401);
   const b=harness({authenticated:false});assert.equal((await b.serve(req(body))).status,401);assert.equal(b.writes.length,0);assert.equal(b.rpcs.length,0);

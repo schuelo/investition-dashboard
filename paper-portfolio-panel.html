@@ -1,0 +1,36 @@
+<section id="paperPortfolioModule" class="pp-module card" aria-labelledby="ppTitle">
+  <h2 id="ppTitle">V33 · Fiktives Benchmark-Depot</h2>
+  <p>Drei getrennte Modellkonten: Chartregeln, KI + Chartregeln und gleichgewichtetes Buy-and-Hold. Keine echten Orders. Keine neuen KI-Aufrufe.</p>
+  <p class="pp-warning">Experiment, keine Anlageempfehlung. Kursrenditen ohne Dividenden, Steuern oder Währungsumrechnung. Kein Beleg für künftige Gewinne.</p>
+  <div class="pp-actions"><button type="button" class="btn" id="ppLoad">Experimente laden</button><select id="ppSelect" aria-label="Gespeichertes Experiment"><option value="">Experiment auswählen</option></select><button type="button" class="btn primary" id="ppRun">Papierdepot aktualisieren</button><button type="button" class="btn" id="ppPause">Pause / Fortsetzen</button></div>
+  <p id="ppStatus" role="status" aria-live="polite">Noch kein Experiment geladen. Bestehende Depots bleiben unverändert.</p>
+  <details><summary>Neues, unabhängiges Experiment anlegen</summary>
+    <form id="ppForm" class="pp-form">
+      <label>Symbole (1–3, gleiche Börse)<input id="ppSymbols" required value="SND.XETRA" maxlength="80"></label>
+      <label>Bestätigte Notierungswährung<select id="ppCurrency"><option>EUR</option><option>USD</option></select></label>
+      <label>Fiktives Startkapital<input id="ppCapital" type="number" min="1000" max="10000000" step="any" value="10000" required></label>
+      <label>Gebühren je Order (Basispunkte)<input id="ppFees" type="number" min="0" max="100" step="any" value="10" required></label>
+      <label>Slippage je Order (Basispunkte)<input id="ppSlip" type="number" min="0" max="100" step="any" value="5" required></label>
+      <label><input id="ppConfirmed" type="checkbox" required> Aktien-/ETF-Notierung und Währung geprüft; keine Hebelprodukte.</label>
+      <button class="btn primary" type="submit">Mit fiktivem Kapital starten</button>
+    </form>
+    <p>10 Basispunkte = 0,10 %. Annahmen bleiben im Experiment fest. Änderungen erfordern ein neues Experiment; maximal 10 pro Benutzer.</p>
+  </details>
+  <details><summary>Eigene aktuelle Tageskurse importieren (optional)</summary>
+    <p>Je Symbol eine CSV mit date, open, high, low, close, volume; mindestens 60 abgeschlossene Tageskerzen. Import nur für dieses Modul, kein Überschreiben des gemeinsamen Kurscaches.</p>
+    <label>CSV-Symbol<input id="ppCsvSymbol" value="SND.XETRA"></label><label>CSV-Datei<input id="ppCsv" type="file" accept=".csv,text/csv"></label><button class="btn" type="button" id="ppClearCsv">Importe entfernen</button><p id="ppCsvInfo">Keine Importe. Es wird der vorhandene Kurscache gelesen.</p>
+  </details>
+  <div id="ppSummary"></div>
+  <div id="ppCurve" aria-label="Wertentwicklung der drei Modellkonten"></div>
+  <details open><summary>Kontostand, Positionen und vorgemerkte Orders</summary><div id="ppPositions"></div></details>
+  <details open><summary>Aktuelle Signale und verwendete Charttechniken</summary><div id="ppSignals"></div></details>
+  <details><summary>Handelsjournal und Entscheidungshistorie</summary><button class="btn" id="ppMore" type="button">Weitere 100 Einträge laden</button><div id="ppJournal"></div></details>
+  <details><summary>Methodik und Grenzen</summary>
+    <p>Chart-Einstieg: Score ≥40, Kurs über SMA50, RSI14 zwischen 40 und 70, Volumen mindestens 1,2× des vorherigen 20-Tage-Mittels. Score-Bausteine: SMA20/50-Trend, MACD, RSI und 20-Tage-Ausbruch. SMA200 und Bollinger-Bänder sind nur informativ. ATR14 definiert Stop und Positionsrisiko.</p>
+    <p>Maximal 20 % je Position und 0,5 % geplantes Stop-Risiko je Einstieg; keine Garantie gegen größere Gap-Verluste. Anfangsstop 2× ATR, Ziel 2R, nachgezogener Stop erst für spätere Kerzen. Exit bei Score ≤−25, unter SMA20 oder nach 20 verbuchten Sitzungen; KI-Konto zusätzlich bei gültiger bärischer KI-These. Sind Stop und Ziel in einer Kerze berührt, gilt konservativ der Stop zuerst.</p>
+    <p>KI-Konto: zusätzlich bullische, eigene Gemini-Deep-Analyse mit Quellenbelegen, höchstens 7 Kalendertage alt. Neue Analysen werden weiterhin ausschließlich manuell im Deep-Modul gestartet. Ohne passende Analyse kein neuer KI-Einstieg.</p>
+    <p>Orders werden zum tatsächlichen Aktualisierungszeitpunkt gespeichert und frühestens an einer späteren regulären Börseneröffnung ausgeführt. Tagesdaten werden erst nach Abschluss verarbeitet; vorgemerkte Orders können deshalb erst beim nächsten Update erscheinen. Nach 7 Kalendertagen verfallen sie. Verpasste Aktualisierungen erzeugen keine rückwirkenden KI-Signale.</p>
+    <p>Buy-and-Hold kauft gleichgewichtet das gleiche Universum, hält ohne Rebalancing und trägt dieselben Kostenannahmen. Es ist kein unabhängiger Marktindex. Bruchstücke bis 6 Nachkommastellen werden simuliert. Einzeltitel-Liquidität, tatsächliche Spreads, Ausschüttungen und Steuern fehlen. Revisionen, erkennbare Kapitalmaßnahmen oder große Sprünge stoppen die Verbuchung statt Gewinne zu erfinden.</p>
+    <p>Diese Version läuft unabhängig und wird per Button aktualisiert, nicht unbeaufsichtigt im Hintergrund. Ein möglicher späterer täglicher Zeitplan benötigt eine separate Freigabe und Einrichtung.</p>
+  </details>
+</section>

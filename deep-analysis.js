@@ -1,6 +1,6 @@
-import { buildDeepAnalysis, validateDeepInput, comparePrior } from './supabase/functions/_shared/deep-engine.mjs?v=32.0';
+import { buildDeepAnalysis, validateDeepInput, comparePrior } from './supabase/functions/_shared/deep-engine.mjs?v=34.0.0';
 import { parseOhlcvCsv } from './supabase/functions/_shared/signal-engine.mjs?v=31.2';
-import { canonicalUrl } from './supabase/functions/_shared/deep-sources.mjs?v=32.0';
+import { canonicalUrl } from './supabase/functions/_shared/deep-sources.mjs?v=34.0.0';
 
 const $=id=>document.getElementById(id);
 const root=$('deepAnalysisModule');
@@ -45,6 +45,7 @@ function input() {
   const origin=value('daTrigger')?{trigger_id:value('daTrigger')}:launchOrigin || {};
   return validateDeepInput({
     symbol,currency:value('daCurrency'),company:value('daCompany'),context:value('daContext'),sector:value('daSector'),
+    manual_urls:value('daManualUrls'),
     days:number('daDays'),lookback:number('daLookback'),news_days:number('daNewsDays'),shock_pct:number('daShock'),
     event_direction:value('daEventDirection'),use_ai:checked('daUseAi'),research:checked('daResearch'),manual_start:true,
     prior_ids:[...selected.keys()],...origin,...(imported?{bars:imported}:{}),
@@ -64,9 +65,16 @@ function input() {
 async function errorText(error){try{if(error?.context instanceof Response)return (await error.context.clone().json()).error || error.message;}catch{}return error?.message || 'Verbindung fehlgeschlagen.';}
 async function invoke(body){
   const {sb,session}=access();if(!sb||!session)throw new Error('Dashboard-Anmeldung erforderlich.');
+  const invokeEpoch=epoch;
+  if(body.manual_urls?.length){
+    const capabilities=await sb.functions.invoke('analyze-deep-signal',{body:{action:'capabilities'}});
+    if(capabilities.error||!capabilities.data?.features?.includes('manual_urls_v34'))throw new Error('Eigene URLs werden vom Server noch nicht unterstützt. Zuerst das V34-Gesamtupdate deployen. Keine Analyse gestartet.');
+    if(invokeEpoch!==epoch||access().session?.user?.id!==session.user.id)throw new Error('Anmeldung während der Vorbereitung geändert. Analyse nicht gestartet.');
+  }
   const result=await sb.functions.invoke('analyze-deep-signal',{body});
   if(result.error)throw new Error(await errorText(result.error));
   if(!result.data?.ok)throw new Error(result.data?.error || 'Kein Ergebnis empfangen.');
+  if(body.manual_urls?.length&&!Array.isArray(result.data.analysis?.manual_source_results))throw new Error('URL-Ergebnisse fehlen. V34-Serverstand prüfen und Historie laden, bevor du erneut startest.');
   return result.data;
 }
 async function run(){
@@ -77,7 +85,7 @@ async function run(){
   try{
     let a;const {sb,session}=access();
     if(!sb||!session){
-      if(!body.bars||body.use_ai)throw new Error('Bitte anmelden. Lokal ist nur CSV mit ausgeschalteter KI verfügbar.');
+      if(!body.bars||body.use_ai||body.manual_urls.length)throw new Error('Bitte anmelden. Lokal ist nur CSV mit ausgeschalteter KI und ohne Quellen-URLs verfügbar.');
       a=buildDeepAnalysis(body,body.bars,{provider:'CSV lokal'});a.warnings=['Lokale Analyse; keine Recherche, KI oder Cloudhistorie.'];
     }else a=(await invoke({action:'analyze',...body})).analysis;
     if(runEpoch!==epoch)return;
@@ -92,8 +100,9 @@ const list=items=>'<ul>'+items.map(v=>'<li>'+esc(v)+'</li>').join('')+'</ul>';
 function sourcesHtml(sources){
   return sources.length?sources.map(s=>'<div class="da-source"><a href="'+esc(canonicalUrl(s.url)||'#')+'" target="_blank" rel="noopener noreferrer">'+esc(s.title)+'</a>'+
     '<br><small>'+esc(s.source)+' · '+esc(s.kind)+' · '+esc(dt(s.published_at))+'<br>'+esc(s.id)+' · '+
-    (s.content_status==='metadata'?'Nur Metadaten; Volltext nicht gelesen':s.content_status==='structured_data'?'Strukturierte Primärdaten':'Kurzer Feed-Auszug; kein Volltext')+
+    (s.content_status==='metadata'?'Nur Metadaten; Volltext nicht gelesen':s.content_status==='structured_data'?'Strukturierte Primärdaten':s.content_status==='page_excerpt'?'Begrenzter Seitenauszug gelesen; kein Volltext':'Kurzer Feed-Auszug; kein Volltext')+
     ' · abgerufen '+esc(dt(s.retrieved_at))+'</small>'+
+    (s.manual?'<p><b>Eigene URL:</b> '+esc(s.retrieval_message||'Abrufstatus unbekannt.')+'</p>':'')+
     (s.excerpt?'<p>'+esc(s.excerpt)+'</p>':'')+(s.own_summary?'<p>'+esc(s.own_summary)+'</p>':'')+'</div>').join(''):'<p>Keine passenden Quellen.</p>';
 }
 function chartSvg(a){
@@ -163,6 +172,7 @@ function render(a){
   $('daDelta').innerHTML=a.delta.length?table(['Frühere Analyse','Kursänderung','Chartscore Δ','Bias alt → neu','Neu prüfen'],a.delta.map(d=>[dt(d.created_at),num(d.price_change_pct)+' %',d.score_delta,d.previous_bias+' → '+d.current_bias,d.reevaluate?'TRIGGER KI · These erneut prüfen':'Keine neue Modellabweichung'])):'<p>Keine frühere Analyse als Vergleichskontext ausgewählt.</p>';
   $('daReassess').textContent='Erneut manuell prüfen bei: '+a.reassess.join(' · ')+'.';
   $('daSources').innerHTML=sourcesHtml(a.sources);
+  $('daManualSourceResults').innerHTML=a.manual_source_results?.length?'<h4>Deine eingegebenen Links</h4>'+table(['URL','Abruf','Der KI bereitgestellt','Als Beleg zitiert'],a.manual_source_results.map(r=>[r.url,r.message,r.ai_included?(r.content_status==='page_excerpt'?'Seitenauszug':'Vorhandener Feed-Auszug'):r.ai_attempted?'Versucht; KI nicht abgeschlossen':'Nein',r.cited?'Ja · '+r.source_id:'Nein'])):'';
   $('daNote').value='';$('daEvaluation').innerHTML='';
   $('daNoteSave').disabled=!a.id;$('daEvaluate').disabled=!a.id;
 }
@@ -286,7 +296,7 @@ if(root){
     clearImport();status('Eingaben übernommen. Eine in V31 ausgewählte Meldung bitte auch hier unter TRIGGER KI auswählen.','warn');
   });
   $('daClearCsv').addEventListener('click',clearImport);
-  $('daSymbol').addEventListener('change',()=>{clearImport();launchOrigin=null;$('daTrigger').value='';});
+  $('daSymbol').addEventListener('change',()=>{clearImport();launchOrigin=null;$('daTrigger').value='';if(value('daManualUrls').trim())status('Wertpapier geändert. Bitte prüfen, ob deine Quellen-URLs auch zum neuen Wert passen.','warn');});
   $('daCsv').addEventListener('change',async e=>{
     const token=epoch;
     try{const f=e.target.files[0];if(!f)return;if(f.size>600000)throw new Error('CSV maximal 600 kB.');const parsed=parseOhlcvCsv(await f.text());if(token!==epoch)return;imported=parsed;$('daCsvStatus').textContent=imported.length+' importierte Tageskerzen.';}
@@ -300,8 +310,9 @@ if(root){
     epoch++;historyToken++;current=null;selected.clear();historyRows=[];historyTotal=0;page=0;clearImport();launchOrigin=null;setBusy(false);
     $('daResults').hidden=true;for(const id of ['daHistory','daArchive','daJournal','daComparison'])$(id).textContent='Nach Anmeldung neu laden.';
     $('daTrigger').innerHTML='<option value="">Ohne ausgewählte Meldung</option>';$('daPrev').disabled=true;$('daNext').disabled=true;
+    $('daManualUrls').value='';$('daManualSourceResults').innerHTML='';
     status('Anmeldung geändert. Analyse und Kontextauswahl zurückgesetzt.');
   });
   // Deliberately no invoke on auth, news, visibility, link opening, history or context selection.
-  status('V32.0.1 bereit. Deep-Analyse über den Startknopf manuell starten.');
+  status('V34.0.0 bereit. Deep-Analyse über den Startknopf manuell starten.');
 }
