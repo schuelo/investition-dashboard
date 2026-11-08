@@ -1,15 +1,19 @@
-importScripts('./release.js?v=34.0.0');
+importScripts('./release.js?v=35.0.0');
 const CACHE_NAME = 'investition-dashboard-v'+self.InvestitionRelease.version;
 const CORE = [
   './',
   './index.html',
-  './release.js?v=34.0.0',
-  './deep-analysis.js?v=34.0.0',
-  './deep-analysis.css?v=34.0.0',
+  './release.js?v=35.0.0',
+  './security-picker.js?v=35.0.0',
+  './security-picker.css?v=35.0.0',
+  './supabase/functions/_shared/security-resolver.mjs',
+  './supabase/functions/_shared/security-form.mjs',
+  './deep-analysis.js?v=35.0.0',
+  './deep-analysis.css?v=35.0.0',
   './paper-portfolio.js?v=33.0',
   './paper-portfolio.css?v=33.0',
-  './supabase/functions/_shared/deep-engine.mjs?v=34.0.0',
-  './supabase/functions/_shared/deep-sources.mjs?v=34.0.0',
+  './supabase/functions/_shared/deep-engine.mjs?v=35.0.0',
+  './supabase/functions/_shared/deep-sources.mjs?v=35.0.0',
   './supabase/functions/_shared/manual-sources.mjs',
   './supabase/functions/_shared/paper-engine.mjs?v=33.0',
   './app.js?v=31.2',

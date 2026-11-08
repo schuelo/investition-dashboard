@@ -20,3 +20,7 @@ verify_jwt = false
 [functions.paper-benchmark]
 # Strict auth.getUser check in handler; no anonymous or cron entry point.
 verify_jwt = false
+
+[functions.resolve-security]
+# Handler validates auth.getUser before any lookup, cache or provider access.
+verify_jwt = false

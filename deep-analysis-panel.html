@@ -1,7 +1,7 @@
 <!-- Embedded into index.html by the release build; do not navigate to this fragment. -->
 <section class="da-module" id="deepAnalysisModule">
   <article class="card da-hero">
-    <div><span class="da-eyebrow">V34.0.0 · DEEP-ANALYSE</span><h2>These prüfen. Szenarien vergleichen. Risiken verstehen.</h2>
+    <div><span class="da-eyebrow">V35.0.0 · DEEP-ANALYSE</span><h2>These prüfen. Szenarien vergleichen. Risiken verstehen.</h2>
     <p>News und Quellen, Tages- und Wochencharts, sechs Verläufe und Produktstress. Jede gespeicherte Analyse behält ihren ursprünglichen Datenstand.</p></div>
     <span class="chip">Manueller Start</span>
   </article>
@@ -9,6 +9,7 @@
     <article class="card da-panel">
       <form id="daForm" aria-describedby="daStatus">
         <h3>Neue Deep-Analyse</h3>
+        <div data-security-target="deep"></div>
         <div class="da-grid">
           <label>Symbol mit Handelsplatz<input id="daSymbol" required maxlength="38" value="NVDA.US"></label>
           <label>Basiswertwährung<select id="daCurrency"><option>USD</option><option>EUR</option><option>GBP</option><option>GBX</option><option>CHF</option><option>JPY</option><option>KRW</option><option>CNY</option><option>HKD</option><option>SEK</option><option>AUD</option><option>CAD</option><option>INR</option></select></label>
@@ -91,10 +92,11 @@
         </details>
         <div class="da-actions"><button id="daRun" class="btn primary" type="submit">Deep-Analyse manuell starten</button><button id="daDemo" class="btn" type="button">Synthetische Demo</button></div>
       </form>
-      <p id="daStatus" class="da-status" role="status" aria-live="polite">V34.0.0 wird geladen … Falls dieser Text stehen bleibt, die Seite vollständig neu laden.</p>
+      <p id="daStatus" class="da-status" role="status" aria-live="polite">V35.0.0 wird geladen … Falls dieser Text stehen bleibt, die Seite vollständig neu laden.</p>
     </article>
     <aside class="card da-panel">
       <h3>Deine Analysehistorie</h3>
+      <div data-security-target="history"></div>
       <div class="da-grid">
         <label>Symbolfilter<input id="daHistorySymbol" maxlength="38" placeholder="NVDA.US"></label>
         <label>Modus<select id="daHistoryMode"><option value="">Alle</option><option value="ai">Gemini</option><option value="rules">Regeln</option></select></label>

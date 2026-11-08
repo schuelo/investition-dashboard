@@ -1,4 +1,22 @@
-# V34.0.0 — Gesamtpaket: eigene Analysequellen und Papierdepot
+# V35.0.0 — WKN eingeben, EODHD-Notierung übernehmen
+
+Aktueller Einstieg: [INSTALLATION-V35.md](INSTALLATION-V35.md). Vollständiger Stand einschließlich V33-Papierdepot und V34-Analyse eigener Quellen-URLs. Das neue Gesamtpaket kann den zuvor gelieferten Stand komplett ersetzen; bestehende eigene Anpassungen vorher vergleichen.
+
+Eine gemeinsame WKN-/ISIN-Eingabemaske steht in Trade-Plänen, Signal- und Deep-Analyse, Historienfilter, neuem Papierexperiment, Papierdepot-CSV-Zuordnung und Eventanalyse bereit. Sie liefert geprüfte Notierungen mit Namen, EODHD-Ticker, Handelsplatz, Währung und ISIN. Die Übernahme füllt die Felder im gewählten Formular. Analyse, Speichern und fiktive Handelsläufe bleiben separate bewusste Aktionen.
+
+WKN-Identitäten kommen aus OpenFIGI. EODHD-Suchtreffer werden anhand ihrer ISIN gegen diese Identität geprüft; ähnliche Firmennamen oder gleiche Ticker reichen nicht als Nachweis. Die Auswahl zeigt gefundene Notierungen, kein vollständiges Verzeichnis aller Börsen. Der bevorzugte Handelsplatz wird zuerst angezeigt. Wo der Chart-Handelsplatz eindeutig zugeordnet werden kann, wird auch die TradingView-Kennung übernommen; US-Sammelcodes erfordern gegebenenfalls eine zusätzliche Börsenwahl.
+
+Die Suche nutzt keinen Gemini-Aufruf. EODHD-Abfragen zählen zum vorhandenen gemeinsamen Tagesbudget; gleiche Zuordnungen werden je Benutzer und Handelsplatzpräferenz sieben Tage wiederverwendet. Eigene Kurse, Kaufentscheidungen, KO-Barrieren und Produktbedingungen werden nicht recherchiert oder erfunden.
+
+Installation: `setup-v35-gesamtupdate.sql` ausführen, **V35 WKN und Gesamtupdate deployen** starten und die Website über das bestehende Hosting veröffentlichen. Bei bereits aktivem V34 genügt für die neue Datenbankstruktur alternativ `setup-v35-wkn.sql`. Nicht beide SQL-Dateien nacheinander nötig.
+
+Die Anmeldung, Dashboard- und Reset-Seite zeigen **35.0.0**, zentral aus `release.json` synchronisiert. 273 automatisierte Tests bestanden. [Prüfprotokoll](TESTPROTOKOLL-V35.md). Noch kein Live-Deployment im Zielprojekt erfolgt.
+
+---
+
+## Historischer Stand V34.0.0
+
+Die nachfolgenden Abschnitte dokumentieren ältere Releases. Für das aktuelle Paket gilt die V35-Anleitung oben.
 
 Aktueller Einstieg: [INSTALLATION-V34.md](INSTALLATION-V34.md). Dieses vollständige Paket enthält den bisherigen Dashboard-Stand, die neue URL-Erweiterung der Deep-Analyse und das bislang noch nicht installierte V33-Papierdepot. V33 muss nicht separat heruntergeladen oder vorher installiert werden.
 

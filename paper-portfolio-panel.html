@@ -6,6 +6,7 @@
   <p id="ppStatus" role="status" aria-live="polite">Noch kein Experiment geladen. Bestehende Depots bleiben unverändert.</p>
   <details><summary>Neues, unabhängiges Experiment anlegen</summary>
     <form id="ppForm" class="pp-form">
+      <div data-security-target="paper"></div>
       <label>Symbole (1–3, gleiche Börse)<input id="ppSymbols" required value="SND.XETRA" maxlength="80"></label>
       <label>Bestätigte Notierungswährung<select id="ppCurrency"><option>EUR</option><option>USD</option></select></label>
       <label>Fiktives Startkapital<input id="ppCapital" type="number" min="1000" max="10000000" step="any" value="10000" required></label>
@@ -18,6 +19,7 @@
   </details>
   <details><summary>Eigene aktuelle Tageskurse importieren (optional)</summary>
     <p>Je Symbol eine CSV mit date, open, high, low, close, volume; mindestens 60 abgeschlossene Tageskerzen. Import nur für dieses Modul, kein Überschreiben des gemeinsamen Kurscaches.</p>
+    <div data-security-target="csv"></div>
     <label>CSV-Symbol<input id="ppCsvSymbol" value="SND.XETRA"></label><label>CSV-Datei<input id="ppCsv" type="file" accept=".csv,text/csv"></label><button class="btn" type="button" id="ppClearCsv">Importe entfernen</button><p id="ppCsvInfo">Keine Importe. Es wird der vorhandene Kurscache gelesen.</p>
   </details>
   <div id="ppSummary"></div>
