@@ -1,0 +1,48 @@
+name: V36 Analyse ohne EODHD und Gesamtupdate deployen
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      PROJECT_ID: ${{ vars.SUPABASE_PROJECT_ID || 'pzhfybtoyfttftgcrcxk' }}
+    steps:
+      - name: Repository laden
+        uses: actions/checkout@v6
+      - name: Node einrichten
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - name: Gesamtstand und Version prüfen
+        run: |
+          node scripts/set-version.mjs --check
+          node scripts/build-update-sql.mjs --check
+          node --test tests/*.test.mjs
+      - name: Supabase CLI einrichten
+        uses: supabase/setup-cli@v1
+        with:
+          version: 2.110.0
+      - name: Zugang prüfen
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "$SUPABASE_ACCESS_TOKEN" ]]; then
+            echo "::error::GitHub Secret SUPABASE_ACCESS_TOKEN fehlt."
+            exit 1
+          fi
+          if [[ ! "$PROJECT_ID" =~ ^[a-z0-9]{20}$ ]]; then
+            echo "::error::SUPABASE_PROJECT_ID prüfen."
+            exit 1
+          fi
+      - name: Unabhängige WKN-/ISIN-Auflösung deployen
+        run: supabase functions deploy resolve-security --project-ref "$PROJECT_ID" --no-verify-jwt
+      - name: Signalanalyse mit unabhängiger Kursquelle deployen
+        run: supabase functions deploy analyze-signal-path --project-ref "$PROJECT_ID" --no-verify-jwt
+      - name: Deep-Analyse mit unabhängiger Kursquelle deployen
+        run: supabase functions deploy analyze-deep-signal --project-ref "$PROJECT_ID" --no-verify-jwt
+      - name: Papierdepot mit bereitstellen
+        run: supabase functions deploy paper-benchmark --project-ref "$PROJECT_ID" --no-verify-jwt

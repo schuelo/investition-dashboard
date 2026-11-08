@@ -38,7 +38,7 @@ function harness({authenticated=true,analyses=[],triggers=[],quota=true}={}) {
 const req=body=>new Request('https://test',{method:'POST',headers:{Authorization:'Bearer valid'},body:JSON.stringify(body)});
 const body={action:'analyze',symbol:'NVDA.US',currency:'USD',days:20,use_ai:false,manual_start:true,research:false,bars};
 test('Actual V34 Edge capability check requires auth and performs no analysis or quota use',async()=>{
-  const h=harness();const r=await h.serve(req({action:'capabilities'}));assert.equal(r.status,200);assert.deepEqual((await r.json()).features,['manual_urls_v34']);assert.equal(h.writes.length,0);assert.equal(h.rpcs.length,0);assert.equal(h.pageRequests.length,0);
+  const h=harness();const r=await h.serve(req({action:'capabilities'}));assert.equal(r.status,200);assert.deepEqual((await r.json()).features,['manual_urls_v34','independent_market_v36']);assert.equal(h.writes.length,0);assert.equal(h.rpcs.length,0);assert.equal(h.pageRequests.length,0);
   const a=harness({authenticated:false});assert.equal((await a.serve(req({action:'capabilities'}))).status,401);
 });
 test('Actual V34 Edge reads user URLs and saves owner-scoped source results without full passages',async()=>{

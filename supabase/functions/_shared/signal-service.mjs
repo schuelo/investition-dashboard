@@ -1,10 +1,11 @@
 import { buildSignalAnalysis, normalizeBars, technicals, selectNews, validateNarrative, SIGNAL_VERSION } from './signal-engine.mjs';
+import { validateMarketChoice } from './independent-market.mjs';
 
 export class SignalError extends Error { constructor(message, status = 400) { super(message); this.status = status; } }
 export function validateSignalInput(body) {
   if (!body || typeof body !== 'object') throw new SignalError('Ungültige Anfrage.');
   const symbol = String(body.symbol || '').trim().toUpperCase();
-  if (!/^[A-Z0-9_^+\-]{1,25}\.[A-Z0-9]{1,12}$/.test(symbol)) throw new SignalError('EODHD-Symbol inklusive Handelsplatz erforderlich, z. B. NVDA.US oder SAP.XETRA.');
+  if (!/^[A-Z0-9_^+\-]{1,25}\.[A-Z0-9]{1,12}$/.test(symbol)) throw new SignalError('Analysekennung inklusive Handelsplatz erforderlich, z. B. NVDA.US oder SAP.XETRA.');
   const currency = String(body.currency || '').toUpperCase();
   if (!['EUR', 'USD', 'GBP', 'GBX', 'CHF', 'JPY', 'KRW', 'CNY', 'HKD', 'SEK', 'AUD', 'CAD', 'INR'].includes(currency)) throw new SignalError('Notierungswährung fehlt oder wird nicht unterstützt.');
   const days = Number(body.days ?? 20);
@@ -14,7 +15,8 @@ export function validateSignalInput(body) {
   for (const field of ['trigger_id', 'source_news_id']) {
     if (body[field] !== undefined && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(body[field]))) throw new SignalError('Ungültige Meldungsreferenz.');
   }
-  return { symbol, currency, days, company: String(body.company || '').trim().slice(0, 120), context: String(body.context || '').trim().slice(0, 2000), use_ai: body.use_ai !== false, manual_start: body.manual_start === true, trigger_id: body.trigger_id, source_news_id: body.source_news_id, news_impulse: body.news_impulse === true, bars: body.bars };
+  let market;try{market=validateMarketChoice(body);}catch(e){throw new SignalError(e.message,e.status||422);}
+  return { symbol, currency, days, company: String(body.company || '').trim().slice(0, 120), context: String(body.context || '').trim().slice(0, 2000), use_ai: body.use_ai !== false, manual_start: body.manual_start === true, trigger_id: body.trigger_id, source_news_id: body.source_news_id, news_impulse: body.news_impulse === true, bars: body.bars,...market };
 }
 
 export const narrativeSchema = {
@@ -101,6 +103,12 @@ export async function runSignalAnalysis(body, deps) {
   }
   if (!await deps.reserveRun()) throw new SignalError('Tageslimit von 20 Analysen erreicht. Morgen erneut prüfen.', 429);
   let rawBars = input.bars, provider = rawBars ? 'CSV-Import (Nutzerdaten)' : '', marketCache = null;
+  let provenance=rawBars?{source:'csv',eodhd_used:false,identity:'Nutzerdatei; Kennung/Währung vom Nutzer'}:null;
+  if(!rawBars&&input.market_source==='independent') {
+    if(!deps.loadIndependentMarket)throw new SignalError('Unabhängige Kursquelle serverseitig nicht installiert. V36 deployen.',503);
+    try{const market=await deps.loadIndependentMarket(input,now);rawBars=market.bars;provider=market.provider;provenance=market.provenance;if(market.warning)warnings.push(market.warning);}
+    catch(e){throw new SignalError(e.message||'Öffentliche Kursquelle nicht verfügbar. CSV verwenden.',e.status||422);}
+  }
   if (!rawBars) {
     marketCache = await deps.readCache(input.symbol);
     let fresh = false;
@@ -151,6 +159,7 @@ export async function runSignalAnalysis(body, deps) {
   }
   const analysis = buildSignalAnalysis({ symbol: input.symbol, currency: input.currency, days: input.days, rawBars, news: sources, narrative, provider, now, useNewsImpulse: input.news_impulse });
   analysis.ai = aiMetadata;
+  analysis.market_data=provenance||{source:'eodhd',eodhd_used:true,identity:'Legacy-Kurskennung'};
   analysis.origin = origin ? { trigger_id: input.trigger_id || null, news_id: String(origin.news.id), title: origin.news.title, included: sources.some(source => source.id === String(origin.news.id)) } : null;
   analysis.warnings = warnings;
   analysis.request = { ...input, bars: undefined };

@@ -1,6 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2.49.8";
 import { corsHeaders, jsonHeaders } from "../_shared/cors.ts";
 import { runSignalAnalysis, callSignalAi, SignalError } from "../_shared/signal-service.mjs";
+import { loadPublicMarket,publicMarketAdapters } from "../_shared/independent-market.mjs";
 
 const env = (name: string) => String(Deno.env.get(name) || "").trim();
 const respond = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: jsonHeaders });
@@ -20,7 +21,9 @@ Deno.serve(async (request: Request) => {
     if (text.length > 600000) return respond({ ok: false, error: "Anfrage zu groß; maximal 2000 CSV-Zeilen." }, 413);
     let body: Record<string, unknown>;
     try { body = JSON.parse(text); } catch { return respond({ ok: false, error: "Ungültiges JSON." }, 400); }
+    if(body&&typeof body==='object'&&body.action==='capabilities')return respond({ok:true,features:['independent_market_v36']});
     const result = await runSignalAnalysis(body, {
+      loadIndependentMarket:async(input:unknown,now:Date)=>loadPublicMarket(input,publicMarketAdapters(admin,userId),now),
       readOrigin: async (input: { trigger_id?: string; source_news_id?: string }) => {
         let newsId = input.source_news_id;
         if (input.trigger_id) {

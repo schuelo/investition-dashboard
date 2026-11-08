@@ -1,4 +1,20 @@
-# V35.0.0 — WKN eingeben, EODHD-Notierung übernehmen
+# V36.0.0 — Signal- und Deep-Analyse ohne EODHD
+
+Aktueller Einstieg: [INSTALLATION-V36.md](INSTALLATION-V36.md). Vollständiges Paket einschließlich V33-Papierdepot, V34-Quellen-URLs und V35-WKN-Maske.
+
+Die WKN-/ISIN-Suche verwendet standardmäßig OpenFIGI direkt. Signal- und Deep-Analyse bieten öffentliche Chartdaten über eine eigene, inoffizielle Yahoo-Schnittstelle oder einen OHLCV-CSV-Import. In diesen Modi sind weder EODHD-Schlüssel noch EODHD-Tagesbudget nötig. Der bisherige EODHD-Weg bleibt ausdrücklich auswählbar. Es gibt keine automatische Anbieterumschaltung und keine neuen automatischen KI-Aufrufe.
+
+Öffentliche Quellen können ausfallen oder eigene Limits erreichen. Dann wird ein Fehler mit CSV-Hinweis angezeigt. CSV funktioniert ohne Kursdienst; Kennung, Handelsplatz und Währung bleiben prüfbare Eingaben. Der Bericht speichert die Kursherkunft. Vor dem Start prüft das Frontend, ob die Serverfunktionen die neue Quellenwahl unterstützen.
+
+Installation: **`setup-v36-gesamtupdate.sql`** ausführen, **V36 Analyse ohne EODHD und Gesamtupdate deployen** in GitHub Actions starten und die Website über das bisherige Hosting veröffentlichen. Bei bereits vollständig installiertem V35 genügt alternativ `setup-v36-independent.sql`. Die Anmeldung zeigt **36.0.0**. News-/Telegram- und Depot-Hintergrundfunktionen behalten ihre bisherigen Quellen und Regeln.
+
+328 automatisierte Tests bestanden. [Prüfprotokoll](TESTPROTOKOLL-V36.md). Kein Live-Deployment oder Live-Test im Zielsystem erfolgt.
+
+---
+
+## Historischer Stand V35.0.0
+
+Die folgenden Abschnitte beschreiben ältere Releases. Für das aktuelle Paket gilt die V36-Anleitung oben.
 
 Aktueller Einstieg: [INSTALLATION-V35.md](INSTALLATION-V35.md). Vollständiger Stand einschließlich V33-Papierdepot und V34-Analyse eigener Quellen-URLs. Das neue Gesamtpaket kann den zuvor gelieferten Stand komplett ersetzen; bestehende eigene Anpassungen vorher vergleichen.
 

@@ -12,18 +12,20 @@ class El {
   dispatchEvent(event){for(const {fn} of this.events[event.type]||[])fn(event);return true;}
   setAttribute(k,v){this.attributes[k]=v;}
 }
-function harness(scope='deep',{pause=false,fail=false,resolved=candidate}={}) {
+function harness(scope='deep',{pause=false,fail=false,resolved=candidate,source='eodhd',oldServer=false}={}) {
   const elements=Object.fromEntries([...html.matchAll(/id="([^"]+)"/g)].map(m=>[m[1],new El()]));
   elements.tradeForm.elements=Object.fromEntries([...html.matchAll(/<input[^>]+name="([^"]+)"/g),...html.matchAll(/<select[^>]+name="([^"]+)"/g)].map(m=>[m[1],new El()]));elements.tradeForm.elements.type.value='Aktie';elements.tradeForm.elements.marketSymbol.value='NVDA.US';elements.tradeForm.elements.currency.value='USD';
   elements.daSymbol.value='NVDA.US';elements.daCurrency.value='USD';elements.ppSymbols.value='SND.XETRA';elements.ppCurrency.value='EUR';
   const nodes={};for(const key of ['[data-sec-query]','[data-sec-exchange]','[data-sec-select]','[data-sec-results]','[data-sec-apply]','[data-sec-search]','[data-sec-cancel]','[data-sec-preview]','[data-sec-chart]','[data-sec-chart-block]','[data-sec-chart-dropdown]','[data-sec-chart-custom]','[data-sec-append]','[role=status]'])nodes[key]=new El();nodes['[data-sec-exchange]'].value='XETRA';nodes['[data-sec-select]'].value='0';nodes['[data-sec-append]'].value='replace';
+  for(const key of ['[data-sec-source]','[data-sec-currency-label]','[data-sec-currency]','[data-sec-disable-eod-label]','[data-sec-disable-eod]'])nodes[key]=new El();nodes['[data-sec-source]'].value=source;
   const root=new El();root.dataset={securityTarget:scope};root.querySelector=s=>nodes[s];const form=scope==='trade'?elements.tradeForm:new El();root.closest=selector=>selector==='form'?form:null;
   let session={user:{id:'owner'}},release;const calls=[],globalEvents=[];
   const window=new EventTarget();
   const sb={functions:{invoke:async(name,{body})=>{
     calls.push({name,body});if(pause)await new Promise(r=>release=r);
+    if(body.action==='capabilities')return oldServer?{data:{ok:true,features:[]}}:{data:{ok:true,features:['independent_market_v36']}};
     if(fail)return{data:null,error:{message:'Kontingent erreicht'}};
-    return{data:{ok:true,resolution:{candidates:[resolved],cached:false,warnings:[]}}};
+    return{data:{ok:true,resolution:{candidates:[resolved],lookup_key:source==='independent'?'F0:WKN:860180:XETRA':undefined,cached:false,warnings:[]}}};
   }}};
   window.InvestitionDashboard={getSession:()=>session,getSupabase:()=>sb};
   window.addEventListener('investition:security-picked',e=>globalEvents.push(e.detail));
@@ -70,4 +72,13 @@ test('Actual picker errors are visible, preserve the form, and a discarded searc
 });
 test('Actual picker rejects invalid identifiers without any API request',async()=>{
   const h=harness();h.nodes['[data-sec-query]'].value='http://invalid';await h.control.lookup();assert.equal(h.calls.length,0);assert.match(h.nodes['[role=status]'].textContent,/WKN/);
+});
+test('Actual independent picker checks server capabilities and carries owner lookup key into the analysis form',async()=>{
+  const h=harness('deep',{source:'independent',resolved:{...candidate,eodhd_verified:false,isin:null,figi:'BBG000A00001',quote_symbol:'SND.DE'}});h.nodes['[data-sec-query]'].value='860180';await h.control.lookup();assert.equal(h.calls.length,2);assert.equal(h.calls[0].body.action,'capabilities');assert.equal(h.calls[1].body.catalogue_source,'independent');await h.nodes['[data-sec-apply]'].trigger('click');assert.equal(h.globalEvents[0].security.security_key,'F0:WKN:860180:XETRA');assert.equal(h.globalEvents[0].security.eodhd_verified,false);
+});
+test('Actual independent picker blocks an old backend before it can call EODHD',async()=>{
+  const h=harness('deep',{source:'independent',oldServer:true});h.nodes['[data-sec-query]'].value='860180';await h.control.lookup();assert.equal(h.calls.length,1);assert.match(h.nodes['[role=status]'].textContent,/V36-Gesamtupdate/);assert.equal(h.elements.daSymbol.value,'NVDA.US');
+});
+test('Actual CSV-only picker needs an explicit currency when public metadata are absent',async()=>{
+  const h=harness('deep',{source:'independent',resolved:{...candidate,currency:null,isin:null,eodhd_verified:false,figi:'BBG000A00001',quote_symbol:'SND.DE'}});h.elements.daMarketSource.value='csv';h.nodes['[data-sec-query]'].value='860180';await h.control.lookup();assert.equal(h.calls[1].body.quote_metadata,false);assert.equal(h.nodes['[data-sec-currency-label]'].hidden,false);await h.nodes['[data-sec-apply]'].trigger('click');assert.equal(h.elements.daSymbol.value,'NVDA.US');h.nodes['[data-sec-currency]'].value='EUR';await h.nodes['[data-sec-apply]'].trigger('click');assert.equal(h.elements.daSymbol.value,'SND.XETRA');assert.equal(h.globalEvents[0].security.currency,'EUR');
 });

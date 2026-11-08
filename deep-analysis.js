@@ -1,6 +1,6 @@
-import { buildDeepAnalysis, validateDeepInput, comparePrior } from './supabase/functions/_shared/deep-engine.mjs?v=35.0.0';
+import { buildDeepAnalysis, validateDeepInput, comparePrior } from './supabase/functions/_shared/deep-engine.mjs?v=36.0.0';
 import { parseOhlcvCsv } from './supabase/functions/_shared/signal-engine.mjs?v=31.2';
-import { canonicalUrl } from './supabase/functions/_shared/deep-sources.mjs?v=35.0.0';
+import { canonicalUrl } from './supabase/functions/_shared/deep-sources.mjs?v=36.0.0';
 
 const $=id=>document.getElementById(id);
 const root=$('deepAnalysisModule');
@@ -39,8 +39,10 @@ function setBusy(on) {
   for(const id of ['daHistoryLoad','daNoteSave','daEvaluate']) $(id).disabled=on || (['daNoteSave','daEvaluate'].includes(id)&&!current?.id);
   $('daPrev').disabled=on||page===0;$('daNext').disabled=on||(page+1)*20>=historyTotal;
 }
-function clearImport(){imported=null;$('daCsv').value='';$('daCsvStatus').textContent='Kein CSV-Import; Kurscache / kostenlose EODHD-Abfrage.';}
+function clearImport(){imported=null;$('daCsv').value='';$('daCsvStatus').textContent='Kein CSV-Import; die gewählte Kursquelle wird verwendet.';}
 function input() {
+  if($('daMarketSource')?.value&&!window.InvestitionMarketData)throw Error('V36-Quellenmodul noch nicht geladen. Seite neu laden; keine Analyse gestartet.');
+  const market=window.InvestitionMarketData?.input('deep',!!imported)||{};
   const symbol=value('daSymbol').trim().toUpperCase();
   const origin=value('daTrigger')?{trigger_id:value('daTrigger')}:launchOrigin || {};
   return validateDeepInput({
@@ -48,7 +50,7 @@ function input() {
     manual_urls:value('daManualUrls'),
     days:number('daDays'),lookback:number('daLookback'),news_days:number('daNewsDays'),shock_pct:number('daShock'),
     event_direction:value('daEventDirection'),use_ai:checked('daUseAi'),research:checked('daResearch'),manual_start:true,
-    prior_ids:[...selected.keys()],...origin,...(imported?{bars:imported}:{}),
+    prior_ids:[...selected.keys()],...market,...origin,...(imported?{bars:imported}:{}),
     risk:{capital:number('daCapital'),account_currency:value('daAccountCurrency').trim().toUpperCase(),budget_pct:number('daBudget'),
       exposure:number('daExposure'),max_exposure_pct:number('daMaxExposure'),fx_rate:number('daRiskFx'),fx_verified:checked('daRiskFxVerified'),
       fee_bps:number('daFee'),slippage_bps:number('daSlippage')},
@@ -66,10 +68,11 @@ async function errorText(error){try{if(error?.context instanceof Response)return
 async function invoke(body){
   const {sb,session}=access();if(!sb||!session)throw new Error('Dashboard-Anmeldung erforderlich.');
   const invokeEpoch=epoch;
-  if(body.manual_urls?.length){
+  if(body.manual_urls?.length||body.market_source==='independent'){
     const capabilities=await sb.functions.invoke('analyze-deep-signal',{body:{action:'capabilities'}});
-    if(capabilities.error||!capabilities.data?.features?.includes('manual_urls_v34'))throw new Error('Eigene URLs werden vom Server noch nicht unterstützt. Zuerst das V34-Gesamtupdate deployen. Keine Analyse gestartet.');
     if(invokeEpoch!==epoch||access().session?.user?.id!==session.user.id)throw new Error('Anmeldung während der Vorbereitung geändert. Analyse nicht gestartet.');
+    if(body.market_source==='independent'&&(capabilities.error||!capabilities.data?.features?.includes('independent_market_v36')))throw Error('Unabhängige Kursquelle noch nicht installiert. V36-Gesamtupdate deployen; keine EODHD-Abfrage gestartet.');
+    if(body.manual_urls?.length&&(capabilities.error||!capabilities.data?.features?.includes('manual_urls_v34')))throw new Error('Eigene URLs werden vom Server noch nicht unterstützt. Zuerst das V34-Gesamtupdate deployen. Keine Analyse gestartet.');
   }
   const result=await sb.functions.invoke('analyze-deep-signal',{body});
   if(result.error)throw new Error(await errorText(result.error));
@@ -87,6 +90,7 @@ async function run(){
     if(!sb||!session){
       if(!body.bars||body.use_ai||body.manual_urls.length)throw new Error('Bitte anmelden. Lokal ist nur CSV mit ausgeschalteter KI und ohne Quellen-URLs verfügbar.');
       a=buildDeepAnalysis(body,body.bars,{provider:'CSV lokal'});a.warnings=['Lokale Analyse; keine Recherche, KI oder Cloudhistorie.'];
+      a.market_data={source:'csv',eodhd_used:false,identity:'Nutzerdatei; Kennung/Währung vom Nutzer'};
     }else a=(await invoke({action:'analyze',...body})).analysis;
     if(runEpoch!==epoch)return;
     open(a);status('Deep-Analyse abgeschlossen · '+(a.ai?.provider==='gemini'?'Gemini '+a.ai.model:'Regelberechnung')+' · Kursstand '+a.price_date,a.warnings?.length||a.quality.blocked?'warn':'good');
@@ -125,6 +129,7 @@ function render(a){
   $('daMetrics').innerHTML=metrics.map(([label,v,detail])=>'<div class="da-metric"><small>'+esc(label)+'</small><strong>'+esc(v)+'</strong><small>'+esc(detail)+'</small></div>').join('');
   $('daQuality').innerHTML='<div class="da-note">'+(a.quality.blocked?'<b class="da-danger">Handelsschwellen gesperrt.</b> ':'')+'Datenalter '+a.quality.ageDays+' Kalendertage.'+
     list([...a.quality.notes,...a.quality.gaps,...(a.warnings || [])])+'<small>'+esc(a.simulation.assumptions)+' Seed '+a.simulation.seed+'.</small></div>';
+  if(a.market_data)$('daQuality').innerHTML+='<div class="da-note">Kursquelle: '+esc(a.provider)+' · '+esc(a.market_data.quote_symbol||a.symbol)+' · '+esc(a.currency)+' · '+esc(a.market_data.identity||'')+' · EODHD verwendet: '+(a.market_data.eodhd_used?'Ja':'Nein')+'</div>';
   $('daScenario').innerHTML=a.scenarios.map(s=>'<option value="'+esc(s.id)+'">'+esc(s.name)+'</option>').join('');$('daScenario').value='base';$('daChart').innerHTML=chartSvg(a);
   $('daScenarios').innerHTML=a.scenarios.map(s=>'<article class="da-card"><h4>'+esc(s.name)+'</h4><b>Modellmedian '+num(s.endpoint)+' '+esc(a.currency)+'</b><p>'+esc(s.assumption)+'</p>'+
     '<dl><dt>P10 / P90 am Ende</dt><dd>'+num(s.bands.at(-1).q10)+' / '+num(s.bands.at(-1).q90)+'</dd><dt>Ungünstige Kursauslenkung P10</dt><dd>'+num(s.adverse_p10_pct)+' %</dd><dt>Drawdown P90</dt><dd>'+num(s.drawdown_p90_pct)+' %</dd></dl>'+
@@ -233,7 +238,11 @@ function renderEvaluation(e){
 }
 async function evaluate(){
   if(busy||!current?.id)return;const id=current.id,token=epoch;setBusy(true);status('Tatsächlichen Verlauf prüfen und getrennt speichern …');
-  try{const r=await invoke({action:'evaluate',analysis_id:id,manual_start:true,...(imported?{bars:imported}:{})});if(token!==epoch||current?.id!==id)return;renderEvaluation(r.evaluation);status('Auswertung gespeichert; kein KI-Aufruf.','good');}
+  try{
+    const source=current.request?.market_source||current.market_data?.source||(/^CSV\b/i.test(current.provider||'')?'csv':'eodhd');
+    if(source==='csv'&&!imported)throw Error('Für diese CSV-Analyse zuerst eine aktualisierte OHLCV-Datei importieren; kein Kursdienst aufgerufen.');
+    const r=await invoke({action:'evaluate',analysis_id:id,manual_start:true,market_source:imported?'csv':source,...(imported?{bars:imported}:{})});if(token!==epoch||current?.id!==id)return;renderEvaluation(r.evaluation);status('Auswertung gespeichert; kein KI-Aufruf.','good');
+  }
   catch(e){if(token===epoch)status(e.message,'bad');}finally{if(token===epoch)setBusy(false);}
 }
 async function loadArchive(){
@@ -293,6 +302,7 @@ if(root){
   $('daTrigger').addEventListener('change',()=>{launchOrigin=null;});
   $('daCopy').addEventListener('click',()=>{
     $('daSymbol').value=$('ssSymbol').value;$('daCurrency').value=$('ssCurrency').value;$('daCompany').value=$('ssCompany').value;$('daContext').value=$('ssContext').value;
+    window.dispatchEvent(new CustomEvent('investition:market-copy',{detail:{from:'signal',to:'deep'}}));
     clearImport();status('Eingaben übernommen. Eine in V31 ausgewählte Meldung bitte auch hier unter TRIGGER KI auswählen.','warn');
   });
   $('daClearCsv').addEventListener('click',clearImport);
@@ -314,5 +324,5 @@ if(root){
     status('Anmeldung geändert. Analyse und Kontextauswahl zurückgesetzt.');
   });
   // Deliberately no invoke on auth, news, visibility, link opening, history or context selection.
-  status('V35.0.0 bereit. Deep-Analyse über den Startknopf manuell starten.');
+  status('V36.0.0 bereit. Deep-Analyse über den Startknopf manuell starten.');
 }

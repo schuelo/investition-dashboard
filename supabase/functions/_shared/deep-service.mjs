@@ -126,6 +126,7 @@ export async function runDeepAnalysis(body,deps) {
       cited:analysis.narrative.mode==='ai'&&analysis.narrative.evidence.some(e=>e.source_id===s?.id)};
   });
   analysis.origin=origin?{trigger_id:input.trigger_id || null,news_id:selectedId}:null;
+  analysis.market_data=market.provenance||(input.bars?{source:'csv',eodhd_used:false,identity:'Nutzerdatei; Kennung/Währung vom Nutzer'}:{source:'eodhd',eodhd_used:true,identity:'Legacy-Kurskennung'});
   analysis.warnings=warnings;analysis.source_archive_saved=sourceSaved;
   try{analysis.id=await deps.save(input,analysis);}
   catch{throw new SignalError('Analyse berechnet, aber Historie konnte nicht gespeichert werden. V32-SQL und Verbindung prüfen; kein automatischer erneuter KI-Aufruf.',503);}
@@ -135,6 +136,7 @@ export async function runDeepEvaluation(body,deps) {
   if(body.manual_start!==true || !/^[0-9a-f-]{36}$/i.test(String(body.analysis_id))) throw new SignalError('Gespeicherte Analyse manuell zur Auswertung auswählen.',422);
   const original=await deps.readOriginal(body.analysis_id);
   if(!original) throw new SignalError('Analyse nicht verfügbar.',404);
+  if(!body.bars&&(original.request?.market_source==='csv'||original.market_data?.source==='csv'||/^CSV\b/i.test(original.provider||'')))throw new SignalError('Diese Analyse nutzt CSV-Daten. Für die spätere Auswertung eine aktualisierte OHLCV-Datei importieren; kein Kursdienst wurde aufgerufen.',422);
   const market=body.bars?{bars:body.bars}:await deps.loadMarket({...original.request,bars:undefined},deps.now?.() || new Date());
   const evaluation=evaluateForecast(original,market.bars,deps.now?.() || new Date());
   await deps.saveEvaluation(original.id,evaluation);

@@ -1,19 +1,22 @@
-importScripts('./release.js?v=35.0.0');
+importScripts('./release.js?v=36.0.0');
 const CACHE_NAME = 'investition-dashboard-v'+self.InvestitionRelease.version;
 const CORE = [
   './',
   './index.html',
-  './release.js?v=35.0.0',
-  './security-picker.js?v=35.0.0',
-  './security-picker.css?v=35.0.0',
+  './release.js?v=36.0.0',
+  './security-picker.js?v=36.0.0',
+  './security-picker.css?v=36.0.0',
+  './market-data.js?v=36.0.0',
+  './supabase/functions/_shared/independent-market.mjs',
+  './supabase/functions/_shared/independent-security.mjs',
   './supabase/functions/_shared/security-resolver.mjs',
   './supabase/functions/_shared/security-form.mjs',
-  './deep-analysis.js?v=35.0.0',
-  './deep-analysis.css?v=35.0.0',
+  './deep-analysis.js?v=36.0.0',
+  './deep-analysis.css?v=36.0.0',
   './paper-portfolio.js?v=33.0',
   './paper-portfolio.css?v=33.0',
-  './supabase/functions/_shared/deep-engine.mjs?v=35.0.0',
-  './supabase/functions/_shared/deep-sources.mjs?v=35.0.0',
+  './supabase/functions/_shared/deep-engine.mjs?v=36.0.0',
+  './supabase/functions/_shared/deep-sources.mjs?v=36.0.0',
   './supabase/functions/_shared/manual-sources.mjs',
   './supabase/functions/_shared/paper-engine.mjs?v=33.0',
   './app.js?v=31.2',
@@ -22,11 +25,11 @@ const CORE = [
   './decision.js?v=29.4',
   './analytics.js?v=29.4',
   './event-analysis.js?v=30.1',
-  './signal-simulation.js?v=31.2',
+  './signal-simulation.js?v=36.0.0',
   './signal-simulation.css?v=31.2',
   './supabase/functions/_shared/signal-engine.mjs?v=31.2',
   './supabase/functions/_shared/signal-engine.mjs',
-  './supabase/functions/_shared/signal-service.mjs?v=31.2'
+  './supabase/functions/_shared/signal-service.mjs?v=36.0.0'
 ];
 
 self.addEventListener('install', event => {

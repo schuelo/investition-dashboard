@@ -1,5 +1,5 @@
 import { buildSignalAnalysis, parseOhlcvCsv } from './supabase/functions/_shared/signal-engine.mjs?v=31.2';
-import { validateSignalInput } from './supabase/functions/_shared/signal-service.mjs?v=31.2';
+import { validateSignalInput } from './supabase/functions/_shared/signal-service.mjs?v=36.0.0';
 
 const $ = id => document.getElementById(id);
 const page = $('signalSimulationPage');
@@ -18,8 +18,12 @@ let pendingLaunch = validId(launch.get('signal_trigger')) ? { triggerId: launch.
 
 function status(message, type = '') { $('ssStatus').textContent = message; $('ssStatus').className = `ss-status ${type}`; }
 function setBusy(v) { busy = v; page.setAttribute('aria-busy', String(v)); for (const id of ['ssRun','ssDemo','ssLoadTriggers','ssLoadHistory']) $(id).disabled = v; }
-function formInput() { return validateSignalInput({ symbol:$('ssSymbol').value, currency:$('ssCurrency').value, company:$('ssCompany').value, context:$('ssContext').value, days:Number($('ssDays').value), use_ai:$('ssUseAi').checked, manual_start:true, news_impulse:$('ssNewsImpulse').checked, ...(selectedOrigin?.id ? {trigger_id:selectedOrigin.id} : selectedOrigin?.news_id ? {source_news_id:selectedOrigin.news_id} : {}), ...(imported ? {bars:imported} : {}) }); }
-function clearImport() { imported = null; $('ssCsv').value = ''; $('ssCsvStatus').textContent = 'Kein Import; Kurse kommen aus dem Marktcache/EODHD.'; }
+function formInput() {
+  if($('ssMarketSource')?.value&&!window.InvestitionMarketData)throw Error('V36-Quellenmodul noch nicht geladen. Seite neu laden; keine Analyse gestartet.');
+  const market=window.InvestitionMarketData?.input('signal',!!imported)||{};
+  return validateSignalInput({ symbol:$('ssSymbol').value, currency:$('ssCurrency').value, company:$('ssCompany').value, context:$('ssContext').value, days:Number($('ssDays').value), use_ai:$('ssUseAi').checked, manual_start:true, news_impulse:$('ssNewsImpulse').checked, ...market,...(selectedOrigin?.id ? {trigger_id:selectedOrigin.id} : selectedOrigin?.news_id ? {source_news_id:selectedOrigin.news_id} : {}), ...(imported ? {bars:imported} : {}) });
+}
+function clearImport() { imported = null; $('ssCsv').value = ''; $('ssCsvStatus').textContent = 'Kein Import; die gewählte Kursquelle wird verwendet.'; }
 async function errorText(error) { try { if (error?.context instanceof Response) return (await error.context.clone().json()).error || error.message; } catch {} return error?.message || String(error); }
 
 async function run() {
@@ -36,7 +40,13 @@ async function run() {
       analysis = buildSignalAnalysis({ symbol:body.symbol, currency:body.currency, rawBars:body.bars, days:body.days, provider:'CSV lokal (Nutzerdaten)' });
       analysis.warnings = ['Lokal berechnet; keine KI-News-Auswertung und keine Cloudhistorie.'];
       analysis.request = { ...body, bars:undefined };
+      analysis.market_data={source:'csv',eodhd_used:false,identity:'Nutzerdatei; Kennung/Währung vom Nutzer'};
     } else {
+      if(body.market_source==='independent') {
+        const capabilities=await sb.functions.invoke('analyze-signal-path',{body:{action:'capabilities'}});
+        if(runEpoch!==epoch||access().session?.user?.id!==session.user.id)return false;
+        if(capabilities.error||!capabilities.data?.features?.includes('independent_market_v36'))throw Error('Unabhängige Kursquelle noch nicht installiert. V36-Gesamtupdate deployen; keine EODHD-Abfrage gestartet.');
+      }
       const result = await sb.functions.invoke('analyze-signal-path', { body });
       if (result.error) throw new Error(await errorText(result.error));
       if (!result.data?.ok || !result.data.analysis) throw new Error(result.data?.error || 'Kein Analyseergebnis empfangen.');
@@ -47,7 +57,7 @@ async function run() {
     status(`Analyse abgeschlossen · ${analysis.symbol} · ${analysis.narrative.mode === 'ai' ? `${aiLabel(analysis)} + Chartberechnung` : 'Chartregeln; KI nicht aktiv'} · Kursstand ${analysis.price_date}`, analysis.quality.blocked || analysis.warnings?.length ? 'warn' : 'good');
     await Promise.allSettled([loadHistory(), loadTriggers()]); return true;
   } catch (e) { if (runEpoch === epoch) status(`Analyse fehlgeschlagen: ${e.message}`, 'bad'); return false; }
-  finally { setBusy(false); }
+  finally { if(runEpoch===epoch)setBusy(false); }
 }
 
 function chartSvg(a) {
@@ -80,6 +90,7 @@ function render(a) {
     ['News / Modus',`${a.sources.length} Quellen`,a.narrative.mode === 'ai' ? `${aiLabel(a)}-Auswertung aktiv` : 'Regelbasierte Berechnung']
   ].map(([label,value,detail]) => `<article class="card ss-metric"><span class="ss-small">${html(label)}</span><strong>${html(value)}</strong><span class="ss-small">${html(detail)}</span></article>`).join('');
   $('ssQuality').innerHTML = `<div class="ss-note">${a.quality.blocked ? '<b class="ss-bad">Handelsschwellen gesperrt. </b>' : ''}Daten: ${a.quality.bars} Tageskerzen · ${a.quality.ageDays} Kalendertage seit letzter Kerze. ${html([...a.quality.notes,...(a.warnings || [])].join(' '))}<br>${html(a.limitations.join(' '))}</div>`;
+  if(a.market_data)$('ssQuality').innerHTML+='<div class="ss-note">Kursquelle: '+html(a.provider)+' · '+html(a.market_data.quote_symbol||a.symbol)+' · '+html(a.currency)+' · '+html(a.market_data.identity||'')+' · EODHD verwendet: '+(a.market_data.eodhd_used?'Ja':'Nein')+'</div>';
   $('ssChart').innerHTML = chartSvg(a);
   $('ssSimulationInfo').textContent = `${a.simulation.paths} Pfade · Seed ${a.simulation.seed} · ${a.simulation.model} Tagesdrift ${(a.simulation.drift*100).toFixed(3)} %. Newsimpuls ${num(a.simulation.newsBias)}. ${a.simulation.newsImpulseRule} ${a.simulation.note}`;
   $('ssScenarios').innerHTML = a.scenarios.map(s => `<article class="ss-method"><h4>${html(s.name)}</h4><b>${num(s.endpoint)} ${html(a.currency)}</b><p>${html(s.condition)}</p><small>Illustrative Bedingung; keine gemessene Ereigniswahrscheinlichkeit.</small></article>`).join('');
@@ -184,7 +195,7 @@ if (page) {
   window.addEventListener('investition:signal-simulation-visible',() => Promise.allSettled([loadHistory(),loadTriggers(),loadLaunch()]));
   window.addEventListener('investition:news-changed',() => { if (!page.hidden) return Promise.allSettled([loadTriggers()]); });
   window.addEventListener('investition:auth-changed',() => {
-    epoch++; current=null; imported=null; triggers=[]; $('ssResults').hidden=true; $('ssHistory').textContent='Nach Anmeldung neu laden.'; $('ssTriggerList').textContent='Nach Anmeldung neu laden.'; clearImport(); clearOrigin();
+    epoch++; setBusy(false);current=null; imported=null; triggers=[]; $('ssResults').hidden=true; $('ssHistory').textContent='Nach Anmeldung neu laden.'; $('ssTriggerList').textContent='Nach Anmeldung neu laden.'; clearImport(); clearOrigin();
     if (!page.hidden) return Promise.allSettled([loadHistory(),loadTriggers(),loadLaunch()]);
   });
   // Deferred navigation can select #signals before this module finishes loading.

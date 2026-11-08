@@ -3,7 +3,7 @@ import { normalizeBars, technicals, tradeSetups, hashSeed, mean, clamp } from '.
 import { validateSignalInput, SignalError } from './signal-service.mjs';
 import { validateManualUrls } from './manual-sources.mjs';
 
-export const DEEP_VERSION = '35.0.0-deep-analysis';
+export const DEEP_VERSION = '36.0.0-deep-analysis';
 export const HORIZONS = [5, 20, 60, 120, 252];
 export const LOOKBACKS = [60, 126, 252, 756, 1260, 2000];
 const finite = (v, fallback) => v === '' || v == null ? fallback : Number(v);

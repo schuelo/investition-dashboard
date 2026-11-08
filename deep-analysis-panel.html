@@ -1,7 +1,7 @@
 <!-- Embedded into index.html by the release build; do not navigate to this fragment. -->
 <section class="da-module" id="deepAnalysisModule">
   <article class="card da-hero">
-    <div><span class="da-eyebrow">V35.0.0 · DEEP-ANALYSE</span><h2>These prüfen. Szenarien vergleichen. Risiken verstehen.</h2>
+    <div><span class="da-eyebrow">V36.0.0 · DEEP-ANALYSE</span><h2>These prüfen. Szenarien vergleichen. Risiken verstehen.</h2>
     <p>News und Quellen, Tages- und Wochencharts, sechs Verläufe und Produktstress. Jede gespeicherte Analyse behält ihren ursprünglichen Datenstand.</p></div>
     <span class="chip">Manueller Start</span>
   </article>
@@ -11,7 +11,7 @@
         <h3>Neue Deep-Analyse</h3>
         <div data-security-target="deep"></div>
         <div class="da-grid">
-          <label>Symbol mit Handelsplatz<input id="daSymbol" required maxlength="38" value="NVDA.US"></label>
+          <label>Analysekennung mit Handelsplatz<input id="daSymbol" required maxlength="38" value="NVDA.US"></label>
           <label>Basiswertwährung<select id="daCurrency"><option>USD</option><option>EUR</option><option>GBP</option><option>GBX</option><option>CHF</option><option>JPY</option><option>KRW</option><option>CNY</option><option>HKD</option><option>SEK</option><option>AUD</option><option>CAD</option><option>INR</option></select></label>
           <label>Unternehmen<input id="daCompany" maxlength="120" placeholder="NVIDIA"></label>
           <label>Branche / Kontext<input id="daSector" maxlength="100" placeholder="Halbleiter, Energie …"></label>
@@ -20,13 +20,19 @@
           <label>Nachrichtenfenster<select id="daNewsDays"><option value="3">3 Kalendertage</option><option value="7">7 Kalendertage</option><option value="14" selected>14 Kalendertage</option><option value="30">30 Kalendertage</option><option value="90">90 Kalendertage</option></select></label>
           <label>Hypothetischer Schock (%)<input id="daShock" type="number" min="0" max="40" step=".5" value="5"></label>
         </div>
+        <div class="da-grid">
+          <label>Kursquelle<select id="daMarketSource"><option value="independent">Öffentliche Chartdaten · ohne EODHD</option><option value="csv">Eigene OHLCV-CSV · ohne Kursdienst</option><option value="eodhd">EODHD · bisheriger Weg</option></select></label>
+          <label>Öffentliche Kurskennung<input id="daQuoteSymbol" maxlength="40" placeholder="z. B. SND.DE, SU.PA oder NVDA" autocomplete="off"></label>
+        </div>
+        <label class="da-check"><input id="daQuoteConfirmed" type="checkbox"> Öffentliche Kurskennung, Handelsplatz und Notierungswährung geprüft</label>
+        <p class="da-help">Die unabhängige Quelle verwendet öffentliche Yahoo-Chartdaten über eine inoffizielle Schnittstelle. Sie kann begrenzt oder nicht erreichbar sein. Dann CSV verwenden; kein automatischer EODHD-Abruf. Ein CSV-Import hat Vorrang.</p>
         <label>These / Ereignis<textarea id="daContext" maxlength="2000" placeholder="Welche Annahme soll geprüft werden?"></textarea></label>
         <label>Ereignisrichtung für den separaten Modellvergleich<select id="daEventDirection"><option value="neutral">Neutral / unbekannt</option><option value="bullish">Positive Nutzerannahme</option><option value="bearish">Negative Nutzerannahme</option></select></label>
         <label class="da-check"><input id="daUseAi" type="checkbox" checked> Gemini beim manuellen Start verwenden</label>
         <label class="da-check"><input id="daResearch" type="checkbox" checked> Kostenlose öffentliche Quellen recherchieren und hinterlegen</label>
         <label>Eigene Quellen-URLs (optional, eine je Zeile)<textarea id="daManualUrls" rows="5" maxlength="18010" placeholder="https://www.unternehmen.de/investor-relations/meldung&#10;https://www.nachrichtenquelle.de/artikel" aria-describedby="daManualUrlsHelp"></textarea></label>
         <p class="da-help" id="daManualUrlsHelp">Bis zu 10 öffentliche HTTPS-Links. Deine Links ergänzen die automatische Suche und werden auch bei ausgeschalteter Recherche geprüft. Lesbare HTML-/Textauszüge fließen beim manuellen KI-Start ein. PDF, Anmeldung, Paywall oder Bot-Sperre werden als nicht gelesen ausgewiesen.</p>
-        <p class="da-help">Längere Kurshistorien kommen aus deinem CSV-Import. Die kostenlose Kursabfrage bleibt auf ein Jahr begrenzt. Links und Seitenwechsel starten keine KI.</p>
+        <p class="da-help">Öffentliche Chartdaten: bis zu 2000 verfügbare Tageskerzen, abhängig vom Wertpapier. CSV: 60–2000 Kerzen. Der bisherige EODHD-Weg bleibt auf ein Jahr begrenzt. Links und Seitenwechsel starten keine KI.</p>
         <details><summary>TRIGGER KI und Kursdaten</summary>
           <div class="da-actions"><button class="btn" type="button" id="daCopy">Eingaben aus Signalanalyse übernehmen</button><button class="btn" type="button" id="daLoadTriggers">TRIGGER KI laden</button></div>
           <label>Ausgangsmeldung<select id="daTrigger"><option value="">Ohne ausgewählte Meldung</option></select></label>
@@ -92,7 +98,7 @@
         </details>
         <div class="da-actions"><button id="daRun" class="btn primary" type="submit">Deep-Analyse manuell starten</button><button id="daDemo" class="btn" type="button">Synthetische Demo</button></div>
       </form>
-      <p id="daStatus" class="da-status" role="status" aria-live="polite">V35.0.0 wird geladen … Falls dieser Text stehen bleibt, die Seite vollständig neu laden.</p>
+      <p id="daStatus" class="da-status" role="status" aria-live="polite">V36.0.0 wird geladen … Falls dieser Text stehen bleibt, die Seite vollständig neu laden.</p>
     </article>
     <aside class="card da-panel">
       <h3>Deine Analysehistorie</h3>

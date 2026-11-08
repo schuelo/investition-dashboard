@@ -18,6 +18,7 @@ export function validateSecurityQuery(body={}) {
   return {query,kind,preferred_exchange:preferred,key:kind+':'+query+':'+preferred};
 }
 const equity=m=>m.marketSector==='Equity'&&!/warrant|option|certificate|structured|future|right|note/i.test((m.securityType||'')+' '+(m.securityType2||'')) && /stock|share|fund|etf|deposit|reit|equity/i.test((m.securityType||'')+' '+(m.securityType2||''));
+export const isSupportedFigi=equity;
 function identities(rows) {
   return new Set(rows.flatMap(r=>['figi','compositeFIGI','shareClassFIGI'].map(k=>r[k]).filter(v=>figi.test(v||''))));
 }

@@ -8,6 +8,7 @@ import { parseRss } from "../_shared/multisource-sources-v294.ts";
 import { loadSecFundamentals } from "../_shared/deep-fundamentals.mjs";
 import { loadManualSources } from "../_shared/manual-sources.mjs";
 import { pinnedHttpsPage } from "../_shared/pinned-https.mjs";
+import { loadPublicMarket,publicMarketAdapters } from "../_shared/independent-market.mjs";
 
 const env = (name: string) => String(Deno.env.get(name) || "").trim();
 const reply = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: jsonHeaders });
@@ -27,7 +28,7 @@ Deno.serve(async (request: Request) => {
     let body: Record<string,any>;
     try{body=JSON.parse(raw);}catch{return reply({ok:false,error:"Ungültiges JSON."},400);}
     if(!body || typeof body!=="object" || Array.isArray(body)) return reply({ok:false,error:"JSON-Objekt erforderlich."},400);
-    if(body.action==='capabilities')return reply({ok:true,features:['manual_urls_v34']});
+    if(body.action==='capabilities')return reply({ok:true,features:['manual_urls_v34','independent_market_v36']});
     const ownAnalysis=async(id:string)=>{
       const {data,error}=await admin.from("deep_analyses").select("id,raw_result")
         .eq("id",id).eq("user_id",userId).maybeSingle();
@@ -35,6 +36,10 @@ Deno.serve(async (request: Request) => {
       return {...data.raw_result,id:data.id};
     };
     const loadMarket=async(input:any,now:Date)=>{
+      if(input.market_source==='independent') {
+        try{return await loadPublicMarket(input,publicMarketAdapters(admin,userId),now);}
+        catch(e){throw new SignalError(e instanceof Error?e.message:'Öffentliche Kursdaten nicht verfügbar. CSV verwenden.',(e as any)?.status||422);}
+      }
       const cached=await admin.from("signal_market_cache").select("bars,provider,fetched_at").eq("symbol",input.symbol).maybeSingle();
       let usable:any=null;
       if(cached.data) {

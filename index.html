@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="de">
 <head>
-  <meta name="application-version" content="35.0.0">
-  <script defer src="./release.js?v=35.0.0"></script>
+  <meta name="application-version" content="36.0.0">
+  <script defer src="./release.js?v=36.0.0"></script>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="color-scheme" content="dark" />
@@ -1011,8 +1011,8 @@
 
   </style>
   <link rel="stylesheet" href="./signal-simulation.css?v=31.2" />
-  <link rel="stylesheet" href="./deep-analysis.css?v=35.0.0" />
-  <link rel="stylesheet" href="./security-picker.css?v=35.0.0" />
+  <link rel="stylesheet" href="./deep-analysis.css?v=36.0.0" />
+  <link rel="stylesheet" href="./security-picker.css?v=36.0.0" />
   <link rel="stylesheet" href="./paper-portfolio.css?v=33.0" />
 </head>
 <body class="auth-locked">
@@ -1059,7 +1059,7 @@ setTimeout(function(){
       <div class="brand-mark">I</div>
       <div>
         <h2 id="authGateTitle">Investition Dashboard</h2>
-        <p class="auth-subtitle">Geschützter Cloud-Zugang · Version <span data-release-version>35.0.0</span></p>
+        <p class="auth-subtitle">Geschützter Cloud-Zugang · Version <span data-release-version>36.0.0</span></p>
       </div>
     </div>
     <p style="margin:0;color:#c3d1de">Melde dich mit deinem bestehenden Supabase-Konto an. Ohne erfolgreiche Anmeldung bleiben Dashboard, Analysen, Depotpositionen, News und Benachrichtigungen gesperrt.</p>
@@ -1082,7 +1082,7 @@ setTimeout(function(){
   </section>
 </div>
 <div class="app-shell" id="appShell" inert aria-hidden="true">
-    <nav class="main-nav" aria-label="Dashboard-Bereiche" data-release-label="V35.0.0 · INVESTITION DASHBOARD">
+    <nav class="main-nav" aria-label="Dashboard-Bereiche" data-release-label="V36.0.0 · INVESTITION DASHBOARD">
       <button class="nav-btn active" id="navDecisionBtn" data-page="decision">◆ Entscheidungszentrale</button>
       <button class="nav-btn" id="navTradingBtn" data-page="trading">▦ Trading & Analysen</button>
       <button class="nav-btn" id="navAnalyticsBtn" data-page="analytics">▤ Portfolio Intelligence</button>
@@ -1120,7 +1120,7 @@ setTimeout(function(){
           <p>Priorisierte Signale, Investmentthesen, Ereignisse, Szenarien, Portfoliorisiken, Signalvalidierung und Systemgesundheit in einer gemeinsamen Entscheidungskette.</p>
         </div>
         <div class="decision-version">
-          <span class="chip good">Dashboard <span data-release-version>35.0.0</span></span>
+          <span class="chip good">Dashboard <span data-release-version>36.0.0</span></span>
           <span class="chip neutral">Eventanalyse 30.0</span>
           <span class="chip neutral">Ausbaustufen 18–23 + 25</span>
           <button class="btn small" id="decisionRefreshBtn" type="button">↻ Aktualisieren</button>
@@ -1323,7 +1323,7 @@ setTimeout(function(){
       <h2>Signal- &amp; Verlaufssimulation</h2>
       <p>TRIGGER-KI-Meldung auswählen, KI manuell starten, News und Charttechniken auswerten und mögliche Verläufe sowie bedingte Ein-/Ausstiege prüfen.</p>
       <span class="ss-small">Tageskurse · getrennte Analyse · sichtbar begründete Chartmethoden · Ergebnisse mit Quellen und Datenstand</span>
-      <div class="ss-actions"><button class="btn" type="button" id="daOpen">V35.0.0 · Deep-Analyse öffnen</button></div>
+      <div class="ss-actions"><button class="btn" type="button" id="daOpen">V36.0.0 · Deep-Analyse öffnen</button></div>
       <p><a class="btn" href="#paperPortfolioModule">V33 · Fiktives Benchmark-Depot öffnen</a></p>
     </section>
     <section class="ss-layout">
@@ -1334,11 +1334,17 @@ setTimeout(function(){
         <form id="ssForm">
           <div data-security-target="signal"></div>
           <div class="ss-fields">
-            <label>EODHD-Symbol / Handelsplatz<input id="ssSymbol" placeholder="NVDA.US / SAP.XETRA" required maxlength="40" autocomplete="off" /></label>
+            <label>Analysekennung mit Handelsplatz<input id="ssSymbol" placeholder="NVDA.US / SND.XETRA" required maxlength="40" autocomplete="off" /></label>
             <label>Notierungswährung bestätigen<select id="ssCurrency" required><option value="">Bitte bestätigen</option><option selected>USD</option><option>EUR</option><option>GBP</option><option>GBX</option><option>CHF</option><option>JPY</option><option>KRW</option><option>CNY</option><option>HKD</option><option>SEK</option><option>AUD</option><option>CAD</option><option>INR</option></select></label>
             <label>Unternehmensname (optional)<input id="ssCompany" maxlength="120" placeholder="NVIDIA" /></label>
             <label>Simulationshorizont<select id="ssDays"><option value="5">5 Handelstage</option><option value="20" selected>20 Handelstage</option><option value="60">60 Handelstage</option></select></label>
           </div>
+          <div class="ss-fields">
+            <label>Kursquelle<select id="ssMarketSource"><option value="independent">Öffentliche Chartdaten · ohne EODHD</option><option value="csv">Eigene OHLCV-CSV · ohne Kursdienst</option><option value="eodhd">EODHD · bisheriger Weg</option></select></label>
+            <label>Öffentliche Kurskennung<input id="ssQuoteSymbol" maxlength="40" placeholder="z. B. SND.DE, SU.PA oder NVDA" autocomplete="off" /></label>
+          </div>
+          <label class="ss-check"><input id="ssQuoteConfirmed" type="checkbox" /> Öffentliche Kurskennung, Handelsplatz und Notierungswährung geprüft</label>
+          <p class="ss-small">OpenFIGI ordnet WKN/ISIN ohne EODHD zu. Öffentliche Yahoo-Chartdaten verwenden eine eigene, inoffizielle Schnittstelle mit möglichen Ausfällen und Limits. Bei einem Fehler CSV importieren. EODHD wird nur bei ausdrücklicher Quellenwahl verwendet; ein CSV-Import hat Vorrang.</p>
           <label>Nachrichtenthema / Hypothese (optional)<textarea id="ssContext" maxlength="2000" placeholder="Zum Beispiel: neue Exportbeschränkungen für KI-Chips. Eine Hypothese wird nicht automatisch als bestätigtes Ereignis gewertet."></textarea></label>
           <label class="ss-check"><input type="checkbox" id="ssUseAi" checked /> KI für News-Ableitungen verwenden (wenn konfiguriert)</label>
           <p class="ss-small">Ein KI-Aufruf erst nach deinem manuellen Start. Telegram-Links, Anmeldung, neue News und Seitenwechsel starten keine KI. Bei erreichtem Kontingent läuft die Chartberechnung weiter.</p>
@@ -1349,7 +1355,7 @@ setTimeout(function(){
         <details>
           <summary>Eigene OHLCV-Kursdaten als CSV importieren</summary>
           <p class="ss-small">Spalten: date,open,high,low,close,volume[,adjusted_close]. Mindestens 60 abgeschlossene Tageskerzen. Komma oder Semikolon; Dezimalkomma nur bei Semikolon. Kein TradingView-Widget-Scraping.</p>
-          <label>CSV-Datei<input id="ssCsv" type="file" accept=".csv,text/csv" /></label><p id="ssCsvStatus" class="ss-small">Kein Import; Kurse kommen aus dem Marktcache/EODHD.</p><button class="btn" id="ssClearCsv" type="button">Import entfernen</button>
+          <label>CSV-Datei<input id="ssCsv" type="file" accept=".csv,text/csv" /></label><p id="ssCsvStatus" class="ss-small">Kein Import; die gewählte Kursquelle wird verwendet.</p><button class="btn" id="ssClearCsv" type="button">Import entfernen</button>
         </details>
         <div class="ss-note">Ein Kursverlauf ist eine Modellsimulation. Handelsmarken gelten erst nach Bestätigung. Veraltete Kurse und ungeklärte Kurssprünge sperren Empfehlungen.</div>
       </article>
@@ -1372,7 +1378,7 @@ setTimeout(function(){
 <!-- Embedded into index.html by the release build; do not navigate to this fragment. -->
 <section class="da-module" id="deepAnalysisModule">
   <article class="card da-hero">
-    <div><span class="da-eyebrow">V35.0.0 · DEEP-ANALYSE</span><h2>These prüfen. Szenarien vergleichen. Risiken verstehen.</h2>
+    <div><span class="da-eyebrow">V36.0.0 · DEEP-ANALYSE</span><h2>These prüfen. Szenarien vergleichen. Risiken verstehen.</h2>
     <p>News und Quellen, Tages- und Wochencharts, sechs Verläufe und Produktstress. Jede gespeicherte Analyse behält ihren ursprünglichen Datenstand.</p></div>
     <span class="chip">Manueller Start</span>
   </article>
@@ -1382,7 +1388,7 @@ setTimeout(function(){
         <h3>Neue Deep-Analyse</h3>
         <div data-security-target="deep"></div>
         <div class="da-grid">
-          <label>Symbol mit Handelsplatz<input id="daSymbol" required maxlength="38" value="NVDA.US"></label>
+          <label>Analysekennung mit Handelsplatz<input id="daSymbol" required maxlength="38" value="NVDA.US"></label>
           <label>Basiswertwährung<select id="daCurrency"><option>USD</option><option>EUR</option><option>GBP</option><option>GBX</option><option>CHF</option><option>JPY</option><option>KRW</option><option>CNY</option><option>HKD</option><option>SEK</option><option>AUD</option><option>CAD</option><option>INR</option></select></label>
           <label>Unternehmen<input id="daCompany" maxlength="120" placeholder="NVIDIA"></label>
           <label>Branche / Kontext<input id="daSector" maxlength="100" placeholder="Halbleiter, Energie …"></label>
@@ -1391,13 +1397,19 @@ setTimeout(function(){
           <label>Nachrichtenfenster<select id="daNewsDays"><option value="3">3 Kalendertage</option><option value="7">7 Kalendertage</option><option value="14" selected>14 Kalendertage</option><option value="30">30 Kalendertage</option><option value="90">90 Kalendertage</option></select></label>
           <label>Hypothetischer Schock (%)<input id="daShock" type="number" min="0" max="40" step=".5" value="5"></label>
         </div>
+        <div class="da-grid">
+          <label>Kursquelle<select id="daMarketSource"><option value="independent">Öffentliche Chartdaten · ohne EODHD</option><option value="csv">Eigene OHLCV-CSV · ohne Kursdienst</option><option value="eodhd">EODHD · bisheriger Weg</option></select></label>
+          <label>Öffentliche Kurskennung<input id="daQuoteSymbol" maxlength="40" placeholder="z. B. SND.DE, SU.PA oder NVDA" autocomplete="off"></label>
+        </div>
+        <label class="da-check"><input id="daQuoteConfirmed" type="checkbox"> Öffentliche Kurskennung, Handelsplatz und Notierungswährung geprüft</label>
+        <p class="da-help">Die unabhängige Quelle verwendet öffentliche Yahoo-Chartdaten über eine inoffizielle Schnittstelle. Sie kann begrenzt oder nicht erreichbar sein. Dann CSV verwenden; kein automatischer EODHD-Abruf. Ein CSV-Import hat Vorrang.</p>
         <label>These / Ereignis<textarea id="daContext" maxlength="2000" placeholder="Welche Annahme soll geprüft werden?"></textarea></label>
         <label>Ereignisrichtung für den separaten Modellvergleich<select id="daEventDirection"><option value="neutral">Neutral / unbekannt</option><option value="bullish">Positive Nutzerannahme</option><option value="bearish">Negative Nutzerannahme</option></select></label>
         <label class="da-check"><input id="daUseAi" type="checkbox" checked> Gemini beim manuellen Start verwenden</label>
         <label class="da-check"><input id="daResearch" type="checkbox" checked> Kostenlose öffentliche Quellen recherchieren und hinterlegen</label>
         <label>Eigene Quellen-URLs (optional, eine je Zeile)<textarea id="daManualUrls" rows="5" maxlength="18010" placeholder="https://www.unternehmen.de/investor-relations/meldung&#10;https://www.nachrichtenquelle.de/artikel" aria-describedby="daManualUrlsHelp"></textarea></label>
         <p class="da-help" id="daManualUrlsHelp">Bis zu 10 öffentliche HTTPS-Links. Deine Links ergänzen die automatische Suche und werden auch bei ausgeschalteter Recherche geprüft. Lesbare HTML-/Textauszüge fließen beim manuellen KI-Start ein. PDF, Anmeldung, Paywall oder Bot-Sperre werden als nicht gelesen ausgewiesen.</p>
-        <p class="da-help">Längere Kurshistorien kommen aus deinem CSV-Import. Die kostenlose Kursabfrage bleibt auf ein Jahr begrenzt. Links und Seitenwechsel starten keine KI.</p>
+        <p class="da-help">Öffentliche Chartdaten: bis zu 2000 verfügbare Tageskerzen, abhängig vom Wertpapier. CSV: 60–2000 Kerzen. Der bisherige EODHD-Weg bleibt auf ein Jahr begrenzt. Links und Seitenwechsel starten keine KI.</p>
         <details><summary>TRIGGER KI und Kursdaten</summary>
           <div class="da-actions"><button class="btn" type="button" id="daCopy">Eingaben aus Signalanalyse übernehmen</button><button class="btn" type="button" id="daLoadTriggers">TRIGGER KI laden</button></div>
           <label>Ausgangsmeldung<select id="daTrigger"><option value="">Ohne ausgewählte Meldung</option></select></label>
@@ -1463,7 +1475,7 @@ setTimeout(function(){
         </details>
         <div class="da-actions"><button id="daRun" class="btn primary" type="submit">Deep-Analyse manuell starten</button><button id="daDemo" class="btn" type="button">Synthetische Demo</button></div>
       </form>
-      <p id="daStatus" class="da-status" role="status" aria-live="polite">V35.0.0 wird geladen … Falls dieser Text stehen bleibt, die Seite vollständig neu laden.</p>
+      <p id="daStatus" class="da-status" role="status" aria-live="polite">V36.0.0 wird geladen … Falls dieser Text stehen bleibt, die Seite vollständig neu laden.</p>
     </article>
     <aside class="card da-panel">
       <h3>Deine Analysehistorie</h3>
@@ -1779,10 +1791,11 @@ setTimeout(function(){
 <script defer src="./analytics.js?v=29.4"></script>
 <script defer src="./event-analysis.js?v=30.1"></script>
 
-<script type="module" src="./signal-simulation.js?v=31.2"></script>
-<script type="module" src="./deep-analysis.js?v=35.0.0"></script>
+<script type="module" src="./signal-simulation.js?v=36.0.0"></script>
+<script type="module" src="./deep-analysis.js?v=36.0.0"></script>
 <script type="module" src="./paper-portfolio.js?v=33.0"></script>
-<script type="module" src="./security-picker.js?v=35.0.0"></script>
+<script type="module" src="./security-picker.js?v=36.0.0"></script>
+<script type="module" src="./market-data.js?v=36.0.0"></script>
 
 </body>
 </html>

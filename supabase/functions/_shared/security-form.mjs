@@ -3,7 +3,8 @@ export const ANALYSIS_CURRENCIES=['EUR','USD','GBP','GBX','CHF','JPY','KRW','CNY
 export const SECURITY_TARGETS=['trade','signal','deep','paper','csv','history','event'];
 export function securityFieldChanges(scope,candidate,current={},options={}) {
   if(!SECURITY_TARGETS.includes(scope)||!candidate?.verified||!/^[A-Z0-9_^+\-]{1,25}\.[A-Z0-9]{1,12}$/.test(candidate.market_symbol||''))throw Error('Keine verifizierte Notierung ausgewählt.');
-  const c=candidate,values={},messages=[];
+  const c={...candidate,currency:candidate.currency||options.currency||null,isin:candidate.isin||''},values={},messages=[];
+  if(['trade','signal','deep','paper','csv'].includes(scope)&&!c.currency)throw Error('Notierungswährung fehlt. Im Suchergebnis ausdrücklich auswählen; sie wird nicht aus der Börse geraten.');
   if(['signal','deep'].includes(scope)&&!ANALYSIS_CURRENCIES.includes(c.currency))throw Error('Diese Notierungswährung wird von der Analyse noch nicht unterstützt. Anderen Handelsplatz wählen.');
   const changed=(oldSymbol,oldCurrency)=>oldSymbol!==c.market_symbol||!!oldCurrency&&oldCurrency!==c.currency;
   if(scope==='trade') {
@@ -18,6 +19,12 @@ export function securityFieldChanges(scope,candidate,current={},options={}) {
     }
     if(!product)Object.assign(values,{wkn:c.wkn||'',isin:c.isin});
     else messages.push('Basiswert übernommen. KO-Produktkennung und aktuelle Produktbedingungen separat eingeben.');
+    if(c.eodhd_verified===false) {
+      if(options.disable_eod_alerts!==true)throw Error('Unabhängige Zuordnung ist keine EODHD-Prüfung. Für eine reine Chart-/Analyseübernahme das Leeren der EODHD-Alarmfelder bestätigen oder mit EODHD suchen.');
+      values.marketSymbol='';values.monitoringEnabled=false;
+      for(const key of ['alertEntry','alertLimit','alertStop','alertTarget1','alertTarget2','alertTarget3','alertKo'])values[key]=false;
+      messages.push('EODHD-Kennung und Kursalarm-Checkboxen nur in diesem ungespeicherten Formular geleert.');
+    }
   } else if(scope==='signal')Object.assign(values,{ssSymbol:c.market_symbol,ssCompany:c.name,ssCurrency:c.currency});
   else if(scope==='deep') {
     Object.assign(values,{daSymbol:c.market_symbol,daCompany:c.name,daCurrency:c.currency});
@@ -37,7 +44,7 @@ export function securityFieldChanges(scope,candidate,current={},options={}) {
     }
   } else if(scope==='history')values.daHistorySymbol=c.market_symbol;
   else if(scope==='event') {
-    const line='Wertpapier: '+c.name+' | EODHD '+c.market_symbol+' | ISIN '+c.isin+(c.wkn?' | WKN '+c.wkn:'');
+    const line='Wertpapier: '+c.name+' | '+(c.eodhd_verified===false?'Analysekennung ':'EODHD ')+c.market_symbol+(c.isin?' | ISIN '+c.isin:c.figi?' | FIGI '+c.figi:'')+(c.wkn?' | WKN '+c.wkn:'');
     const existing=String(current.eventAnalysisInput||'');const text=existing.includes(line)?existing:(existing?existing+'\n\n':'')+line;
     if(text.length>2000)throw Error('Ereignistext zu lang; zuerst Platz für die Wertpapierkennung schaffen.');values.eventAnalysisInput=text;
   }
