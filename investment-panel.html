@@ -1,13 +1,16 @@
 <!-- Embedded by scripts/set-version.mjs. -->
 <section id="investmentReviewModule" class="iv-module">
-  <header class="iv-head"><div><p class="compact-eyebrow">Wertpapier prüfen</p><h2>These, Potenzial und nächster Schritt</h2><p class="compact-muted">Ein Bericht für Charttechnik, Nachrichten, Szenarien und dein Gespräch. KI startet erst beim Senden einer Chatfrage.</p></div><button class="btn" id="rvNew" type="button">Neuen Wert prüfen</button></header>
+  <div class="direct-security-nav"><button class="btn" id="rvBack" type="button">← Zurück</button><button class="btn" id="rvRemember" type="button">+ Merken</button></div>
+  <header class="iv-head"><div><p class="compact-eyebrow" id="rvHeadingLabel">Suche</p><h2 id="rvSecurityName">Wertpapier finden</h2><p class="compact-muted" id="rvSecurityInfo">Gespeicherte Werte nach Name, Ticker, WKN oder ISIN finden. Neue Werte per WKN/ISIN zuordnen.</p></div><button class="btn" id="rvNew" type="button">Neuen Wert suchen</button></header>
+  <section id="rvSavedSearch"><label>Gespeicherte Werte<input id="rvSavedQuery" type="search" autocomplete="off" placeholder="Name, Ticker, WKN oder ISIN"></label><div id="rvSavedMatches"></div></section>
+  <div id="rvAssetActions" class="direct-asset-actions" hidden><button class="btn" id="rvPlan" type="button">Plan bearbeiten</button><button class="btn primary" id="rvAnalyze" type="button">Analyse aktualisieren</button><button class="btn" id="rvAsk" type="button">Gespräch / KI</button><label class="iv-monitor"><input id="rvMonitor" type="checkbox"> Automatisch prüfen · ohne KI</label></div>
   <p id="rvStatus" class="compact-status" role="status" aria-live="polite">WKN/ISIN suchen oder eine Depotposition öffnen. Kurse und KI werden nicht beim Öffnen abgerufen.</p>
   <section id="rvResult" hidden><div id="rvResultBody"></div><div class="ss-actions"><button class="btn" id="rvExport" type="button">Bericht als JSON</button><button class="btn" id="rvCopyContext" type="button">Kontext für ChatGPT kopieren</button><button class="btn" id="rvLegacy" type="button">Vollständige Deep-Vertiefung</button></div></section>
-  <details id="rvInputs" class="compact-original" open><summary>Wertpapier, Kursquelle und persönlicher Plan</summary>
+  <details id="rvInputs" class="compact-original" open><summary>Wertpapier auswählen / Analyse vorbereiten</summary>
     <form id="rvForm">
       <input id="rvAssetId" type="hidden"><input id="rvPositionId" type="hidden">
       <div data-security-target="review"></div>
-      <div class="iv-fields">
+      <details id="rvQuoteSettings"><summary>Notierung, Kursquelle und Horizont</summary><div class="iv-fields">
         <label>Analysekennung mit Handelsplatz<input id="rvSymbol" required maxlength="40" placeholder="SND.XETRA" autocomplete="off"></label>
         <label>Unternehmen<input id="rvCompany" maxlength="160" placeholder="Unternehmensname"></label>
         <label>Notierungswährung<select id="rvCurrency"><option>EUR</option><option>USD</option><option>GBP</option><option>GBX</option><option>CHF</option><option>JPY</option><option>KRW</option><option>CNY</option><option>HKD</option><option>SEK</option><option>AUD</option><option>CAD</option><option>INR</option></select></label>
@@ -20,23 +23,25 @@
       <label class="ss-check"><input type="checkbox" id="rvQuoteConfirmed"> Anbieterkennung, Handelsplatz und Währung geprüft. Ein Vorschlag ist noch keine Anbieterbestätigung.</label>
       <p id="rvSourceHelp" class="compact-muted">Alpha Vantage benötigt einen kostenlosen ALPHAVANTAGE_API_KEY auf dem Server. XETRA und US sind vorgesehen; die konkrete Notierung wird geprüft. Maximal 100 unadjustierte Tageskerzen, daher ggf. kein SMA200. Keine automatische Quellenumschaltung.</p>
       <label>Eigene Tageskurse (optional)<input id="rvCsv" type="file" accept=".csv,text/csv"></label><p id="rvCsvStatus" class="compact-muted">Kein CSV-Import. Spalten: date,open,high,low,close,volume[,adjusted_close].</p>
-      <div class="iv-fields">
+      </details><details id="rvPlanSettings"><summary>Dein Plan · Budget, Stop und Ziele</summary><div class="iv-fields">
         <label>Zusätzliches Kaufbudget in Notierungswährung<input id="rvBudget" type="number" min="0" max="1000000000" step="any" value="0"></label>
         <label>Geplante Tranchen<input id="rvTranches" type="number" min="1" max="10" step="1" value="3"></label>
         <label>Eigene Risiko-/Ausstiegsgrenze<input id="rvStop" type="number" min="0.000001" step="any" placeholder="optional"></label>
         <label>Eigenes Teilgewinnziel<input id="rvTarget" type="number" min="0.000001" step="any" placeholder="optional"></label>
       </div>
       <label>These, Anlagehorizont und wichtige Gesprächsannahmen<textarea id="rvContext" maxlength="2000" rows="3" placeholder="Was soll für diese Anlage gelten? Nutzervorgaben werden von bestätigten Fakten getrennt."></textarea></label>
+      </details>
       <details><summary>Zusätzliche Recherche und eigene Quellen</summary><label class="ss-check"><input id="rvResearch" type="checkbox" checked> Beim manuellen Start zusätzliche öffentliche News-/Quellenrecherche durchführen</label><label>Bis zu zehn HTTPS-URLs, eine je Zeile<textarea id="rvUrls" rows="3" maxlength="18000"></textarea></label><p class="compact-muted">Suchtreffer sind zunächst Metadaten. Erreichbare eigene HTML-/Textquellen werden mit Abrufstatus und kurzem Auszug aufgenommen. Kein Zugriff auf gesperrte Volltexte.</p></details>
       <div class="ss-actions"><button class="btn primary" id="rvRun" type="submit">Prüfen und Plan speichern</button><button class="btn" id="rvSave" type="button">Nur Plan speichern</button></div>
       <p class="compact-muted">Basisprüfung ohne KI. Ein Ergebnis ist eine begründete Handlungsoption, keine Order. Das Kursdatum bleibt auch nach einer erneuten Analyse sichtbar.</p>
     </form>
   </details>
   <section id="rvConversation" class="compact-original" hidden>
-    <h3>Gespräch zu diesem Wertpapier</h3><p id="rvChatContext" class="compact-muted"></p><button class="btn" id="rvUpdateContext" type="button">Neuesten gespeicherten Bericht einbeziehen</button>
+    <details id="rvChatPanel"><summary>Gespräch &amp; KI-Vertiefung</summary><h3>Gespräch zu diesem Wertpapier</h3><p id="rvChatContext" class="compact-muted"></p><button class="btn" id="rvUpdateContext" type="button">Neuesten gespeicherten Bericht einbeziehen</button>
     <div id="rvMessages" class="iv-messages" aria-live="polite"></div><button class="btn" id="rvMoreMessages" type="button">Ältere Nachrichten laden</button>
     <form id="rvChatForm"><label>Frage oder Notiz<textarea id="rvMessage" required minlength="2" maxlength="4000" rows="3" placeholder="Was hat sich verändert? Welche Argumente sprechen für einen Teilverkauf?"></textarea></label><div class="iv-fields"><label>Aktion<select id="rvChatMode"><option value="chat">Gemini fragen · manueller KI-Aufruf</option><option value="note">Eigene Notiz speichern · ohne KI</option><option value="external">Externe Antwort übernehmen · ungeprüfte Interpretation</option></select></label><button class="btn primary" id="rvChatSend" type="submit">Senden</button></div></form>
     <p id="rvChatStatus" class="compact-status" role="status" aria-live="polite">Der Verlauf wird je Wertpapier gespeichert. KI verwendet den ausgewählten Bericht, deinen Plan und Auszüge der letzten 20 Nachrichten. Ein ChatGPT-Gespräch wird nicht automatisch verbunden.</p>
+    </details>
   </section>
   <details id="rvHistoryPanel" class="compact-original" hidden><summary>Frühere Berichte zu diesem Wertpapier</summary><button class="btn" id="rvLoadHistory" type="button">Historie laden</button><div id="rvHistory"></div></details>
 </section>

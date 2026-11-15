@@ -1,0 +1,43 @@
+/* V39 production navigation. Authentication and the legacy page controllers remain intact. */
+.direct-top{display:none}
+html[data-direct-ui=ready] .direct-top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 4px;margin-bottom:8px}
+.direct-top strong{font-size:14px;letter-spacing:.08em}.direct-top small{display:block;font-size:11px;color:var(--muted);margin-top:3px}
+html[data-direct-ui=ready] .main-nav{display:none!important}
+html[data-direct-ui=ready][data-investment-menu=open] .main-nav{display:grid!important;position:static;width:auto;height:auto;grid-template-columns:repeat(2,minmax(0,1fr));padding:12px;margin-bottom:12px}
+html[data-direct-ui=ready] .main-nav #navDecisionBtn,html[data-direct-ui=ready] .main-nav #navSignalSimulationBtn,html[data-direct-ui=ready] .main-nav #reviewMoreBtn{display:none}
+html[data-direct-ui=ready] .topbar{display:none}
+html[data-direct-ui=ready][data-direct-view=legacy] .topbar{display:block}
+html[data-direct-ui=ready]:not([data-direct-view=legacy]) #decisionPage>.compact-original{display:none}
+html[data-direct-ui=ready][data-direct-view=legacy] #decisionPage>#investmentPortfolio{display:none}
+html[data-direct-ui=ready] .iv-dock{display:grid;position:fixed;grid-template-columns:repeat(3,minmax(0,1fr));bottom:0;left:50%;right:auto;transform:translateX(-50%);width:100%;max-width:1100px;z-index:45;padding:10px 10px calc(10px + env(safe-area-inset-bottom,0px));gap:8px;background:#050505;border-top:1px solid var(--border)}
+html[data-direct-ui=ready] .iv-dock button{min-height:50px;background:none;color:var(--muted);border:0;border-radius:10px;font-size:13px}
+html[data-direct-ui=ready] .iv-dock button[aria-current=page]{background:#1b1b1b;color:var(--text)}
+html[data-direct-ui=ready] .app-shell{padding-bottom:calc(100px + env(safe-area-inset-bottom,0px));max-width:1100px}
+html[data-direct-ui=ready] .iv-portfolio{background:none;border:0;box-shadow:none;padding:12px 0}
+html[data-direct-ui=ready] .iv-grid{display:block}
+.direct-total{font-size:clamp(30px,5vw,42px);line-height:1.2;letter-spacing:-.04em;font-variant-numeric:tabular-nums;margin:12px 0}
+.direct-value-chart{width:100%;display:block;height:auto;min-height:130px}.direct-value-chart text{font:12px system-ui;fill:var(--muted)}
+.direct-periods{display:flex;gap:8px;justify-content:space-around;margin:8px 0 18px}.direct-periods button{flex:1;border:0;background:transparent}.direct-periods button[aria-pressed=true]{background:#202020;color:var(--text)}
+.direct-row{border-bottom:1px solid var(--border);padding:6px 0}
+.direct-row-main{display:grid;grid-template-columns:36px minmax(0,1fr) auto;gap:12px;align-items:start;width:100%;background:none;border:0;color:var(--text);text-align:left;padding:14px 0;min-height:44px}
+.direct-mark{display:flex;width:36px;height:36px;background:#191919;border-radius:50%;justify-content:center;align-items:center;font-size:11px;margin-top:3px}
+.direct-row-text{min-width:0}.direct-row-text strong{display:block;font-size:16px;overflow-wrap:anywhere}.direct-row-text small{display:block;font-size:12px;color:var(--muted);margin-top:4px;overflow-wrap:anywhere}.direct-verdict{display:block;margin:6px 0;color:var(--text);font-size:13px}.direct-verdict.good{color:var(--good)}.direct-verdict.warn,.direct-row-text small.warn{color:var(--warn)}
+.direct-row-price{font-size:17px;text-align:right;font-variant-numeric:tabular-nums}.direct-row-price small{display:block;font-size:12px;color:var(--muted)}
+.direct-row-plan{font-size:12px;color:var(--muted);margin:0 0 10px 48px;overflow-wrap:anywhere}
+.direct-row-status{margin-left:48px;border:0!important}.direct-row-status summary{min-height:36px;padding:7px 0;font-size:12px;color:var(--muted)}.direct-row-status p{font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.direct-security-nav{display:flex;justify-content:space-between;gap:10px;margin:8px 0 17px}.direct-security-nav button{min-height:44px}
+.direct-asset-actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:14px 0}.iv-module .direct-asset-actions label{flex-direction:row;align-items:center}
+html[data-direct-view=search] #rvAssetActions,html[data-direct-view=search] #rvRemember,html[data-direct-view=detail] #rvSavedSearch{display:none}
+html[data-direct-view=detail] #investmentReviewModule .security-picker{display:none}
+html[data-direct-ui=ready] #investmentReviewModule{max-width:100%;margin:0 auto}.iv-module #rvSavedQuery{font-size:16px;min-height:48px;margin:6px 0 12px}.iv-module #rvSavedSearch>label{font-size:13px;color:var(--muted)}
+.direct-load-actions{margin-top:14px}.direct-list-toggle[aria-pressed=true]{background:var(--text);color:#000}
+html[data-direct-ui=ready] .compact-report-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.direct-model{margin:18px 0}.direct-news-summary{margin:14px 0;padding:13px;border-left:2px solid var(--warn);background:#161616}.direct-news-summary p{font-size:13px;line-height:1.5}
+.direct-levels{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:18px 0}.direct-levels small{display:block;font-size:11px;color:var(--muted)}.direct-levels strong{display:block;font-size:14px;overflow-wrap:anywhere}
+@media(max-width:600px){
+  html[data-direct-ui=ready] .app-shell{padding-left:15px;padding-right:15px}
+  .direct-row-main{grid-template-columns:30px minmax(0,1fr) auto;gap:8px}.direct-mark{width:30px;height:30px}.direct-row-price{font-size:15px}.direct-row-text strong{font-size:15px}.direct-row-text small{font-size:11px}.direct-row-plan{margin-left:38px}
+  .direct-row-status{margin-left:38px}
+  .direct-asset-actions>button{flex:1}.direct-asset-actions>label{flex-basis:100%}.iv-head h2{font-size:26px}.iv-module input,.iv-module textarea,.iv-module select{font-size:16px}
+  html[data-direct-ui=ready] .compact-report-grid{grid-template-columns:minmax(0,1fr)}
+}

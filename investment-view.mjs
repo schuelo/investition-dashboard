@@ -4,7 +4,7 @@ export {e};
 export const dateTime=v=>v&&Number.isFinite(Date.parse(v))?new Date(v).toLocaleString('de-DE',{timeZone:'Europe/Berlin',dateStyle:'short',timeStyle:'short'}):'noch keine erfolgreiche Prüfung';
 export function assetView(asset,now=new Date()){
   const s=asset.state||{},quote=quoteStatus(typeof s.price==='number'&&Number.isFinite(s.price)&&s.price>0?s.price_date:null,now),attempt=s.last_attempt||null;
-  const decision=quote.code==='current'?s.decision?.label||'Noch keine Analyse':'Aktuelle Entscheidung offen';
+  const decision=s.plan_pending?'Plan geändert · neu prüfen':quote.code==='current'?s.decision?.label||'Noch keine Analyse':'Aktuelle Entscheidung offen';
   return {asset,state:s,quote,attempt,decision,failed:attempt?.status==='failed',notRun:attempt?.status==='not_run'};
 }
 export function portfolioCounts(assets,now=new Date()){

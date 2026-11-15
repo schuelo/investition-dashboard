@@ -1,6 +1,6 @@
 // Generated from release.json by scripts/set-version.mjs.
 (function(scope){
-  const release=Object.freeze({"version":"38.0.0","name":"Depotübersicht, gemeinsame Wertpapierprüfung und fortsetzbarer Analysechat","date":"2026-11-15"});
+  const release=Object.freeze({"version":"39.0.0","name":"Depot, Suche und Beobachtung mit Analyse direkt am Wertpapier","date":"2026-11-15"});
   scope.InvestitionRelease=release;
   if(typeof document!=="undefined"){
     const bind=()=>{document.documentElement.dataset.appVersion=release.version;document.querySelectorAll("[data-release-version]").forEach(el=>{el.textContent=release.version;});document.querySelectorAll("[data-release-label]").forEach(el=>el.setAttribute("data-release-label","V"+release.version+" · INVESTITION DASHBOARD"));};

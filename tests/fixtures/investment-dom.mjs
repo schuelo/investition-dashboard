@@ -24,7 +24,7 @@ export function uiHarness({api=apiHarness(),owner=alice,beforeInvoke=null}={}){
   const defaults={rvAssetId:'',rvPositionId:'',rvSymbol:'',rvCompany:'',rvCurrency:'EUR',rvSource:'alphavantage',rvQuoteSymbol:'',rvDays:'20',rvLookback:'252',rvWkn:'',rvIsin:'',rvBudget:'0',rvTranches:'3',rvStop:'',rvTarget:'',rvContext:'',rvUrls:'',rvCsv:'',rvMessage:'',rvChatMode:'chat'};
   function resetFields(){for(const[id,v]of Object.entries(defaults))els[id].value=v;els.rvQuoteConfirmed.checked=false;els.rvResearch.checked=false;}
   resetFields();els.decisionPage.hidden=true;els.signalSimulationPage.hidden=false;
-  document.getElementById=id=>els[id]||null;const navs=['portfolio','review','more'].map(v=>new El('',{reviewNav:v}));document.querySelectorAll=s=>s==='[data-review-nav]'?navs:[];
+  document.getElementById=id=>els[id]||null;const navs=['portfolio','search','watch','more'].map(v=>new El('',{reviewNav:v}));document.querySelectorAll=s=>s==='[data-review-nav]'?navs:[];
   els.navDecisionBtn.onClick=()=>{els.decisionPage.hidden=false;els.signalSimulationPage.hidden=true;window.dispatchEvent(new Event('investition:decision-visible'));};
   els.navSignalSimulationBtn.onClick=()=>{els.decisionPage.hidden=true;els.signalSimulationPage.hidden=false;window.dispatchEvent(new Event('investition:signal-simulation-visible'));};
   window.ResizeObserver=class{constructor(fn){this.fn=fn;this.disconnected=false;observed.push(this);}observe(target){this.target=target;}disconnect(){this.disconnected=true;}};

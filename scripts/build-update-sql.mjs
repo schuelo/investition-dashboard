@@ -1,13 +1,13 @@
-// Derive the V38 upgrade from the unchanged V32/V33/V35/V36 migrations and additive review tables.
+// Derive the V39 upgrade from the unchanged previous migrations and additive V39 structures.
 import {readFileSync,writeFileSync} from 'node:fs';
 const root=new URL('../',import.meta.url),read=p=>readFileSync(new URL(p,root),'utf8');
 const version=JSON.parse(read('release.json')).version;
-const sections=['setup-v32-deep-analysis.sql','setup-v33-paperdepot.sql','setup-v35-wkn.sql','setup-v36-independent.sql','setup-v38-investment-review.sql'].map(name=>{
+const sections=['setup-v32-deep-analysis.sql','setup-v33-paperdepot.sql','setup-v35-wkn.sql','setup-v36-independent.sql','setup-v38-investment-review.sql','setup-v39-direct.sql'].map(name=>{
   const sql=read(name);
   if(/cron\.(?:schedule|unschedule)|truncate|drop table/i.test(sql))throw Error('Unexpected destructive or scheduling operation in '+name);
   return '-- '+name+'\n'+sql.replace(/^begin;\s*$/gmi,'').replace(/^commit;\s*$/gmi,'').trim();
 });
-const result='-- V'+version+' overall upgrade from a working V31.2 or V32 installation.\n-- Adds missing V32/V33/V35/V36/V38 objects; preserves data and existing schedules.\n-- V34 manual URLs use the existing JSONB analysis/source snapshots.\nbegin;\n\n'+sections.join('\n\n')+'\n\ncommit;\n';
-if(process.argv.includes('--check')){if(read('setup-v38-gesamtupdate.sql')!==result)throw Error('Combined migration is outdated.');}
-else writeFileSync(new URL('setup-v38-gesamtupdate.sql',root),result);
-console.log('V38 baseline migration '+(process.argv.includes('--check')?'checked':'generated'));
+const result='-- V'+version+' overall upgrade from a working V31.2 or V32 installation.\n-- Adds missing V32/V33/V35/V36/V38/V39 objects; preserves data and existing schedules.\n-- V34 manual URLs use the existing JSONB analysis/source snapshots.\nbegin;\n\n'+sections.join('\n\n')+'\n\ncommit;\n';
+if(process.argv.includes('--check')){if(read('setup-v39-gesamtupdate.sql')!==result)throw Error('Combined migration is outdated.');}
+else writeFileSync(new URL('setup-v39-gesamtupdate.sql',root),result);
+console.log('V39 baseline migration '+(process.argv.includes('--check')?'checked':'generated'));

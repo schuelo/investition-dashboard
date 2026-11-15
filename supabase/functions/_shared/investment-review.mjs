@@ -2,6 +2,7 @@ import {buildDeepAnalysis,validateDeepInput} from './deep-engine.mjs';
 import {dedupeSources,relevantNews} from './deep-sources.mjs';
 import {ANALYSIS_CURRENCIES} from './security-form.mjs';
 import {validateManualUrls} from './manual-sources.mjs';
+import {assessNews,combineNewsDecision} from './review-news.mjs';
 
 export class ReviewError extends Error{constructor(message,status=422){super(message);this.status=status;}}
 const number=(v,fallback=null)=>v===''||v==null?fallback:Number.isFinite(Number(v))?Number(v):fallback;
@@ -55,29 +56,31 @@ export function investmentDecision(analysis,{position=null,policy={},now=new Dat
     basis:'Deterministische Chart-/Planprüfung; aktuelle Nachrichten sind getrennte Belege. Keine automatische Order.'};
 }
 export function buildInvestmentReview(input,{market=null,news=[],previous=null,position=null,now=new Date(),warnings=[]}={}){
-  const sources=dedupeSources([...relevantNews(news,input,now),...news.filter(s=>s.manual||s.discovery==='free_rss_search')],now),notes=[...warnings];let analysis=null;
+  const sources=dedupeSources([...relevantNews(news,input,now),...news.filter(s=>s.manual||['free_rss_search','targeted_free_rss'].includes(s.discovery))],now),notes=[...warnings];let analysis=null;
   if(market?.bars?.length){try{
     const req=validateDeepInput({...input,market_source:'csv',manual_start:true,use_ai:false,bars:market.bars,manual_urls:[],risk:{}});
     analysis=buildDeepAnalysis(req,market.bars,{sources,now,previous:previous?.analysis?[previous.analysis]:[],provider:market.provider});
     analysis.request.market_source=input.source;
     analysis.market_data={source:input.source,eodhd_used:input.source==='eodhd',...(market.provenance||{})};
   }catch(e){notes.push('Chartberechnung nicht möglich: '+e.message);}}
-  const decision=investmentDecision(analysis,{position,policy:input.policy,now,attempt:market?.attempt});
+  const newsAssessment=assessNews(sources,input,now),decision=combineNewsDecision(investmentDecision(analysis,{position,policy:input.policy,now,attempt:market?.attempt}),newsAssessment);
+  const long=analysis?.setups?.find(s=>s.direction==='long');
+  decision.levels={entry:long?.entry||null,stop:input.policy.stop||long?.stop||null,target:input.policy.target||long?.target1||null,stop_source:input.policy.stop?'Eigene Planvorgabe':'Technisches Modell',target_source:input.policy.target?'Eigene Planvorgabe':'Technisches Szenario'};
   const scenarios=(analysis?.scenarios||[]).map(s=>({id:s.id,name:s.name,endpoint:s.endpoint,change_pct:(s.endpoint/analysis.chart.price-1)*100,assumption:s.assumption}));
   const previousDecision=previous?.decision||null;
-  return {version:'38.0.0',symbol:input.symbol,currency:input.currency,company:input.company,created_at:now.toISOString(),
+  return {version:'39.0.0',symbol:input.symbol,currency:input.currency,company:input.company,created_at:now.toISOString(),
     request:{days:input.days,lookback:input.lookback,source:input.source,quote_symbol:input.quote_symbol,context:input.context,manual_urls:input.manual_urls},
     price_date:analysis?.price_date||null,price:analysis?.chart?.price||null,provider:market?.provider||null,
     quote:quoteStatus(analysis?.price_date,now),attempt:market?.attempt||null,analysis,decision,scenarios,sources,
-    news:{count:sources.filter(s=>s.match!=='background').length,as_of:now.toISOString(),limitation:'Feed-Metadaten und Auszüge sind keine vollständig gelesenen Artikel. Keine Treffer bedeutet nicht, dass es keine relevanten Nachrichten gibt.'},
+    news:{count:sources.filter(s=>s.match!=='background').length,as_of:now.toISOString(),assessment:newsAssessment,limitation:'Feed-Metadaten und Auszüge sind keine vollständig gelesenen Artikel. Keine Treffer bedeutet nicht, dass es keine relevanten Nachrichten gibt.'},
     change:previousDecision?{previous_at:previous.created_at,previous:previousDecision.label,current:decision.label,changed:previousDecision.code!==decision.code}:null,
     policy:input.policy,position,warnings:notes,limits:['Szenarien sind Modellannahmen, keine kalibrierten Eintrittswahrscheinlichkeiten.','Tageskursprüfung mit Werktagskalender; Börsenfeiertage und Intraday-Kurse nicht geprüft.','Stops und KO-Produkte benötigen separate ausführbare Kurse und Produktbedingungen.']};
 }
 export async function runInvestmentReview(input,deps){
-  const now=deps.now?.()||new Date(),warnings=[];let market=null,news=[],newsFailed=false;
+  const now=deps.now?.()||new Date(),warnings=[];let market=null,news=[],newsFailed=false,feed=null;
   try{market=await deps.loadMarket(input,now);}catch(e){warnings.push(e.message);market={attempt:{status:'not_run',at:now.toISOString(),error:e.message}};}
   if(market?.warning)warnings.push(market.warning);
-  try{news=await deps.readNews(input,now);}catch{newsFailed=true;warnings.push('Nachrichtenabruf fehlgeschlagen. Vorhandene Quellen behalten ihren ursprünglichen Datenstand.');}
+  try{const read=await deps.readNews(input,now);news=Array.isArray(read)?read:read.sources;feed=Array.isArray(read)?null:read.targeted_feed;if(feed?.status!=='success'&&feed?.error)warnings.push(feed.error);}catch{newsFailed=true;warnings.push('Nachrichtenabruf fehlgeschlagen. Vorhandene Quellen behalten ihren ursprünglichen Datenstand.');}
   if(input.research&&deps.discover){try{news.push(...await deps.discover(input,now));}catch{warnings.push('Zusätzliche Online-Recherche nicht erreichbar.');}}
   if(input.manual_urls.length&&deps.manualSources){try{const s=await deps.manualSources(input,now);news.push(...s.sources);warnings.push(...s.warnings);}catch{warnings.push('Eigene Quellen nicht lesbar; keine Inhalte erfunden.');}}
   let previous=null,position=null,positionKnown=true;
@@ -86,10 +89,11 @@ export async function runInvestmentReview(input,deps){
   if(deps.preserveManualSources&&previous?.sources)news.push(...previous.sources.filter(s=>s.manual));
   if(!market?.bars&&previous?.analysis?.history?.length){market={...market,bars:previous.analysis.history,provider:previous.provider};warnings.push('Historische Kurse des vorherigen Berichts verwendet; keine neue Kursaktualisierung.');}
   const review=buildInvestmentReview(input,{market,news,previous,position,now,warnings});
+  if(feed)review.news.targeted_feed={status:feed.status,fetched_at:feed.fetched_at||null,last_attempt_at:feed.last_attempt_at||feed.attempted_at||null,error:feed.error||null,cached:!!feed.cached};
   review.position_known=positionKnown;if(!positionKnown)review.decision={...review.decision,code:'wait',label:'Depotkontext fehlt',reason:'Der tatsächliche Bestand konnte nicht geprüft werden. Chartbefunde und Quellen bleiben lesbar.',current:false};
   try{review.conversation_assumptions=deps.readNotes?(await deps.readNotes()).map(m=>({id:m.id,role:m.role,created_at:m.created_at,content:String(m.content||'').slice(0,1200),truncated:String(m.content||'').length>1200})):[];}catch{review.conversation_assumptions=[];review.warnings.push('Frühere Gesprächsannahmen konnten nicht geladen werden.');}
   if(deps.preserveManualSources)for(const source of review.sources.filter(s=>s.manual)){const old=previous?.sources?.find(s=>s.canonical_url===source.canonical_url);if(old){source.retrieved_at=old.retrieved_at;const full=review.analysis?.sources?.find(s=>s.id===source.id);if(full)full.retrieved_at=old.retrieved_at;}}
-  if(newsFailed){review.news.status='failed';review.news.as_of=previous?.news?.as_of||null;}else review.news.status='success';
+  if(newsFailed){review.news.status='failed';review.news.as_of=previous?.news?.as_of||null;review.news.assessment=assessNews(review.sources,input,now,{failed:true});review.decision={...combineNewsDecision(investmentDecision(review.analysis,{position,policy:input.policy,now,attempt:review.attempt}),review.news.assessment),levels:review.decision.levels};if(!positionKnown)review.decision={...review.decision,current:false,code:'wait',label:'Depotkontext fehlt',reason:'Der tatsächliche Depotbestand konnte nicht geprüft werden.'};}else review.news.status='success';
   try{const saved=await deps.save(review,market);return {...(saved.snapshot||review),id:saved.id,asset_id:saved.asset_id,saved:true};}
   catch{return {...review,saved:false,warnings:[...review.warnings,'Ergebnis berechnet, aber nicht gespeichert. JSON exportieren; keinen erneuten Anbieterabruf auslösen.']};}
 }

@@ -3,6 +3,8 @@ import {acquireReviewMarket,reviewMarketAdapters} from './review-market.mjs';
 import {callReviewChat} from './review-chat.mjs';
 import {discoverFreeSources} from './deep-sources.mjs';
 import {loadManualSources} from './manual-sources.mjs';
+import {portfolioValues} from './portfolio-value.mjs';
+import {targetedFeed} from './review-feed.mjs';
 
 const uuid=v=>/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(v||''));
 const symbolValid=s=>/^[A-Z0-9_^+\-]{1,25}\.[A-Z0-9]{1,12}$/.test(s||'');
@@ -12,12 +14,13 @@ export function canonicalPosition(position,plans){const plan=plans.find(p=>p.id=
 export async function reviewFingerprint(review){
   const core={symbol:review.symbol,currency:review.currency,price_date:review.price_date,price:review.price,provider:review.provider,
     decision:review.decision.code,quote:review.quote.code,request:review.request,policy:review.policy,position:review.position,conversation_assumptions:review.conversation_assumptions,chart:review.analysis?.chart,setups:review.analysis?.setups,weekly:review.analysis?.weekly,
-    scenarios:review.scenarios,sources:review.sources.map(s=>({id:s.id,title:s.title,date:s.published_at,excerpt:s.excerpt,status:s.retrieval_status})),warnings:review.warnings};
+    news:review.news?.assessment?{status:review.news.assessment.status,reviewed:review.news.assessment.reviewed,evidence:review.news.assessment.evidence}:null,scenarios:review.scenarios,sources:review.sources.map(s=>({id:s.id,title:s.title,date:s.published_at,excerpt:s.excerpt,status:s.retrieval_status})),warnings:review.warnings};
   return [...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(core))))].map(v=>v.toString(16).padStart(2,'0')).join('');
 }
 export function createInvestmentHandler({createClient,getEnv,fetchImpl=fetch,now=()=>new Date(),parseRss,getPage,headers={}}){
-  const reply=(value,status=200)=>new Response(JSON.stringify(value),{status,headers:{...headers,'Content-Type':'application/json; charset=utf-8'}});
+  const baseReply=(value,status=200)=>new Response(JSON.stringify(value),{status,headers:{...headers,'Content-Type':'application/json; charset=utf-8'}});
   return async request=>{
+    let responseOwner=null;const reply=(value,status=200)=>baseReply({...value,...(responseOwner?{user_id:responseOwner}: {})},status);
     if(request.method==='OPTIONS')return new Response('ok',{headers});
     if(request.method!=='POST')return reply({ok:false,error:'POST erforderlich.'},405);
     try{
@@ -32,6 +35,7 @@ export function createInvestmentHandler({createClient,getEnv,fetchImpl=fetch,now
         const client=createClient(getEnv('SUPABASE_URL'),getEnv('SUPABASE_PUBLISHABLE_KEY')||getEnv('SUPABASE_ANON_KEY'),{global:{headers:{Authorization:authorization}},auth:{persistSession:false}});
         const auth=await client.auth.getUser();if(auth.error||!auth.data?.user)return reply({ok:false,error:'Sitzung ungültig. Erneut anmelden.'},401);userId=auth.data.user.id;
       }
+      responseOwner=userId;
       const admin=createClient(getEnv('SUPABASE_URL'),getEnv('SUPABASE_SERVICE_ROLE_KEY'),{auth:{persistSession:false}});
       if(body.action==='capabilities'){const health=await admin.from('investment_monitor_health').select('last_run_at').eq('id',true).maybeSingle();return reply({ok:true,features:['investment_review_v38','portfolio_monitor_v38','persistent_gemini_chat_v38'],monitor_last_run:health.data?.last_run_at||null,alpha_configured:!!getEnv('ALPHAVANTAGE_API_KEY'),chat_provider:'gemini',chat_configured:getEnv('DEEP_GEMINI_FREE_TIER_CONFIRMED')==='true'&&!!getEnv('GEMINI_API_KEY')});}
       const ownAsset=async(id,owner=userId)=>{
@@ -54,7 +58,7 @@ export function createInvestmentHandler({createClient,getEnv,fetchImpl=fetch,now
         if(old)return old;
         const {bars,...config}=input;config.source=input.source==='csv'?'stored':input.source;
         const row={user_id:owner,symbol:input.symbol,currency:input.currency,company:input.company,config,
-          enabled:old?.enabled??isPortfolio,is_portfolio:old?.is_portfolio||isPortfolio};
+          enabled:isPortfolio,watchlisted:!isPortfolio,is_portfolio:isPortfolio};
         const created=result(await admin.from('investment_assets').upsert(row,{onConflict:'user_id,symbol,currency',ignoreDuplicates:true}).select('*').maybeSingle(),'Wertpapier konnte nicht gespeichert werden.');
         return created||result(await admin.from('investment_assets').select('*').eq('user_id',owner).eq('symbol',input.symbol).eq('currency',input.currency).single(),'Wertpapier konnte nicht geladen werden.');
       };
@@ -68,8 +72,20 @@ export function createInvestmentHandler({createClient,getEnv,fetchImpl=fetch,now
           if(old){if(!old.is_portfolio)result(await admin.from('investment_assets').update({is_portfolio:true,enabled:true}).eq('id',old.id).eq('user_id',owner),'Depotzuordnung nicht gespeichert.');}
           else await register(initial,owner,true);
         }
-        for(const a of existing.filter(a=>a.is_portfolio&&!seen.has(a.symbol+'|'+a.currency)))result(await admin.from('investment_assets').update({is_portfolio:false,enabled:false}).eq('id',a.id).eq('user_id',owner),'Geschlossene Position nicht abgeglichen.');
+        for(const a of existing.filter(a=>a.is_portfolio&&!seen.has(a.symbol+'|'+a.currency)))result(await admin.from('investment_assets').update({is_portfolio:false,enabled:a.watchlisted===true}).eq('id',a.id).eq('user_id',owner),'Geschlossene Position nicht abgeglichen.');
         return unmapped;
+      };
+      const portfolioOverview=async(owner)=>{
+        const held=await positions(owner),all=result(await admin.from('investment_assets').select('*').eq('user_id',owner),'Depotbewertung nicht erreichbar.')||[];
+        const summary=portfolioValues(held,all,now());
+        for(const g of summary.groups){
+          if(g.positions===g.missing)continue;
+          const fingerprint=[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(g.components))))].map(v=>v.toString(16).padStart(2,'0')).join('');
+          const {components,...value}=g;
+          result(await admin.from('investment_portfolio_marks').upsert({user_id:owner,...value,fingerprint,recorded_at:now().toISOString()},{onConflict:'user_id,currency,fingerprint',ignoreDuplicates:true}),'V39-Bewertungstabelle fehlt.');
+        }
+        const marks=result(await admin.from('investment_portfolio_marks').select('*').eq('user_id',owner).order('recorded_at',{ascending:false}).limit(1000),'Depotverlauf nicht lesbar.')||[];
+        return {...summary,marks:marks.filter(m=>m.user_id===owner).reverse()};
       };
       const withLease=async(asset,kind,fn)=>{
         const token=crypto.randomUUID(),q=await admin.rpc('claim_investment_operation',{p_user_id:asset.user_id,p_asset_id:asset.id,p_kind:kind,p_token:token});
@@ -80,7 +96,7 @@ export function createInvestmentHandler({createClient,getEnv,fetchImpl=fetch,now
         if(!id)return null;const r=result(await admin.from('investment_reviews').select('*').eq('id',id).eq('asset_id',asset.id).eq('user_id',asset.user_id).maybeSingle(),'Analyse nicht lesbar.');
         if(!r||r.user_id!==asset.user_id||r.asset_id!==asset.id)return null;return {...r.snapshot,id:r.id,asset_id:asset.id};
       };
-      let remainingNetwork=2;
+      let remainingNetwork=2,remainingNews=2;
       const reviewOne=async(asset,input,{scheduled=false,requestId=crypto.randomUUID(),leaseToken=null}={})=>{
        const run=async token=>{
         const prior=result(await admin.from('investment_reviews').select('*').eq('user_id',asset.user_id).eq('request_id',requestId).maybeSingle(),'Anfrageprüfung fehlgeschlagen.');
@@ -97,7 +113,14 @@ export function createInvestmentHandler({createClient,getEnv,fetchImpl=fetch,now
           now,previous:()=>readReview(asset),position:readPosition,preserveManualSources:scheduled,
           readNotes:async()=>result(await admin.from('investment_chat_messages').select('id,role,content,created_at').eq('user_id',asset.user_id).eq('asset_id',asset.id).in('role',['user','note']).order('sequence',{ascending:false}).limit(5),'Gesprächsannahmen nicht erreichbar.')||[],
           loadMarket:async()=>{market=await acquireReviewMarket(input,adapters,now());if(!scheduled&&market?.bars?.length){const quota=await admin.rpc('reserve_investment_operation',{p_user_id:asset.user_id,p_kind:'review'});if(quota.error||quota.data!==true)throw new ReviewError('Manuelles V38-Prüflimit erreicht. Bereits gespeicherten Bericht öffnen.',429);}return market;},
-          readNews:async(i,n)=>result(await admin.from('market_news').select('*').eq('is_published',true).gte('published_at',new Date(n.getTime()-i.news_days*86400000).toISOString()).order('published_at',{ascending:false}).limit(1000),'News nicht erreichbar.')||[],
+          readNews:async(i,n)=>{
+            const sources=result(await admin.from('market_news').select('*').eq('is_published',true).gte('published_at',new Date(n.getTime()-i.news_days*86400000).toISOString()).order('published_at',{ascending:false}).limit(1000),'News nicht erreichbar.')||[];
+            if(!scheduled)return sources;
+            let feed;try{feed=await targetedFeed(asset,{now:n,allowNetwork:remainingNews>0,fetchImpl:async(...args)=>{remainingNews--;return fetchImpl(...args);},parseRss,
+              read:async()=>result(await admin.from('investment_news_cache').select('*').eq('user_id',asset.user_id).eq('asset_id',asset.id).maybeSingle(),'Newszwischenspeicher nicht erreichbar.'),
+              write:async row=>result(await admin.from('investment_news_cache').upsert({user_id:asset.user_id,asset_id:asset.id,...row},{onConflict:'user_id,asset_id'}),'Newszwischenspeicher nicht gespeichert.')});}catch{feed={sources:[],status:'failed',fetched_at:null,error:'Gezielter Newszwischenspeicher nicht verfügbar; vorhandene Feed-Belege bleiben erhalten.'};}
+            return {sources:[...sources,...feed.sources],targeted_feed:feed};
+          },
           discover:scheduled?null:async(i,n)=>(await discoverFreeSources(i,{parseRss,fetchImpl,now:n})).sources,
           manualSources:scheduled?null:async(i,n)=>loadManualSources(i,{getPage,now:n}),
           save:async snapshot=>{
@@ -109,7 +132,19 @@ export function createInvestmentHandler({createClient,getEnv,fetchImpl=fetch,now
        };
        return leaseToken?run(leaseToken):withLease(asset,'review',run);
       };
-      if(body.action==='sync_portfolio')return reply({ok:true,unmapped:await sync(userId)});
+      if(body.action==='sync_portfolio'){const unmapped=await sync(userId);return reply({ok:true,unmapped,portfolio:await portfolioOverview(userId)});}
+      if(body.action==='portfolio_overview')return reply({ok:true,portfolio:await portfolioOverview(userId)});
+      if(body.action==='set_watchlist'){
+        const asset=await ownAsset(body.asset_id);if(typeof body.watchlisted!=='boolean')throw new ReviewError('Beobachtungsstatus ungültig.');
+        const patch={watchlisted:body.watchlisted,...(!asset.is_portfolio?{enabled:body.watchlisted,next_check_at:now().toISOString()}: {})};
+        result(await admin.from('investment_assets').update(patch).eq('id',asset.id).eq('user_id',userId),'Beobachtung nicht gespeichert. V39-SQL installieren.');return reply({ok:true,asset:{...asset,...patch}});
+      }
+      if(body.action==='remember'){
+        if(body.manual_start!==true)throw new ReviewError('Wert ausdrücklich merken.',400);
+        const input=validateReviewInput({symbol:body.symbol,currency:body.currency,company:body.company,wkn:body.wkn,isin:body.isin,source:'stored'}),asset=await register(input);
+        const patch={watchlisted:true,...(!asset.is_portfolio?{enabled:true,next_check_at:now().toISOString()}: {})};
+        result(await admin.from('investment_assets').update(patch).eq('id',asset.id).eq('user_id',userId),'Wert nicht zur Beobachtung gespeichert. V39-SQL prüfen.');return reply({ok:true,asset:{...asset,...patch}});
+      }
       if(body.action==='set_monitoring'){
         const asset=await ownAsset(body.asset_id);if(typeof body.enabled!=='boolean')throw new ReviewError('Überwachungsstatus ungültig.');
         result(await admin.from('investment_assets').update({enabled:body.enabled,next_check_at:now().toISOString()}).eq('id',asset.id).eq('user_id',userId),'Überwachung nicht gespeichert.');return reply({ok:true});
@@ -129,8 +164,9 @@ export function createInvestmentHandler({createClient,getEnv,fetchImpl=fetch,now
           result(await admin.from('investment_assets').update({is_portfolio:true,enabled:true}).eq('id',asset.id).eq('user_id',userId),'Depotzuordnung nicht gespeichert.');
         }
         const {bars,...config}=input;config.source=input.source==='csv'?'stored':input.source;
-        result(await admin.from('investment_assets').update({config,company:input.company}).eq('id',asset.id).eq('user_id',userId),'Plan konnte nicht gespeichert werden.');
-        const updated={...asset,config,company:input.company};
+        const patch={config,company:input.company,...(JSON.stringify(config)!==JSON.stringify(asset.config)?{state:{...asset.state,plan_pending:true}}:{}),...(!asset.is_portfolio?{watchlisted:true,enabled:true}: {})};
+        result(await admin.from('investment_assets').update(patch).eq('id',asset.id).eq('user_id',userId),'Plan konnte nicht gespeichert werden.');
+        const updated={...asset,...patch};
         return body.action==='save_config'?reply({ok:true,asset:updated}):reply({ok:true,review:await reviewOne(updated,input,{requestId:body.request_id||crypto.randomUUID(),leaseToken:token})});
         });
       }
@@ -144,7 +180,10 @@ export function createInvestmentHandler({createClient,getEnv,fetchImpl=fetch,now
         let q=admin.from('investment_assets').select('*').eq('enabled',true).order('next_check_at',{ascending:true}).limit(40);
         if(userId)q=q.eq('user_id',userId);if(cron)q=q.lte('next_check_at',now().toISOString());
         const assets=result(await q,'Überwachung nicht erreichbar.')||[],results=[];
+        let feedAges=[];if(assets.length){try{feedAges=result(await admin.from('investment_news_cache').select('user_id,asset_id,attempted_at').in('asset_id',assets.map(a=>a.id)),'Newswarteschlange nicht erreichbar.')||[];}catch{/* Per-value feed status reports the unavailable cache; keep the existing feed and reviews usable. */}}
+        assets.sort((a,b)=>(Date.parse(feedAges.find(c=>c.asset_id===a.id&&c.user_id===a.user_id)?.attempted_at)||0)-(Date.parse(feedAges.find(c=>c.asset_id===b.id&&c.user_id===b.user_id)?.attempted_at)||0));
         for(const asset of assets){try{const config=validateReviewInput({...asset.config,symbol:asset.symbol,currency:asset.currency,company:asset.company,research:false,manual_urls:[]});const r=await reviewOne(asset,config,{scheduled:true});results.push({asset_id:asset.id,saved:r.saved});}catch(e){results.push({asset_id:asset.id,error:e instanceof ReviewError?e.message:'Prüfung nicht abgeschlossen.'});}}
+        for(const owner of [...new Set(assets.map(a=>a.user_id))]){try{await portfolioOverview(owner);}catch{results.push({error:'Depotverlauf konnte nicht aktualisiert werden; Einzelberichte bleiben erhalten.'});}}
         if(cron)result(await admin.from('investment_monitor_health').upsert({id:true,last_run_at:now().toISOString(),checked:results.length}),'Hintergrundstatus nicht gespeichert.');
         return reply({ok:true,checked:results.length,results});
       }

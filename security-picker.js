@@ -89,7 +89,7 @@ export function mountSecurityPicker(root) {
   });
   const guard=e=>{if(pending||busy){e.preventDefault();e.stopImmediatePropagation();status('Zuerst die gesuchte WKN übernehmen oder die Suche verwerfen.',true);}};
   root.closest('form')?.addEventListener('submit',guard,true);
-  const standalone={event:'eventAnalysisRunBtn',history:'daHistoryLoad',review:'rvSave'}[scope];if(standalone)$(standalone)?.addEventListener('click',guard,true);
+  const standalone={event:['eventAnalysisRunBtn'],history:['daHistoryLoad'],review:['rvSave','rvRemember']}[scope]||[];for(const id of standalone)$(id)?.addEventListener('click',guard,true);
   window.addEventListener('investition:reset-security-picker',event=>{if(event.detail?.scope===scope)clear();});
   window.addEventListener('investition:auth-changed',()=>{clear();status('Sitzung geändert. WKN-Suche bei Bedarf neu starten.');});
   return {lookup,clear};

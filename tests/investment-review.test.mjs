@@ -16,7 +16,7 @@ test('EOD freshness handles weekends and distinguishes stale, missing, impossibl
   for(const d of [null,'2026-02-30','2026-11-09','2026-11-08'])assert.equal(quoteStatus(d,now).code,'missing');
 });
 test('A successful real V36 calculation feeds six scenarios and the original seven methods without AI',()=>{
-  const r=report();assert.equal(r.scenarios.length,6);assert.equal(r.analysis.chart.methods.length,7);assert.equal(r.analysis.narrative.mode,'rules');assert.equal(r.quote.code,'current');assert.equal(r.version,'38.0.0');
+  const r=report();assert.equal(r.scenarios.length,6);assert.equal(r.analysis.chart.methods.length,7);assert.equal(r.analysis.narrative.mode,'rules');assert.equal(r.quote.code,'current');assert.equal(r.version,'39.0.0');
   for(const s of r.scenarios)assert.equal(s.change_pct,(s.endpoint/r.price-1)*100);
 });
 test('Hold, risk exit, partial exit and trend reduction depend on actual holdings and user plan levels',()=>{

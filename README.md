@@ -1,4 +1,16 @@
-# V38.0.0 — Depotprüfung und gemeinsame Wertpapieranalyse
+# V39.0.0 — Depot, Suche, Beobachtung und Analyse direkt am Wertpapier
+
+Aktuelle Anleitung: [INSTALLATION-V39.md](INSTALLATION-V39.md). Die Hauptnavigation besteht aus **Depot**, **Suche** und **Beobachtung**. Ein Wert öffnet seine eigene Seite mit Einschätzung, Kursmarken, Modellchart, Quellen, Plan, Gespräch und Historie. Die bisher getrennten Werkzeuge bleiben unter Verwaltung erreichbar. Die Anmeldung zeigt **39.0.0**.
+
+V39 ergänzt Merken/Entfernen mit erhaltenem Analysearchiv, konservative regelbasierte News-Gegenprüfung und echte gespeicherte Depotbewertungen ab Installation. Kursdatum, letzte erfolgreiche Analyse, Newsprüfung und Abruffehler bleiben getrennt. Es gibt keine automatisch gestartete KI. Der Verlauf wird nicht rückwirkend aus heutigen Beständen erfunden, und verschiedene Währungen werden nicht summiert.
+
+**Update:** bei aktivem V38 `setup-v39-direct.sql` ausführen; bei V36/V37 zusätzlich vorher `setup-v38-investment-review.sql`. Danach **V39 Depot Suche und Beobachtung deployen** starten und die statische Website veröffentlichen. Der vorhandene V38-Zeitplan verwendet anschließend die neue Function über denselben Endpunkt. Vollständige Installationswege und Grenzen stehen in der Anleitung.
+
+Prüfprotokoll: [TESTPROTOKOLL-V39.md](TESTPROTOKOLL-V39.md). Noch nicht im Zielprojekt deployt oder auf einem iPhone live geprüft.
+
+---
+
+## Historischer Stand V38.0.0 — Depotprüfung und gemeinsame Wertpapieranalyse
 
 Aktuelle Anleitung: [INSTALLATION-V38.md](INSTALLATION-V38.md). Das vollständige Paket basiert auf V37.0.0 und bündelt den Hauptablauf in **Mein Portfolio** und **Wertpapier prüfen**. Bisherige Werkzeuge bleiben unter **Mehr** erreichbar.
 
