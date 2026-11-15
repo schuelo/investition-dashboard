@@ -1,0 +1,29 @@
+name: V37 kompakte Ansicht prüfen
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Repository laden
+        uses: actions/checkout@v6
+      - name: Node einrichten
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - name: Version und eingebettete Ansichten prüfen
+        run: node scripts/set-version.mjs --check
+      - name: Enthaltenes Basis-SQL prüfen
+        run: node scripts/build-update-sql.mjs --check
+      - name: Oberfläche und bisherige Funktionen prüfen
+        run: node --test tests/*.test.mjs
+      - name: Neue Browsermodule auf Syntax prüfen
+        run: |
+          node --check compact-analysis.mjs
+          node --check compact-ui.js

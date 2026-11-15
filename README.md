@@ -1,4 +1,16 @@
-# V36.0.0 — Signal- und Deep-Analyse ohne EODHD
+# V37.0.0 — kompakte schwarze Oberfläche auf V36-Basis
+
+Aktuelle Anleitung: [INSTALLATION-V37.md](INSTALLATION-V37.md). Vollständiges Paket mit schwarzem Hintergrund, mobiler Schnellnavigation, Cockpit, drei Kernaussagen, responsiven Modellcharts, Kursleiter, Deep-Szenariovergleich und aufklappbaren Originalberichten.
+
+Die vorhandenen V36.0.0-Berechnungen, Kursquellen, manuellen KI-Starts, Kontingente und Hintergrundfunktionen bleiben erhalten. V36.1 mit Alpha Vantage ist nicht enthalten. Das Cockpit liest vorhandene eigene Berichte und TRIGGER-KI-Meldungen; es startet keine Analyse. Veraltete Daten werden anhand des heutigen Datums gekennzeichnet und aktuelle Schwellen gesperrt.
+
+Für ein bereits vollständig aktives V36-System: Dateien einschließlich Unterordnern übernehmen und die Website wie bisher veröffentlichen. **Keine neue SQL-Ausführung und kein Function-Deployment erforderlich.** Die Anmeldung zeigt **37.0.0**; die Berechnungsversion gespeicherter Deep-Berichte bleibt V36.
+
+Prüfumfang und Grenzen: [TESTPROTOKOLL-V37.md](TESTPROTOKOLL-V37.md). Der neue Workflow **V37 kompakte Ansicht prüfen** führt ausschließlich Prüfungen aus. Er benötigt keine neuen Secrets und veröffentlicht keine Serverfunktionen.
+
+---
+
+## Historischer Stand V36.0.0 — Signal- und Deep-Analyse ohne EODHD
 
 Aktueller Einstieg: [INSTALLATION-V36.md](INSTALLATION-V36.md). Vollständiges Paket einschließlich V33-Papierdepot, V34-Quellen-URLs und V35-WKN-Maske.
 

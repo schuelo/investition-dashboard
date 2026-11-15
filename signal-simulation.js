@@ -1,5 +1,5 @@
 import { buildSignalAnalysis, parseOhlcvCsv } from './supabase/functions/_shared/signal-engine.mjs?v=31.2';
-import { validateSignalInput } from './supabase/functions/_shared/signal-service.mjs?v=36.0.0';
+import { validateSignalInput } from './supabase/functions/_shared/signal-service.mjs?v=37.0.0';
 
 const $ = id => document.getElementById(id);
 const page = $('signalSimulationPage');
@@ -16,7 +16,7 @@ const validId = value => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a
 const launchSymbol = /^[A-Z0-9_^+\-]{1,25}\.[A-Z0-9]{1,12}$/.test(launch.get('signal_symbol') || '') ? launch.get('signal_symbol') : null;
 let pendingLaunch = validId(launch.get('signal_trigger')) ? { triggerId: launch.get('signal_trigger') } : validId(launch.get('signal_news')) ? { newsId: launch.get('signal_news') } : null;
 
-function status(message, type = '') { $('ssStatus').textContent = message; $('ssStatus').className = `ss-status ${type}`; }
+function status(message, type = '') { $('ssStatus').textContent = message; $('ssStatus').className = `ss-status ${type}`;window.dispatchEvent?.(new CustomEvent('investition:analysis-status',{detail:{scope:'signal',message,type}})); }
 function setBusy(v) { busy = v; page.setAttribute('aria-busy', String(v)); for (const id of ['ssRun','ssDemo','ssLoadTriggers','ssLoadHistory']) $(id).disabled = v; }
 function formInput() {
   if($('ssMarketSource')?.value&&!window.InvestitionMarketData)throw Error('V36-Quellenmodul noch nicht geladen. Seite neu laden; keine Analyse gestartet.');
@@ -43,10 +43,12 @@ async function run() {
       analysis.market_data={source:'csv',eodhd_used:false,identity:'Nutzerdatei; Kennung/Währung vom Nutzer'};
     } else {
       if(body.market_source==='independent') {
+        status('Serverunterstützung prüfen …');
         const capabilities=await sb.functions.invoke('analyze-signal-path',{body:{action:'capabilities'}});
         if(runEpoch!==epoch||access().session?.user?.id!==session.user.id)return false;
         if(capabilities.error||!capabilities.data?.features?.includes('independent_market_v36'))throw Error('Unabhängige Kursquelle noch nicht installiert. V36-Gesamtupdate deployen; keine EODHD-Abfrage gestartet.');
       }
+      status('Anfrage gesendet. Server prüft Kurse und Quellen und berechnet Szenarien. Einzelne Zwischenschritte sind noch nicht verfügbar.');
       const result = await sb.functions.invoke('analyze-signal-path', { body });
       if (result.error) throw new Error(await errorText(result.error));
       if (!result.data?.ok || !result.data.analysis) throw new Error(result.data?.error || 'Kein Analyseergebnis empfangen.');
@@ -100,6 +102,8 @@ function render(a) {
   const n = a.narrative, map = { bullish:'positiv',bearish:'negativ',mixed:'gemischt',neutral:'neutral' };
   $('ssNarrative').innerHTML = `<b>${n.mode === 'ai' ? `${html(aiLabel(a))}-News-Ableitung` : 'Chartregeln'} · ${html(map[n.bias] || n.bias)}</b><p>${html(n.summary)}</p>${n.mode === 'ai' ? `<small>${a.ai?.model ? `Modell: ${html(a.ai.model)} · ` : ''}Subjektives KI-Vertrauen ${num(n.confidence)}/100; keine Prognosegüte.</small>` : ''}${n.evidence.map(e => `<p><b>Quelle ${html(e.source_id)}</b>: ${html(e.inference)}</p>`).join('')}<p><b>Beobachten:</b> ${html(n.watchpoints.join(' · ') || 'Trend, Ausbruch und Volumen bestätigen.')}</p><p><b>Risiken:</b> ${html(n.risks.join(' · ') || 'Datenqualität, Fehlausbrüche und unerwartete Ereignisse.')}</p>`;
   $('ssSources').innerHTML = a.sources.length ? a.sources.map(s => { const u = safeUrl(s.url); return `<p>${u ? `<a href="${html(u)}" target="_blank" rel="noopener noreferrer">${html(s.title)}</a>` : html(s.title)}<br><small>${html(s.source)} · ${html(date(s.published_at))} · ${s.match === 'selected' ? 'manuell ausgewählte Meldung; Bezug zum Wert prüfen' : s.match === 'direct' ? 'direkter Bezug' : 'Bezug zur Hypothese'} · Quelle ${html(s.id)}</small></p>`; }).join('') : '<p>Keine passenden aktuellen Feedquellen. Keine bestätigte News-These.</p>';
+  window.InvestitionCompactReports ||= {};window.InvestitionCompactReports.signal=a;
+  window.dispatchEvent?.(new CustomEvent('investition:analysis-rendered',{detail:{scope:'signal',analysis:a}}));
 }
 
 async function loadHistory() {
@@ -191,11 +195,13 @@ if (page) {
     catch(err) { clearImport(); status(err.message,'bad'); }
   });
   $('ssSymbol').addEventListener('change',clearImport);
+  window.addEventListener('investition:open-analysis',event=>{if(event.detail?.scope==='signal'&&!busy){current=event.detail.analysis;render(current);status('Gespeicherten Originalbericht geöffnet. Datenstand beachten.','warn');}});
+  window.addEventListener('investition:prepare-trigger',event=>{if(event.detail&&!busy)prepareOrigin(event.detail);});
   $('ssChartDirection').addEventListener('change',() => { if (current) $('ssChart').innerHTML=chartSvg(current); });
   window.addEventListener('investition:signal-simulation-visible',() => Promise.allSettled([loadHistory(),loadTriggers(),loadLaunch()]));
   window.addEventListener('investition:news-changed',() => { if (!page.hidden) return Promise.allSettled([loadTriggers()]); });
   window.addEventListener('investition:auth-changed',() => {
-    epoch++; setBusy(false);current=null; imported=null; triggers=[]; $('ssResults').hidden=true; $('ssHistory').textContent='Nach Anmeldung neu laden.'; $('ssTriggerList').textContent='Nach Anmeldung neu laden.'; clearImport(); clearOrigin();
+    epoch++; setBusy(false);current=null; imported=null; triggers=[];if(window.InvestitionCompactReports)delete window.InvestitionCompactReports.signal; $('ssResults').hidden=true; $('ssHistory').textContent='Nach Anmeldung neu laden.'; $('ssTriggerList').textContent='Nach Anmeldung neu laden.'; clearImport(); clearOrigin();
     if (!page.hidden) return Promise.allSettled([loadHistory(),loadTriggers(),loadLaunch()]);
   });
   // Deferred navigation can select #signals before this module finishes loading.

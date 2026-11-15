@@ -61,5 +61,5 @@ test('An unverified EODHD reference from OpenFIGI cannot become an EODHD call th
   const h=harness('deep');h.pick({quote_symbol:'SND.DE',eodhd_verified:false});h.els.daMarketSource.value='eodhd';assert.throws(()=>h.window.InvestitionMarketData.input('deep'),/EODHD-Katalog/);
 });
 test('Independent source is first in both forms and source modules are included in current cache assets',()=>{
-  for(const prefix of ['ss','da'])assert.match(html,new RegExp('id="'+prefix+'MarketSource"><option value="independent">'));assert.match(read('security-picker.js'),/data-sec-source><option value="independent">/);assert.ok(html.includes('market-data.js?v=36.0.0'));assert.ok(read('service-worker.js').includes('market-data.js?v=36.0.0'));assert.ok(read('service-worker.js').includes('independent-market.mjs'));
+  const version=JSON.parse(read('release.json')).version;for(const prefix of ['ss','da'])assert.match(html,new RegExp('id="'+prefix+'MarketSource"><option value="independent">'));assert.match(read('security-picker.js'),/data-sec-source><option value="independent">/);assert.ok(html.includes('market-data.js?v='+version));assert.ok(read('service-worker.js').includes('market-data.js?v='+version));assert.ok(read('service-worker.js').includes('independent-market.mjs'));
 });

@@ -1,0 +1,115 @@
+/* V37 presentation layer. API clients and analysis calculations stay on the V36 basis. */
+:root{--bg:#000;--panel:#121212;--panel-2:#181818;--panel-3:#202020;--border:#303236;--text:#f1f4f6;--muted:#adb6c0;--accent:#72dcc0;--accent-2:#9ebde7;--good:#72dcc0;--warn:#efc47c;--bad:#f28d99;color-scheme:dark}
+body{background:#000}
+html,body{min-width:0}
+body::before{background:none;opacity:0}
+[hidden]{display:none!important}
+.topbar{background:rgba(0,0,0,.96)}
+.card,.auth-card,.modal,.modal-body,.cloud-box{background:var(--panel)}
+.btn,input,select,textarea{min-height:44px}
+input[type=checkbox],input[type=radio]{min-height:20px;min-width:20px;accent-color:var(--accent)}
+button:focus-visible,a:focus-visible,summary:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.btn{white-space:normal}
+.main-nav{flex-wrap:wrap;background:#090909}
+.auth-gate{background:rgba(0,0,0,.97)}
+.modal-head{background:var(--panel)}
+.compact-trigger-title{font-size:16px;margin-top:18px}
+.compact-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px}
+.compact-tabs .btn{flex:1;min-width:85px}
+.compact-tabs [aria-pressed=true]{background:var(--text);color:var(--bg);border-color:var(--text)}
+.compact-dock{display:none}
+.compact-muted,.compact-provenance,.compact-legend{color:var(--muted);font-size:13px;line-height:1.55}
+.compact-eyebrow{font-size:12px;color:var(--muted);letter-spacing:.09em;margin:0 0 6px;overflow-wrap:anywhere}
+.compact-heading,.compact-report-header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.compact-report-header h2{font-size:30px;line-height:1.2;margin:4px 0;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.compact-report-header h2 small{font-size:15px;font-weight:400;color:var(--muted)}
+.compact-state{font-size:12px;color:var(--warn);overflow-wrap:anywhere}
+.compact-state.bad{color:var(--bad)}
+.compact-home{padding:20px;margin-bottom:16px}
+.compact-home-item{display:flex;width:100%;text-align:left;justify-content:space-between;gap:12px;align-items:center;padding:14px 0;color:var(--text);background:none;border:0;border-bottom:1px solid var(--border);min-height:80px}
+.compact-home-item span{display:grid;gap:4px;min-width:0;overflow-wrap:anywhere}
+.compact-home-item>span:last-child{text-align:right;justify-items:end}
+.compact-home-item small{font-size:12px;color:var(--muted)}
+.compact-home-item b{font-weight:600;font-variant-numeric:tabular-nums}
+.compact-original,.compact-input{border:1px solid var(--border);border-radius:13px;padding:0 14px;margin:12px 0;background:var(--panel);min-width:0}
+.compact-original>summary,.compact-input>summary{padding:13px 0;min-height:48px;font-weight:600;line-height:1.4;overflow-wrap:anywhere;cursor:pointer}
+.compact-input{border:0;padding:0;margin:0}
+.compact-original>summary{color:var(--text)}
+.compact-report{padding:16px 0 8px}
+.compact-report-grid{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:12px;margin:12px 0}
+.compact-panel{background:var(--panel);border-radius:15px;padding:16px;min-width:0;overflow-wrap:anywhere}
+.compact-panel h3,.compact-decision h3{font-size:16px;margin:0 0 10px;line-height:1.4}
+.compact-panel p{line-height:1.55}
+.compact-panel small,.compact-data-note small{font-size:12px;color:var(--muted);line-height:1.55}
+.compact-decision{padding:16px;border-radius:14px;background:#132b25;border-left:3px solid var(--accent);margin:14px 0}
+.compact-decision>div+div{border-top:1px solid var(--border);margin-top:10px;padding-top:10px}
+.compact-decision small{display:block;text-transform:uppercase;letter-spacing:.05em;font-size:11px;color:var(--muted)}
+.compact-decision p{margin:5px 0;line-height:1.55}
+.compact-data-note{padding:14px;background:#241e13;border-radius:12px;border-left:3px solid var(--warn);margin:12px 0;line-height:1.5}
+.compact-data-note ul{padding-left:20px;margin:7px 0}
+.compact-data-note li{margin:4px 0}
+.compact-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;color:var(--muted);font-size:12px}
+.compact-toolbar label{display:flex!important;flex-direction:row!important;align-items:center;gap:9px;margin:0!important}
+.compact-toolbar select{width:auto!important;min-width:100px;background:var(--panel)!important;color:var(--text);padding:8px;border:1px solid var(--border);border-radius:9px}
+.compact-chart{display:block;width:100%;height:auto;min-width:0}
+.compact-chart text,.compact-scenario text{fill:var(--text);font:12px system-ui,sans-serif}
+.compact-legend{font-size:12px;margin:7px 0}
+.compact-band-values{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.compact-band-values b{display:block;font-size:15px;color:var(--text);font-weight:500;font-variant-numeric:tabular-nums}
+.compact-ladder{margin:10px 0 14px 4px;border-left:2px solid var(--border);padding-left:15px}
+.compact-rung{position:relative;display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:54px;font-size:13px;font-variant-numeric:tabular-nums}
+.compact-rung:before{content:'';position:absolute;left:-20px;width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.compact-rung.good:before{background:var(--good)}
+.compact-rung.bad:before{background:var(--bad)}
+.compact-rung>span:last-child{text-align:right}
+.compact-rung small{display:block;font-size:11px}
+.compact-rung b{font-weight:500}
+.compact-changes{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;font-size:13px}
+.compact-changes dd{margin:0;text-align:right;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.compact-scenario{display:grid;grid-template-columns:minmax(0,1fr) 116px;align-items:center;width:100%;gap:8px;padding:8px 5px;text-align:left;color:var(--text);background:none;border:0;border-bottom:1px solid var(--border);border-radius:0;min-height:48px;font:13px system-ui,sans-serif}
+button.compact-scenario[aria-pressed=true]{background:#132b25;border-radius:8px}
+.compact-status{margin:10px 0;padding:12px 14px;background:var(--panel);border-radius:12px;color:var(--muted);line-height:1.5;overflow-wrap:anywhere}
+.compact-status.bad{color:var(--bad);border-left:3px solid var(--bad)}
+.compact-status.good{color:var(--good)}
+.compact-status.warn{color:var(--warn)}
+html[data-analysis-tab=signal] #deepAnalysisModule,html[data-analysis-tab=signal] #paperPortfolioModule,html[data-analysis-tab=deep] #signalCompactView,html[data-analysis-tab=deep] #paperPortfolioModule,html[data-analysis-tab=paper] #signalCompactView,html[data-analysis-tab=paper] #deepAnalysisModule{display:none!important}
+#signalCompactView,#deepAnalysisModule{display:flex;flex-direction:column;min-width:0}
+#signalCompactView>.ss-hero,#deepAnalysisModule>.da-hero{order:-3}
+#ssCompactStatus,#daCompactStatus{order:-2}
+#ssResults,#daResults{order:-1;scroll-margin-top:90px}
+#signalSimulationPage .ss-hero,.da-module .da-hero{background:var(--panel);padding:18px;border-color:var(--border)}
+#signalSimulationPage .ss-hero h2,.da-module .da-hero h2{font-size:24px}
+#signalSimulationPage .ss-hero>p,#signalSimulationPage .ss-hero>.ss-small,.da-hero p{font-size:13px;line-height:1.5}
+.da-module{--da-muted:var(--muted);--da-border:var(--border);--da-accent:var(--accent)}
+.da-module .da-panel,.da-module .da-section,#signalSimulationPage .ss-panel{padding:16px}
+.compact-original .da-card,.compact-original .ss-method{background:var(--panel-2)}
+.compact-original .ss-metrics,.compact-original .da-metrics{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+.compact-original .ss-chart,.compact-original .da-chart{min-width:680px}
+.compact-original #ssChart,.compact-original #daChart{overflow-x:auto}
+.compact-original #daScenario{max-width:100%}
+.da-module input:not([type=checkbox]),.da-module select,.da-module textarea,#signalSimulationPage input:not([type=checkbox]),#signalSimulationPage select,#signalSimulationPage textarea{background:#080808;border-color:var(--border);color:var(--text)}
+.da-module .da-note,#signalSimulationPage .ss-note{background:var(--panel-2)}
+.compact-original .ss-chart text,.compact-original .da-chart text{font-size:14px}
+@media(max-width:900px){.compact-report-grid{grid-template-columns:minmax(0,1fr)}#signalSimulationPage .ss-layout,.da-layout{grid-template-columns:minmax(0,1fr)}.compact-home{padding:16px}}
+@media(max-width:760px){
+  .app-shell{padding-bottom:calc(84px + env(safe-area-inset-bottom,0px))}
+  .topbar{position:static;height:auto;min-height:64px}
+  .brand-row{height:auto;padding:12px;gap:10px;flex-wrap:wrap}.brand h1{font-size:18px}.brand p{font-size:12px}.actions{gap:6px;flex-wrap:wrap}
+  .actions .btn{padding:9px}.ticker-wrap{max-height:60px;overflow:hidden}
+  .main-nav{display:none!important}
+  html[data-compact-menu=open] .main-nav{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));position:static;inset:auto;height:auto;width:auto;padding:12px;gap:7px}
+  .main-nav .nav-btn{white-space:normal;text-align:left;min-height:48px}
+  .compact-dock{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;position:fixed;bottom:0;left:0;right:0;z-index:45;background:rgba(0,0,0,.97);border-top:1px solid var(--border);padding:8px 8px calc(8px + env(safe-area-inset-bottom,0px))}
+  .compact-dock button{background:none;color:var(--muted);border:0;border-radius:10px;min-height:48px;font-size:13px;padding:8px 3px}
+  .compact-dock button[aria-current=page],.compact-dock button[aria-expanded=true]{background:#132b25;color:var(--accent)}
+  .page{padding:12px!important}.compact-panel{padding:14px}.compact-report-header h2{font-size:28px}
+  .kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}.main-grid{grid-template-columns:minmax(0,1fr)}
+  .decision-tabs{flex-wrap:wrap}.decision-hero{padding:16px}.decision-hero-body{flex-wrap:wrap}
+  #signalSimulationPage .ss-fields,.da-grid,.pp-form{grid-template-columns:minmax(0,1fr)!important}
+  input:not([type=checkbox]):not([type=radio]),select,textarea{font-size:16px!important;max-width:100%}
+  .modal{width:calc(100% - 16px);max-height:calc(100dvh - 16px);max-width:100%;overflow-y:auto}
+  .compact-home-item span{max-width:100%}.compact-home-item>span:last-child{min-width:85px}
+  #signalSimulationPage .ss-result-grid,.da-cards{grid-template-columns:minmax(0,1fr)}
+  .compact-input>summary{font-size:15px}
+}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto!important}}

@@ -1,12 +1,14 @@
 <!-- Embedded into index.html by the release build; do not navigate to this fragment. -->
 <section class="da-module" id="deepAnalysisModule">
   <article class="card da-hero">
-    <div><span class="da-eyebrow">V36.0.0 · DEEP-ANALYSE</span><h2>These prüfen. Szenarien vergleichen. Risiken verstehen.</h2>
+    <div><span class="da-eyebrow">V37.0.0 · DEEP-ANALYSE</span><h2>These prüfen. Szenarien vergleichen. Risiken verstehen.</h2>
     <p>News und Quellen, Tages- und Wochencharts, sechs Verläufe und Produktstress. Jede gespeicherte Analyse behält ihren ursprünglichen Datenstand.</p></div>
     <span class="chip">Manueller Start</span>
   </article>
+  <p id="daCompactStatus" class="compact-status" role="status" aria-live="polite">Deep-Analyse vorbereiten. Start ausschließlich manuell.</p>
   <div class="da-layout">
     <article class="card da-panel">
+      <details id="daInputPanel" class="compact-input" open><summary>Neue Deep-Analyse · Wertpapier &amp; Einstellungen</summary>
       <form id="daForm" aria-describedby="daStatus">
         <h3>Neue Deep-Analyse</h3>
         <div data-security-target="deep"></div>
@@ -98,9 +100,11 @@
         </details>
         <div class="da-actions"><button id="daRun" class="btn primary" type="submit">Deep-Analyse manuell starten</button><button id="daDemo" class="btn" type="button">Synthetische Demo</button></div>
       </form>
-      <p id="daStatus" class="da-status" role="status" aria-live="polite">V36.0.0 wird geladen … Falls dieser Text stehen bleibt, die Seite vollständig neu laden.</p>
+      <p id="daStatus" class="da-status" role="status" aria-live="polite">V37.0.0 wird geladen … Falls dieser Text stehen bleibt, die Seite vollständig neu laden.</p>
+      </details>
     </article>
     <aside class="card da-panel">
+      <details class="compact-input"><summary>Historie, Quellenarchiv &amp; Journal</summary>
       <h3>Deine Analysehistorie</h3>
       <div data-security-target="history"></div>
       <div class="da-grid">
@@ -116,9 +120,12 @@
       <div id="daComparison"></div>
       <h3>Quellenarchiv</h3><button id="daSourceLoad" class="btn" type="button">Quellen für Symbol laden</button><div id="daArchive"></div>
       <h3>Prognosejournal</h3><button id="daJournalLoad" class="btn" type="button">Journal laden</button><div id="daJournal"><p class="da-help">Ergebnisse werden erst nach ihrem Horizont ausgewertet. Kein automatischer KI-Aufruf.</p></div>
+      </details>
     </aside>
   </div>
   <section id="daResults" hidden>
+    <div id="daCompactReport" class="compact-report"></div>
+    <details class="compact-original"><summary>Vollständiger Originalbericht · Szenarien, Quellen &amp; Produktstress</summary>
     <div class="da-result-head"><h3 id="daTitle"></h3><button class="btn" type="button" id="daExport">Bericht als JSON exportieren</button></div>
     <div id="daMetrics" class="da-metrics"></div><div id="daQuality"></div>
     <article class="card da-section"><h3>Sechs bedingte Verläufe</h3><label>Chart-Szenario<select id="daScenario"></select></label><div id="daChart"></div><p class="da-help">Historie und P10–P90-Band des gewählten Modells. Band und Modellhäufigkeit sind keine verifizierten Wahrscheinlichkeiten.</p><div id="daScenarios" class="da-cards"></div></article>
@@ -132,5 +139,6 @@
     <article class="card da-section"><h3>Notiz &amp; spätere Auswertung</h3><label>Eigene Notiz<textarea id="daNote" maxlength="4000" placeholder="Entscheidung, Beobachtung oder widerlegte Annahme …"></textarea></label>
       <div class="da-actions"><button id="daNoteSave" class="btn" type="button">Notiz speichern</button><button id="daEvaluate" class="btn" type="button">Verlauf jetzt auswerten (ohne KI)</button></div><div id="daEvaluation"></div>
     </article>
+    </details>
   </section>
 </section>

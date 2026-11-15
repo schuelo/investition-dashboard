@@ -1,6 +1,6 @@
-import { buildDeepAnalysis, validateDeepInput, comparePrior } from './supabase/functions/_shared/deep-engine.mjs?v=36.0.0';
+import { buildDeepAnalysis, validateDeepInput, comparePrior } from './supabase/functions/_shared/deep-engine.mjs?v=37.0.0';
 import { parseOhlcvCsv } from './supabase/functions/_shared/signal-engine.mjs?v=31.2';
-import { canonicalUrl } from './supabase/functions/_shared/deep-sources.mjs?v=36.0.0';
+import { canonicalUrl } from './supabase/functions/_shared/deep-sources.mjs?v=37.0.0';
 
 const $=id=>document.getElementById(id);
 const root=$('deepAnalysisModule');
@@ -17,6 +17,7 @@ else if(validId(launch.get('signal_news'))) launchOrigin={source_news_id:launch.
 const launchSymbol=launch.get('signal_symbol');
 function status(message,type='',reveal=false){
   const el=$('daStatus');el.textContent=message;el.className='da-status '+type;
+  window.dispatchEvent?.(new CustomEvent('investition:analysis-status',{detail:{scope:'deep',message,type}}));
   if(reveal)el.scrollIntoView?.({behavior:'smooth',block:'center'});
 }
 let invalidBatch=false;
@@ -69,11 +70,13 @@ async function invoke(body){
   const {sb,session}=access();if(!sb||!session)throw new Error('Dashboard-Anmeldung erforderlich.');
   const invokeEpoch=epoch;
   if(body.manual_urls?.length||body.market_source==='independent'){
+    status('Serverunterstützung und Anmeldung prüfen …');
     const capabilities=await sb.functions.invoke('analyze-deep-signal',{body:{action:'capabilities'}});
     if(invokeEpoch!==epoch||access().session?.user?.id!==session.user.id)throw new Error('Anmeldung während der Vorbereitung geändert. Analyse nicht gestartet.');
     if(body.market_source==='independent'&&(capabilities.error||!capabilities.data?.features?.includes('independent_market_v36')))throw Error('Unabhängige Kursquelle noch nicht installiert. V36-Gesamtupdate deployen; keine EODHD-Abfrage gestartet.');
     if(body.manual_urls?.length&&(capabilities.error||!capabilities.data?.features?.includes('manual_urls_v34')))throw new Error('Eigene URLs werden vom Server noch nicht unterstützt. Zuerst das V34-Gesamtupdate deployen. Keine Analyse gestartet.');
   }
+  status(body.action==='evaluate'?'Auswertung auf dem Server angefordert …':'Anfrage gesendet. Kurse, Quellen und Szenarien werden serverseitig verarbeitet. Einzelne Zwischenschritte sind noch nicht verfügbar.');
   const result=await sb.functions.invoke('analyze-deep-signal',{body});
   if(result.error)throw new Error(await errorText(result.error));
   if(!result.data?.ok)throw new Error(result.data?.error || 'Kein Ergebnis empfangen.');
@@ -180,6 +183,8 @@ function render(a){
   $('daManualSourceResults').innerHTML=a.manual_source_results?.length?'<h4>Deine eingegebenen Links</h4>'+table(['URL','Abruf','Der KI bereitgestellt','Als Beleg zitiert'],a.manual_source_results.map(r=>[r.url,r.message,r.ai_included?(r.content_status==='page_excerpt'?'Seitenauszug':'Vorhandener Feed-Auszug'):r.ai_attempted?'Versucht; KI nicht abgeschlossen':'Nein',r.cited?'Ja · '+r.source_id:'Nein'])):'';
   $('daNote').value='';$('daEvaluation').innerHTML='';
   $('daNoteSave').disabled=!a.id;$('daEvaluate').disabled=!a.id;
+  window.InvestitionCompactReports ||= {};window.InvestitionCompactReports.deep=a;
+  window.dispatchEvent?.(new CustomEvent('investition:analysis-rendered',{detail:{scope:'deep',analysis:a}}));
 }
 function open(a){current=a;render(a);if(a.id)loadNote(a.id);}
 async function loadNote(id){
@@ -290,7 +295,8 @@ if(root){
   $('daForm').addEventListener('input',event=>{
     if(event.target.validity?.valid)event.target.removeAttribute('aria-invalid');
   });
-  $('daOpen').addEventListener('click',()=>root.scrollIntoView({behavior:'smooth',block:'start'}));
+  $('daOpen').addEventListener('click',()=>{window.dispatchEvent?.(new CustomEvent('investition:analysis-tab',{detail:{tab:'deep'}}));root.scrollIntoView({behavior:'smooth',block:'start'});});
+  window.addEventListener('investition:open-analysis',event=>{if(event.detail?.scope==='deep'&&!busy){open(event.detail.analysis);status('Gespeicherten Originalbericht geöffnet. Datenstand beachten.','warn');}});
   if(launchSymbol&&/^[A-Z0-9_^+\-]{1,25}\.[A-Z0-9]{1,12}$/.test(launchSymbol))$('daSymbol').value=launchSymbol;
   $('daForm').addEventListener('submit',e=>{e.preventDefault();return run();});
   $('daDemo').addEventListener('click',demo);$('daHistoryLoad').addEventListener('click',()=>loadHistory());
@@ -317,12 +323,12 @@ if(root){
     const a=document.createElement('a');a.href=url;a.download='Deep-Analyse-'+current.symbol+'-'+current.price_date+'.json';a.click();URL.revokeObjectURL(url);
   });
   window.addEventListener('investition:auth-changed',()=>{
-    epoch++;historyToken++;current=null;selected.clear();historyRows=[];historyTotal=0;page=0;clearImport();launchOrigin=null;setBusy(false);
+    epoch++;historyToken++;current=null;selected.clear();historyRows=[];historyTotal=0;page=0;if(window.InvestitionCompactReports)delete window.InvestitionCompactReports.deep;clearImport();launchOrigin=null;setBusy(false);
     $('daResults').hidden=true;for(const id of ['daHistory','daArchive','daJournal','daComparison'])$(id).textContent='Nach Anmeldung neu laden.';
     $('daTrigger').innerHTML='<option value="">Ohne ausgewählte Meldung</option>';$('daPrev').disabled=true;$('daNext').disabled=true;
     $('daManualUrls').value='';$('daManualSourceResults').innerHTML='';
     status('Anmeldung geändert. Analyse und Kontextauswahl zurückgesetzt.');
   });
   // Deliberately no invoke on auth, news, visibility, link opening, history or context selection.
-  status('V36.0.0 bereit. Deep-Analyse über den Startknopf manuell starten.');
+  status('V37.0.0 bereit. Deep-Analyse über den Startknopf manuell starten.');
 }
