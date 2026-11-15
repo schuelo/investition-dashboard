@@ -37,6 +37,9 @@ function harness(scope='deep',{pause=false,fail=false,resolved=candidate,source=
 test('A WKN picker is embedded once for every typed instrument/ticker input area',()=>{
   const mounted=[...html.matchAll(/data-security-target="([^"]+)"/g)].map(m=>m[1]);assert.deepEqual(mounted.sort(),[...SECURITY_TARGETS].sort());assert.equal(new Set(mounted).size,mounted.length);assert.ok(html.includes(read('deep-analysis-panel.html').split('\n').slice(1).join('\n').trim()));assert.ok(html.includes(read('paper-portfolio-panel.html').trim()));
 });
+test('The unified review WKN mask resolves identity without touching the blocked public chart provider',async()=>{
+  const h=harness('review',{source:'independent'});h.nodes['[data-sec-query]'].value='860180';await h.control.lookup();assert.equal(h.calls.length,2);assert.equal(h.calls[1].body.quote_metadata,false);let blocked=false;await h.elements.rvSave.trigger('click',{preventDefault(){blocked=true;},stopImmediatePropagation(){}});assert.equal(blocked,true);await h.nodes['[data-sec-apply]'].trigger('click');assert.equal(h.elements.rvSymbol.value,'SND.XETRA');assert.equal(h.elements.rvCurrency.value,'EUR');assert.equal(h.elements.rvStop.value,'');assert.equal(h.globalEvents[0].scope,'review');assert.ok(h.calls.every(c=>c.name==='resolve-security'));
+});
 test('Actual picker makes no request on load and only invokes resolve-security when explicitly searched',async()=>{
   const h=harness();assert.equal(h.calls.length,0);h.nodes['[data-sec-query]'].value='860180';await h.control.lookup();assert.equal(h.calls.length,1);assert.equal(h.calls[0].name,'resolve-security');assert.deepEqual(h.calls[0].body,{query:'860180',preferred_exchange:'XETRA',manual_start:true});assert.equal(h.elements.daSymbol.value,'NVDA.US');assert.equal(h.nodes['[data-sec-results]'].hidden,false);
 });

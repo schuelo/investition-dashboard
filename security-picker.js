@@ -6,7 +6,7 @@ const $=id=>document.getElementById(id);
 let epoch=0;
 export function currentSecurityFields(scope) {
   if(scope==='trade'){const form=$('tradeForm');return Object.fromEntries(['id','name','symbol','marketSymbol','currency','type'].map(k=>[k,form.elements[k]?.value||'']));}
-  const keys={signal:['ssSymbol','ssCurrency'],deep:['daSymbol','daCurrency'],paper:['ppSymbols','ppCurrency'],csv:['ppCsvSymbol'],history:['daHistorySymbol'],event:['eventAnalysisInput']}[scope]||[];
+  const keys={signal:['ssSymbol','ssCurrency'],deep:['daSymbol','daCurrency'],review:['rvSymbol','rvCurrency'],paper:['ppSymbols','ppCurrency'],csv:['ppCsvSymbol'],history:['daHistorySymbol'],event:['eventAnalysisInput']}[scope]||[];
   return Object.fromEntries(keys.map(k=>[k,$(k)?.value||'']));
 }
 export function writeSecurityFields(scope,changes) {
@@ -60,7 +60,7 @@ export function mountSecurityPicker(root) {
         if(capabilities.error||!capabilities.data?.features?.includes('independent_market_v36'))throw Error('Unabhängige WKN-Suche noch nicht installiert. Zuerst V36-Gesamtupdate deployen; keine EODHD-Abfrage gestartet.');
       }
       const mainPrefix={signal:'ss',deep:'da'}[scope];
-      const csvOnly=mainPrefix?$(mainPrefix+'MarketSource')?.value==='csv':['history','event','csv','paper'].includes(scope);
+      const csvOnly=mainPrefix?$(mainPrefix+'MarketSource')?.value==='csv':['history','event','csv','paper','review'].includes(scope);
       const payload={query:body.query,preferred_exchange:body.preferred_exchange,manual_start:true,...(source==='independent'?{catalogue_source:'independent',quote_metadata:!csvOnly}: {})};
       const response=await sb.functions.invoke('resolve-security',{body:payload});
       if(captured!==epoch||request!==token||access().session?.user?.id!==owner)return;
@@ -89,7 +89,8 @@ export function mountSecurityPicker(root) {
   });
   const guard=e=>{if(pending||busy){e.preventDefault();e.stopImmediatePropagation();status('Zuerst die gesuchte WKN übernehmen oder die Suche verwerfen.',true);}};
   root.closest('form')?.addEventListener('submit',guard,true);
-  const standalone={event:'eventAnalysisRunBtn',history:'daHistoryLoad'}[scope];if(standalone)$(standalone)?.addEventListener('click',guard,true);
+  const standalone={event:'eventAnalysisRunBtn',history:'daHistoryLoad',review:'rvSave'}[scope];if(standalone)$(standalone)?.addEventListener('click',guard,true);
+  window.addEventListener('investition:reset-security-picker',event=>{if(event.detail?.scope===scope)clear();});
   window.addEventListener('investition:auth-changed',()=>{clear();status('Sitzung geändert. WKN-Suche bei Bedarf neu starten.');});
   return {lookup,clear};
 }

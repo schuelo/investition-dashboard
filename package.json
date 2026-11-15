@@ -1,0 +1,11 @@
+{
+  "name": "investition-dashboard",
+  "private": true,
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "check:sql": "node scripts/check-v38-sql.mjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.16"
+  }
+}

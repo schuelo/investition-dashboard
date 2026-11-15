@@ -1,25 +1,31 @@
-importScripts('./release.js?v=37.0.0');
+importScripts('./release.js?v=38.0.0');
 const CACHE_NAME = 'investition-dashboard-v'+self.InvestitionRelease.version;
 const CORE = [
-  './compact-ui.js?v=37.0.0',
-  './compact-ui.css?v=37.0.0',
-  './compact-analysis.mjs?v=37.0.0',
+  './investment-ui.js?v=38.0.0',
+  './investment-ui.css?v=38.0.0',
+  './investment-view.mjs?v=38.0.0',
+  './compact-analysis.mjs',
+  './supabase/functions/_shared/investment-review.mjs',
+  './supabase/functions/_shared/review-market-input.mjs',
+  './compact-ui.js?v=38.0.0',
+  './compact-ui.css?v=38.0.0',
+  './compact-analysis.mjs?v=38.0.0',
   './',
   './index.html',
-  './release.js?v=37.0.0',
-  './security-picker.js?v=37.0.0',
-  './security-picker.css?v=37.0.0',
-  './market-data.js?v=37.0.0',
+  './release.js?v=38.0.0',
+  './security-picker.js?v=38.0.0',
+  './security-picker.css?v=38.0.0',
+  './market-data.js?v=38.0.0',
   './supabase/functions/_shared/independent-market.mjs',
   './supabase/functions/_shared/independent-security.mjs',
   './supabase/functions/_shared/security-resolver.mjs',
   './supabase/functions/_shared/security-form.mjs',
-  './deep-analysis.js?v=37.0.0',
-  './deep-analysis.css?v=37.0.0',
+  './deep-analysis.js?v=38.0.0',
+  './deep-analysis.css?v=38.0.0',
   './paper-portfolio.js?v=33.0',
   './paper-portfolio.css?v=33.0',
-  './supabase/functions/_shared/deep-engine.mjs?v=37.0.0',
-  './supabase/functions/_shared/deep-sources.mjs?v=37.0.0',
+  './supabase/functions/_shared/deep-engine.mjs?v=38.0.0',
+  './supabase/functions/_shared/deep-sources.mjs?v=38.0.0',
   './supabase/functions/_shared/manual-sources.mjs',
   './supabase/functions/_shared/paper-engine.mjs?v=33.0',
   './app.js?v=31.2',
@@ -28,11 +34,11 @@ const CORE = [
   './decision.js?v=29.4',
   './analytics.js?v=29.4',
   './event-analysis.js?v=30.1',
-  './signal-simulation.js?v=37.0.0',
+  './signal-simulation.js?v=38.0.0',
   './signal-simulation.css?v=31.2',
   './supabase/functions/_shared/signal-engine.mjs?v=31.2',
   './supabase/functions/_shared/signal-engine.mjs',
-  './supabase/functions/_shared/signal-service.mjs?v=37.0.0'
+  './supabase/functions/_shared/signal-service.mjs?v=38.0.0'
 ];
 
 self.addEventListener('install', event => {

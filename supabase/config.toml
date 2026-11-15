@@ -24,3 +24,7 @@ verify_jwt = false
 [functions.resolve-security]
 # Handler validates auth.getUser before any lookup, cache or provider access.
 verify_jwt = false
+
+[functions.review-investments]
+# Manual requests validate auth.getUser; only monitor accepts the server cron secret.
+verify_jwt = false

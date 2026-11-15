@@ -1,4 +1,20 @@
-# V37.0.0 — kompakte schwarze Oberfläche auf V36-Basis
+# V38.0.0 — Depotprüfung und gemeinsame Wertpapieranalyse
+
+Aktuelle Anleitung: [INSTALLATION-V38.md](INSTALLATION-V38.md). Das vollständige Paket basiert auf V37.0.0 und bündelt den Hauptablauf in **Mein Portfolio** und **Wertpapier prüfen**. Bisherige Werkzeuge bleiben unter **Mehr** erreichbar.
+
+Direkt bei jedem gespeicherten Wert stehen Ticker, letzter gültiger Kurs mit Kursdatum, Handlungseinschätzung, letzte erfolgreiche Analyse und letzter Abrufversuch. Kursalter und Abruffehler sind unabhängig sichtbar und filterbar. Neue Prüfungen kombinieren die vorhandenen Chartmethoden und sechs Szenarien mit News, tatsächlichem Depotbestand und expliziten Planvorgaben. KI bleibt optional.
+
+Zusätzlicher Kursweg: Alpha Vantage für geprüfte XETRA-/US-Notierungen, mit eigenem Schlüssel und separatem Schutzbudget; höchstens 100 Tageskerzen. CSV, ausdrücklich gewählter EODHD-Weg und die öffentliche Quelle bleiben verfügbar. Keine automatische Anbieterumschaltung. Ein Kursfehler verhindert nicht mehr den Nachrichtenbericht. Unvollständige Ergebnisse und veraltete Kurse werden sichtbar markiert.
+
+Je Wertpapier werden Gespräch und Berichtshistorie gespeichert. Der manuelle KI-Chat verwendet Gemini mit bestehender Free-Tier-Freigabe. Notizen und ChatGPT-Export sind ohne zusätzlichen KI-Aufruf nutzbar. Ein direkt eingebundener OpenAI-Chat ist in V38 nicht enthalten.
+
+**Update eines aktiven V36/V37:** `setup-v38-investment-review.sql` ausführen, **V38 Depotprüfung und Chat deployen** starten und die statische Website veröffentlichen. Für kontinuierliche Hintergrundprüfungen zusätzlich `setup-v38-monitoring.sql` konfigurieren. Die Anmeldung zeigt **38.0.0**. Die Anleitung beschreibt Schlüssel, Reihenfolge und einen kurzen Funktionstest.
+
+Prüfumfang und Grenzen: [TESTPROTOKOLL-V38.md](TESTPROTOKOLL-V38.md). Noch nicht live im Zielprojekt installiert oder auf einem iPhone geprüft.
+
+---
+
+## Historischer Stand V37.0.0 — kompakte schwarze Oberfläche auf V36-Basis
 
 Aktuelle Anleitung: [INSTALLATION-V37.md](INSTALLATION-V37.md). Vollständiges Paket mit schwarzem Hintergrund, mobiler Schnellnavigation, Cockpit, drei Kernaussagen, responsiven Modellcharts, Kursleiter, Deep-Szenariovergleich und aufklappbaren Originalberichten.
 

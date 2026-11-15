@@ -1,5 +1,5 @@
 import { buildSignalAnalysis, parseOhlcvCsv } from './supabase/functions/_shared/signal-engine.mjs?v=31.2';
-import { validateSignalInput } from './supabase/functions/_shared/signal-service.mjs?v=37.0.0';
+import { validateSignalInput } from './supabase/functions/_shared/signal-service.mjs?v=38.0.0';
 
 const $ = id => document.getElementById(id);
 const page = $('signalSimulationPage');

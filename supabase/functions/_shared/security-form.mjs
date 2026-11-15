@@ -1,11 +1,11 @@
 // Field changes are calculated before touching a form; this module never saves a trade.
 export const ANALYSIS_CURRENCIES=['EUR','USD','GBP','GBX','CHF','JPY','KRW','CNY','HKD','SEK','AUD','CAD','INR'];
-export const SECURITY_TARGETS=['trade','signal','deep','paper','csv','history','event'];
+export const SECURITY_TARGETS=['trade','signal','deep','paper','csv','history','event','review'];
 export function securityFieldChanges(scope,candidate,current={},options={}) {
   if(!SECURITY_TARGETS.includes(scope)||!candidate?.verified||!/^[A-Z0-9_^+\-]{1,25}\.[A-Z0-9]{1,12}$/.test(candidate.market_symbol||''))throw Error('Keine verifizierte Notierung ausgewählt.');
   const c={...candidate,currency:candidate.currency||options.currency||null,isin:candidate.isin||''},values={},messages=[];
-  if(['trade','signal','deep','paper','csv'].includes(scope)&&!c.currency)throw Error('Notierungswährung fehlt. Im Suchergebnis ausdrücklich auswählen; sie wird nicht aus der Börse geraten.');
-  if(['signal','deep'].includes(scope)&&!ANALYSIS_CURRENCIES.includes(c.currency))throw Error('Diese Notierungswährung wird von der Analyse noch nicht unterstützt. Anderen Handelsplatz wählen.');
+  if(['trade','signal','deep','paper','csv','review'].includes(scope)&&!c.currency)throw Error('Notierungswährung fehlt. Im Suchergebnis ausdrücklich auswählen; sie wird nicht aus der Börse geraten.');
+  if(['signal','deep','review'].includes(scope)&&!ANALYSIS_CURRENCIES.includes(c.currency))throw Error('Diese Notierungswährung wird von der Analyse noch nicht unterstützt. Anderen Handelsplatz wählen.');
   const changed=(oldSymbol,oldCurrency)=>oldSymbol!==c.market_symbol||!!oldCurrency&&oldCurrency!==c.currency;
   if(scope==='trade') {
     const product=current.type==='Knock-out';
@@ -25,7 +25,14 @@ export function securityFieldChanges(scope,candidate,current={},options={}) {
       for(const key of ['alertEntry','alertLimit','alertStop','alertTarget1','alertTarget2','alertTarget3','alertKo'])values[key]=false;
       messages.push('EODHD-Kennung und Kursalarm-Checkboxen nur in diesem ungespeicherten Formular geleert.');
     }
-  } else if(scope==='signal')Object.assign(values,{ssSymbol:c.market_symbol,ssCompany:c.name,ssCurrency:c.currency});
+  } else if(scope==='review'){
+    Object.assign(values,{rvSymbol:c.market_symbol,rvCompany:c.name,rvCurrency:c.currency,rvWkn:c.wkn||'',rvIsin:c.isin||''});
+    if(changed(current.rvSymbol,current.rvCurrency)){
+      Object.assign(values,{rvBudget:'0',rvTranches:'3',rvStop:'',rvTarget:'',rvContext:'',rvUrls:''});
+      messages.push('Wertpapier/Währung geändert: bisherige Planmarken, Budget, These und eigene URLs geleert.');
+    }
+  }
+  else if(scope==='signal')Object.assign(values,{ssSymbol:c.market_symbol,ssCompany:c.name,ssCurrency:c.currency});
   else if(scope==='deep') {
     Object.assign(values,{daSymbol:c.market_symbol,daCompany:c.name,daCurrency:c.currency});
     if(changed(current.daSymbol,current.daCurrency)) {
