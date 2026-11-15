@@ -3,12 +3,17 @@
 html[data-direct-ui=ready] .direct-top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 4px;margin-bottom:8px}
 .direct-top strong{font-size:14px;letter-spacing:.08em}.direct-top small{display:block;font-size:11px;color:var(--muted);margin-top:3px}
 html[data-direct-ui=ready] .main-nav{display:none!important}
-html[data-direct-ui=ready][data-investment-menu=open] .main-nav{display:grid!important;position:static;width:auto;height:auto;grid-template-columns:repeat(2,minmax(0,1fr));padding:12px;margin-bottom:12px}
+html[data-direct-ui=ready][data-investment-menu=open] .main-nav{display:none!important}
 html[data-direct-ui=ready] .main-nav #navDecisionBtn,html[data-direct-ui=ready] .main-nav #navSignalSimulationBtn,html[data-direct-ui=ready] .main-nav #reviewMoreBtn{display:none}
 html[data-direct-ui=ready] .topbar{display:none}
-html[data-direct-ui=ready][data-direct-view=legacy] .topbar{display:block}
+html[data-direct-ui=ready][data-direct-view=legacy] .topbar{display:none}
 html[data-direct-ui=ready]:not([data-direct-view=legacy]) #decisionPage>.compact-original{display:none}
-html[data-direct-ui=ready][data-direct-view=legacy] #decisionPage>#investmentPortfolio{display:none}
+html[data-direct-ui=ready] #decisionPage>.compact-original,html[data-direct-ui=ready] #tradingPage,html[data-direct-ui=ready] #analyticsPage,html[data-direct-ui=ready] #eventAnalysisPage{display:none!important}
+html[data-direct-ui=ready]:not([data-direct-view=benchmark]) #signalSimulationPage>:not(#investmentReviewModule){display:none!important}
+html[data-direct-ui=ready][data-direct-view=benchmark] #signalSimulationPage>:not(#paperPortfolioModule){display:none!important}
+html[data-direct-ui=ready][data-direct-view=benchmark] #paperPortfolioModule{display:block!important}
+.direct-settings{padding:18px;margin-bottom:18px}.direct-settings summary{padding:12px 0;min-height:44px}.direct-holding{padding:16px;background:#151515;border:1px solid var(--border);border-radius:12px;margin:15px 0}
+#ivLegacySection{margin:24px 0;border-top:1px solid var(--border);padding-top:18px}
 html[data-direct-ui=ready] .iv-dock{display:grid;position:fixed;grid-template-columns:repeat(3,minmax(0,1fr));bottom:0;left:50%;right:auto;transform:translateX(-50%);width:100%;max-width:1100px;z-index:45;padding:10px 10px calc(10px + env(safe-area-inset-bottom,0px));gap:8px;background:#050505;border-top:1px solid var(--border)}
 html[data-direct-ui=ready] .iv-dock button{min-height:50px;background:none;color:var(--muted);border:0;border-radius:10px;font-size:13px}
 html[data-direct-ui=ready] .iv-dock button[aria-current=page]{background:#1b1b1b;color:var(--text)}

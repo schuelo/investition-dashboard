@@ -1,7 +1,7 @@
 import {createInvestmentHandler} from '../../supabase/functions/_shared/investment-endpoint.mjs';
 import {now} from './independent-market.mjs';
 export const alice='11111111-1111-4111-8111-111111111111',bob='22222222-2222-4222-8222-222222222222';
-export function apiHarness({owner=alice,tables={},fetchImpl=async()=>{throw Error('Unexpected network');},env={},beforeQuery=null}={}){
+export function apiHarness({owner=alice,tables={},fetchImpl=async()=>{throw Error('Unexpected network');},env={},beforeQuery=null,rpcImpl=null}={}){
   const db=structuredClone(tables),calls=[],rpcs=[],requests=[];let sequence=0;
   const stamp=()=>now.toISOString(),newId=()=>crypto.randomUUID();
   class Query{
@@ -28,6 +28,7 @@ export function apiHarness({owner=alice,tables={},fetchImpl=async()=>{throw Erro
   }
   const admin={from:table=>new Query(table),rpc:async(name,p)=>{
     rpcs.push({name,p:structuredClone(p)});
+    if(rpcImpl){const supplied=await rpcImpl(name,p,db);if(supplied!==undefined)return supplied;}
     if(name==='claim_investment_operation'){
       const locks=db.investment_operation_locks||=[],old=locks.find(l=>l.user_id===p.p_user_id&&l.asset_id===p.p_asset_id&&l.kind===p.p_kind);if(old)return{data:false};locks.push({user_id:p.p_user_id,asset_id:p.p_asset_id,kind:p.p_kind,token:p.p_token});return{data:true};
     }

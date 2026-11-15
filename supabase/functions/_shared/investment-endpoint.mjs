@@ -5,6 +5,7 @@ import {discoverFreeSources} from './deep-sources.mjs';
 import {loadManualSources} from './manual-sources.mjs';
 import {portfolioValues} from './portfolio-value.mjs';
 import {targetedFeed} from './review-feed.mjs';
+import {isEquity,isClosedPlan,mappedPlan,mergedPositions} from './legacy-portfolio.mjs';
 
 const uuid=v=>/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(v||''));
 const symbolValid=s=>/^[A-Z0-9_^+\-]{1,25}\.[A-Z0-9]{1,12}$/.test(s||'');
@@ -37,36 +38,42 @@ export function createInvestmentHandler({createClient,getEnv,fetchImpl=fetch,now
       }
       responseOwner=userId;
       const admin=createClient(getEnv('SUPABASE_URL'),getEnv('SUPABASE_SERVICE_ROLE_KEY'),{auth:{persistSession:false}});
-      if(body.action==='capabilities'){const health=await admin.from('investment_monitor_health').select('last_run_at').eq('id',true).maybeSingle();return reply({ok:true,features:['investment_review_v38','portfolio_monitor_v38','persistent_gemini_chat_v38'],monitor_last_run:health.data?.last_run_at||null,alpha_configured:!!getEnv('ALPHAVANTAGE_API_KEY'),chat_provider:'gemini',chat_configured:getEnv('DEEP_GEMINI_FREE_TIER_CONFIRMED')==='true'&&!!getEnv('GEMINI_API_KEY')});}
+      if(body.action==='capabilities'){const health=await admin.from('investment_monitor_health').select('last_run_at').eq('id',true).maybeSingle();return reply({ok:true,version:'39.1.0',features:['investment_review_v38','portfolio_monitor_v38','persistent_gemini_chat_v38','legacy_depot_v391','holding_editor_v391'],monitor_last_run:health.data?.last_run_at||null,alpha_configured:!!getEnv('ALPHAVANTAGE_API_KEY'),eodhd_configured:!!getEnv('EODHD_API_TOKEN'),chat_provider:'gemini',chat_configured:getEnv('DEEP_GEMINI_FREE_TIER_CONFIRMED')==='true'&&!!getEnv('GEMINI_API_KEY')});}
       const ownAsset=async(id,owner=userId)=>{
         if(!uuid(id))throw new ReviewError('Wertpapier-ID fehlt.',400);
         const a=result(await admin.from('investment_assets').select('*').eq('id',id).eq('user_id',owner).maybeSingle(),'Wertpapier nicht lesbar. V38-SQL prüfen.');
         if(!a||a.user_id!==owner)throw new ReviewError('Eigenes Wertpapier nicht gefunden.',404);return a;
       };
-      const positions=async(owner)=>{
-        const p=result(await admin.from('depot_positions').select('*').eq('user_id',owner).eq('is_open',true).limit(1000),'Depotpositionen nicht erreichbar.');
+      const sources=async(owner)=>{
+        const p=result(await admin.from('depot_positions').select('*').eq('user_id',owner).limit(1000),'Depotpositionen nicht erreichbar.');
         const t=result(await admin.from('trade_plans').select('*').eq('user_id',owner).limit(1000),'Trade-Zuordnungen nicht erreichbar.');
         const links=result(await admin.from('investment_position_links').select('*').eq('user_id',owner),'Depotzuordnung nicht lesbar.')||[];
-        const assets=result(await admin.from('investment_assets').select('id,user_id,symbol,currency,company').eq('user_id',owner),'Wertpapierzuordnung nicht lesbar.')||[];
-        return (p||[]).filter(r=>r.user_id===owner).map(p=>{
-          const base=canonicalPosition(p,(t||[]).filter(r=>r.user_id===owner)),link=links.find(l=>l.user_id===owner&&l.position_id===p.id),asset=assets.find(a=>a.user_id===owner&&a.id===link?.asset_id);
-          return asset?{...base,symbol:asset.symbol,currency:asset.currency,company:asset.company}:base;
-        });
+        const assets=result(await admin.from('investment_assets').select('*').eq('user_id',owner),'Wertpapierzuordnung nicht lesbar.')||[];
+        return {rows:(p||[]).filter(r=>r.user_id===owner),plans:(t||[]).filter(r=>r.user_id===owner),assets:assets.filter(a=>a.user_id===owner),links:links.filter(l=>l.user_id===owner)};
       };
+      const positions=async(owner)=>{const s=await sources(owner);return mergedPositions(s.rows,s.plans,s.assets,s.links);};
       const register=async(input,owner=userId,isPortfolio=false)=>{
         const old=result(await admin.from('investment_assets').select('*').eq('user_id',owner).eq('symbol',input.symbol).eq('currency',input.currency).maybeSingle(),'V38-Wertpapiertabelle fehlt.');
         if(old)return old;
         const {bars,...config}=input;config.source=input.source==='csv'?'stored':input.source;
-        const row={user_id:owner,symbol:input.symbol,currency:input.currency,company:input.company,config,
+        const row={user_id:owner,symbol:input.symbol,currency:input.currency,company:input.company,config,legacy_trade_ids:[],
           enabled:isPortfolio,watchlisted:!isPortfolio,is_portfolio:isPortfolio};
         const created=result(await admin.from('investment_assets').upsert(row,{onConflict:'user_id,symbol,currency',ignoreDuplicates:true}).select('*').maybeSingle(),'Wertpapier konnte nicht gespeichert werden.');
         return created||result(await admin.from('investment_assets').select('*').eq('user_id',owner).eq('symbol',input.symbol).eq('currency',input.currency).single(),'Wertpapier konnte nicht geladen werden.');
       };
       const sync=async(owner)=>{
-        const held=await positions(owner),unmapped=[];const seen=new Set();
-        const existing=result(await admin.from('investment_assets').select('*').eq('user_id',owner),'V38-SQL noch nicht installiert.')||[];
+        const s=await sources(owner),held=mergedPositions(s.rows,s.plans,s.assets,s.links),unmapped=[];const seen=new Set(),legacy=new Map();
+        const existing=s.assets;
+        for(const plan of s.plans.filter(p=>!isClosedPlan(p))){
+          const p=mappedPlan(plan,existing);let input;
+          try{if(!isEquity(plan))throw Error();input=validateReviewInput({symbol:p.symbol,currency:p.currency,company:p.company,wkn:plan.wkn,isin:plan.isin,source:'stored',policy:{stop:Number(p.stop)>0?p.stop:null,target:Number(p.target)>0?p.target:null}});}catch{unmapped.push({id:plan.id,kind:'legacy_plan',name:p.company,symbol:p.symbol,currency:p.currency,product:!isEquity(plan)});continue;}
+          let a=existing.find(a=>a.symbol===input.symbol&&a.currency===input.currency);
+          if(!a){a=await register(input,owner,false);existing.push(a);result(await admin.from('investment_assets').update({enabled:plan.monitoring_enabled!==false}).eq('id',a.id).eq('user_id',owner),'Altbestand nicht aktiviert.');}
+          const ids=legacy.get(a.id)||[];ids.push(plan.id);legacy.set(a.id,ids);
+        }
+        for(const a of existing){const ids=legacy.get(a.id)||[];if(JSON.stringify([...(a.legacy_trade_ids||[])].sort())!==JSON.stringify([...ids].sort()))result(await admin.from('investment_assets').update({legacy_trade_ids:ids}).eq('id',a.id).eq('user_id',owner),'Altbestandszuordnung nicht gespeichert. setup-v39-1-depotfix.sql ausführen.');}
         for(const p of held){
-          let initial;try{if(!symbolValid(p.symbol)||!p.currency||!/^(Aktie|ETF|Stock|Equity)$/i.test(p.instrument_type))throw Error();initial=validateReviewInput({symbol:p.symbol,currency:p.currency,company:p.company,source:'stored',policy:{stop:Number(p.stop)>0?p.stop:null,target:Number(p.target)>0?p.target:null}});}catch{unmapped.push({id:p.id,name:p.company,symbol:p.symbol,currency:p.currency,product:!/^(Aktie|ETF|Stock|Equity)$/i.test(p.instrument_type)});continue;}
+          let initial;try{if(!symbolValid(p.symbol)||!p.currency||!isEquity(p))throw Error();initial=validateReviewInput({symbol:p.symbol,currency:p.currency,company:p.company,source:'stored',policy:{stop:Number(p.stop)>0?p.stop:null,target:Number(p.target)>0?p.target:null}});}catch{unmapped.push({id:p.id,kind:p.position_origin==='legacy_plan'?'legacy_plan':'position',name:p.company,symbol:p.symbol,currency:p.currency,product:!isEquity(p)});continue;}
           const identity=p.symbol+'|'+p.currency;if(seen.has(identity))continue;seen.add(identity);
           const old=existing.find(a=>a.symbol===p.symbol&&a.currency===p.currency);
           if(old){if(!old.is_portfolio)result(await admin.from('investment_assets').update({is_portfolio:true,enabled:true}).eq('id',old.id).eq('user_id',owner),'Depotzuordnung nicht gespeichert.');}
@@ -87,6 +94,7 @@ export function createInvestmentHandler({createClient,getEnv,fetchImpl=fetch,now
         const marks=result(await admin.from('investment_portfolio_marks').select('*').eq('user_id',owner).order('recorded_at',{ascending:false}).limit(1000),'Depotverlauf nicht lesbar.')||[];
         return {...summary,marks:marks.filter(m=>m.user_id===owner).reverse()};
       };
+      const optionalOverview=async(owner)=>{try{return {portfolio:await portfolioOverview(owner)};}catch(e){return {portfolio:null,portfolio_warning:e instanceof ReviewError?e.message:'Depotbewertung nicht verfügbar. Die Wertpapierliste bleibt nutzbar.'};}};
       const withLease=async(asset,kind,fn)=>{
         const token=crypto.randomUUID(),q=await admin.rpc('claim_investment_operation',{p_user_id:asset.user_id,p_asset_id:asset.id,p_kind:kind,p_token:token});
         if(q.error)throw new ReviewError('V38-Sperrfunktion fehlt oder ist nicht erreichbar.',503);if(q.data!==true)throw new ReviewError('Für diesen Wert läuft bereits eine '+(kind==='chat'?'Chatantwort':'Prüfung')+'.',409);
@@ -132,8 +140,21 @@ export function createInvestmentHandler({createClient,getEnv,fetchImpl=fetch,now
        };
        return leaseToken?run(leaseToken):withLease(asset,'review',run);
       };
-      if(body.action==='sync_portfolio'){const unmapped=await sync(userId);return reply({ok:true,unmapped,portfolio:await portfolioOverview(userId)});}
-      if(body.action==='portfolio_overview')return reply({ok:true,portfolio:await portfolioOverview(userId)});
+      if(body.action==='sync_portfolio'){const unmapped=await sync(userId);return reply({ok:true,unmapped,...await optionalOverview(userId)});}
+      if(body.action==='portfolio_overview')return reply({ok:true,...await optionalOverview(userId)});
+      if(body.action==='get_holdings'){
+        const asset=await ownAsset(body.asset_id),all=(await positions(userId)).filter(p=>p.symbol===asset.symbol&&p.currency===asset.currency);
+        return reply({ok:true,positions:all.filter(isEquity).map(p=>({id:p.id,trade_id:p.trade_id,position_origin:p.position_origin,quantity:p.quantity,average_entry_price:p.average_entry_price,direction:p.direction,instrument_type:p.instrument_type})),legacy_trade_ids:asset.legacy_trade_ids||[]});
+      }
+      if(body.action==='save_holding'){
+        const asset=await ownAsset(body.asset_id);if(body.manual_start!==true||!uuid(body.request_id))throw new ReviewError('Bestand ausdrücklich speichern; Anfragereferenz fehlt.',400);
+        const close=body.close===true,q=Number(body.quantity),entry=Number(body.average_entry_price);
+        if(!close&&(!Number.isFinite(q)||q<=0||q>1e9||!Number.isFinite(entry)||entry<=0||entry>1e9||!['Long','Short'].includes(body.direction)||!['Aktie','ETF'].includes(body.instrument_type)))throw new ReviewError('Tatsächliche positive Stückzahl, Einstand, Richtung und Aktien-/ETF-Typ eingeben.');
+        if(body.position_id&&!uuid(body.position_id)||body.legacy_trade_id&&!uuid(body.legacy_trade_id))throw new ReviewError('Bestandszuordnung ungültig.');
+        const saved=await admin.rpc('save_investment_holding',{p_user_id:userId,p_asset_id:asset.id,p_request_id:body.request_id,p_position_id:body.position_id||null,p_legacy_trade_id:body.legacy_trade_id||null,p_quantity:close?null:q,p_entry:close?null:entry,p_direction:body.direction||'Long',p_type:body.instrument_type||'Aktie',p_close:close});
+        if(saved.error)throw new ReviewError(/Review in progress/i.test(saved.error.message)?'Für diesen Wert läuft gerade eine Analyse. Danach den Bestand speichern.':'Bestand nicht gespeichert. V39.1-SQL und Zuordnung prüfen.',/Review in progress/i.test(saved.error.message)?409:503);
+        const unmapped=await sync(userId);return reply({ok:true,position:saved.data,unmapped,...await optionalOverview(userId)});
+      }
       if(body.action==='set_watchlist'){
         const asset=await ownAsset(body.asset_id);if(typeof body.watchlisted!=='boolean')throw new ReviewError('Beobachtungsstatus ungültig.');
         const patch={watchlisted:body.watchlisted,...(!asset.is_portfolio?{enabled:body.watchlisted,next_check_at:now().toISOString()}: {})};
@@ -157,11 +178,18 @@ export function createInvestmentHandler({createClient,getEnv,fetchImpl=fetch,now
         return await withLease(asset,'review',async token=>{
         if(body.position_id){
           if(!uuid(body.position_id))throw new ReviewError('Depotposition ungültig.');
-          const p=result(await admin.from('depot_positions').select('*').eq('id',body.position_id).eq('user_id',userId).eq('is_open',true).maybeSingle(),'Depotposition nicht lesbar.');
-          if(!p||p.user_id!==userId||p.currency&&p.currency!==asset.currency)throw new ReviewError('Depotposition oder Währung passt nicht zur Zuordnung.');
+          const p=result(await admin.from('depot_positions').select('*').eq('id',body.position_id).eq('user_id',userId).maybeSingle(),'Depotposition nicht lesbar.');
+          if(!p||p.is_open===false||p.user_id!==userId||p.currency&&p.currency!==asset.currency)throw new ReviewError('Depotposition oder Währung passt nicht zur Zuordnung.');
           const holding=(await positions(userId)).find(v=>v.id===p.id);if(!holding||!/^(Aktie|ETF|Stock|Equity)$/i.test(holding.instrument_type))throw new ReviewError('KO-/Hebelprodukt nicht als Aktie zuordnen. Basiswert getrennt prüfen und bisherige Produktwerkzeuge verwenden.');
           result(await admin.from('investment_position_links').upsert({user_id:userId,position_id:p.id,asset_id:asset.id},{onConflict:'user_id,position_id'}),'Depotzuordnung nicht gespeichert.');
           result(await admin.from('investment_assets').update({is_portfolio:true,enabled:true}).eq('id',asset.id).eq('user_id',userId),'Depotzuordnung nicht gespeichert.');
+          if(p.trade_id){const plan=result(await admin.from('trade_plans').select('*').eq('id',p.trade_id).eq('user_id',userId).maybeSingle(),'Trade-Zuordnung nicht lesbar.');if(plan&&isEquity(plan)){asset.legacy_trade_ids=[...new Set([...(asset.legacy_trade_ids||[]),plan.id])];result(await admin.from('investment_assets').update({legacy_trade_ids:asset.legacy_trade_ids}).eq('id',asset.id).eq('user_id',userId),'Altbestandszuordnung nicht gespeichert.');}}
+        }
+        if(body.legacy_trade_id){
+          if(!uuid(body.legacy_trade_id))throw new ReviewError('Ältere Zuordnung ungültig.');
+          const p=result(await admin.from('trade_plans').select('*').eq('id',body.legacy_trade_id).eq('user_id',userId).maybeSingle(),'Älterer Wert nicht lesbar.');
+          if(!p||p.user_id!==userId||!isEquity(p)||p.currency&&p.currency!==asset.currency)throw new ReviewError('Älterer Aktien-/ETF-Wert und Währung passen nicht zur gewählten Zuordnung.');
+          asset.legacy_trade_ids=[...new Set([...(asset.legacy_trade_ids||[]),p.id])];result(await admin.from('investment_assets').update({legacy_trade_ids:asset.legacy_trade_ids}).eq('id',asset.id).eq('user_id',userId),'Ältere Zuordnung nicht gespeichert.');
         }
         const {bars,...config}=input;config.source=input.source==='csv'?'stored':input.source;
         const patch={config,company:input.company,...(JSON.stringify(config)!==JSON.stringify(asset.config)?{state:{...asset.state,plan_pending:true}}:{}),...(!asset.is_portfolio?{watchlisted:true,enabled:true}: {})};
@@ -175,7 +203,8 @@ export function createInvestmentHandler({createClient,getEnv,fetchImpl=fetch,now
         if(!cron)await sync(userId);
         else{
           const owners=result(await admin.from('depot_positions').select('user_id').eq('is_open',true).limit(2000),'Depotzugriff nicht möglich.')||[];
-          for(const owner of [...new Set(owners.map(p=>p.user_id))])await sync(owner);
+          const old=result(await admin.from('trade_plans').select('user_id,status').limit(2000),'Altbestand nicht erreichbar.')||[];
+          for(const owner of [...new Set([...owners,...old.filter(p=>!isClosedPlan(p))].map(p=>p.user_id))])await sync(owner);
         }
         let q=admin.from('investment_assets').select('*').eq('enabled',true).order('next_check_at',{ascending:true}).limit(40);
         if(userId)q=q.eq('user_id',userId);if(cron)q=q.lte('next_check_at',now().toISOString());

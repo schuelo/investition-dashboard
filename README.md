@@ -1,4 +1,18 @@
-# V39.0.0 — Depot, Suche, Beobachtung und Analyse direkt am Wertpapier
+# V39.1.0 — Depotabgleich mit Altbestand und einheitlicher Oberfläche
+
+Aktuelle Anleitung: [INSTALLATION-V39.1.md](INSTALLATION-V39.1.md). Das vollständige Paket behebt den Abgleich älterer gespeicherter Werte wie **Volkswagen Vz. / VOW3.XETRA**. Gespeicherte Analysen erscheinen im Depot unter **Bereits hinterlegte Werte**; tatsächliche Bestände lassen sich direkt beim Wert mit Stückzahl und Einstand erfassen, ändern oder schließen. Eine bloße Analyse wird nicht automatisch als ausgeführter Kauf behandelt. Doppelte Speicheranfragen erzeugen keine zusätzlichen Positionen.
+
+Die fünf bisherigen Fachansichten werden in der Bedienung durch **Depot**, **Suche**, **Beobachtung** und die **Wertpapierseite** ersetzt. Unter **Verwaltung** bleiben Nachrichten, Benchmark-Depot, Import/Export, Konto/Telegram und Sperren erreichbar. Historische Daten und bisherige Kernmodule bleiben erhalten. Ein Ausfall der optionalen Depotbewertung blendet die Wertpapierliste nicht mehr aus.
+
+Neue Werte verwenden zunächst **Gespeicherte Kurse / News**. Alpha Vantage ist ausdrücklich optional; der fehlende Schlüssel wird vor einem neuen Alpha-Abruf erkannt. Gespeicherte Daten und OHLCV-CSV benötigen keinen neuen Anbieter-Schlüssel. Ohne ausreichende aktuelle Kurshistorie bleibt eine Chart-/Kursempfehlung offen. Es gibt keine automatische Quellenumschaltung, Billing-Aktivierung oder automatisch gestartete KI.
+
+**Update von V39:** `setup-v39-1-depotfix.sql` im Supabase SQL Editor ausführen, **V39.1 Depotabgleich und Oberfläche deployen** starten und die statische Website veröffentlichen. Danach auf der Anmeldung **39.1.0** prüfen und **Depot abgleichen**. Weitere Installationswege und die optionale Alpha-Einrichtung stehen in der aktuellen Anleitung.
+
+Prüfprotokoll: [TESTPROTOKOLL-V39.1.md](TESTPROTOKOLL-V39.1.md). Noch kein Live-Deployment oder iPhone-Test im Zielprojekt.
+
+---
+
+## Historischer Stand V39.0.0 — Depot, Suche, Beobachtung und Analyse direkt am Wertpapier
 
 Aktuelle Anleitung: [INSTALLATION-V39.md](INSTALLATION-V39.md). Die Hauptnavigation besteht aus **Depot**, **Suche** und **Beobachtung**. Ein Wert öffnet seine eigene Seite mit Einschätzung, Kursmarken, Modellchart, Quellen, Plan, Gespräch und Historie. Die bisher getrennten Werkzeuge bleiben unter Verwaltung erreichbar. Die Anmeldung zeigt **39.0.0**.
 
