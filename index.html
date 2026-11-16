@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="de" data-analysis-tab="signal">
 <head>
-  <meta name="application-version" content="39.1.0">
-  <script defer src="./release.js?v=39.1.0"></script>
+  <meta name="application-version" content="39.2.0">
+  <script defer src="./release.js?v=39.2.0"></script>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="color-scheme" content="dark" />
@@ -1011,12 +1011,12 @@
 
   </style>
   <link rel="stylesheet" href="./signal-simulation.css?v=31.2" />
-  <link rel="stylesheet" href="./deep-analysis.css?v=39.1.0" />
-  <link rel="stylesheet" href="./security-picker.css?v=39.1.0" />
+  <link rel="stylesheet" href="./deep-analysis.css?v=39.2.0" />
+  <link rel="stylesheet" href="./security-picker.css?v=39.2.0" />
   <link rel="stylesheet" href="./paper-portfolio.css?v=33.0" />
-  <link rel="stylesheet" href="./compact-ui.css?v=39.1.0" />
-  <link rel="stylesheet" href="./investment-ui.css?v=39.1.0" />
-  <link rel="stylesheet" href="./direct-ui.css?v=39.1.0" />
+  <link rel="stylesheet" href="./compact-ui.css?v=39.2.0" />
+  <link rel="stylesheet" href="./investment-ui.css?v=39.2.0" />
+  <link rel="stylesheet" href="./direct-ui.css?v=39.2.0" />
 </head>
 <body class="auth-locked">
 <div id="appError" hidden style="position:sticky;top:0;z-index:9999;background:#7f1d1d;color:#fff;padding:12px 16px;font:600 14px system-ui;text-align:center"></div>
@@ -1062,7 +1062,7 @@ setTimeout(function(){
       <div class="brand-mark">I</div>
       <div>
         <h2 id="authGateTitle">Investition Dashboard</h2>
-        <p class="auth-subtitle">Geschützter Cloud-Zugang · Version <span data-release-version>39.1.0</span></p>
+        <p class="auth-subtitle">Geschützter Cloud-Zugang · Version <span data-release-version>39.2.0</span></p>
       </div>
     </div>
     <p style="margin:0;color:#c3d1de">Melde dich mit deinem bestehenden Supabase-Konto an. Ohne erfolgreiche Anmeldung bleiben Dashboard, Analysen, Depotpositionen, News und Benachrichtigungen gesperrt.</p>
@@ -1085,16 +1085,16 @@ setTimeout(function(){
   </section>
 </div>
 <div class="app-shell" id="appShell" inert aria-hidden="true">
-  <header class="direct-top"><div><strong>INVESTITION</strong><small>Version <span data-release-version>39.1.0</span></small></div><button class="btn" id="reviewDockMore" type="button" data-review-nav="more" aria-expanded="false" aria-controls="directSettings">Verwaltung</button></header>
+  <header class="direct-top"><div><strong>INVESTITION</strong><small>Version <span data-release-version>39.2.0</span></small></div><button class="btn" id="reviewDockMore" type="button" data-review-nav="more" aria-expanded="false" aria-controls="directSettings">Verwaltung</button></header>
   <nav class="iv-dock" aria-label="Hauptnavigation"><button type="button" data-review-nav="portfolio">Depot</button><button type="button" data-review-nav="search">Suche</button><button type="button" data-review-nav="watch">Beobachtung</button></nav>
-  <section id="directSettings" class="direct-settings card" hidden aria-label="Verwaltung"><div class="compact-heading"><h2>Verwaltung</h2><button id="ivCloseSettings" class="btn" type="button">Schließen</button></div><div class="ss-actions"><button id="ivAllNews" class="btn" type="button">Alle Nachrichten</button><button id="ivBenchmark" class="btn" type="button">Benchmark-Depot</button><button id="ivImport" class="btn" type="button">JSON importieren</button><button id="ivExport" class="btn" type="button">JSON exportieren</button><button id="ivAccount" class="btn" type="button">Konto / Telegram</button><button id="ivLock" class="btn" type="button">Sperren</button></div><details><summary>Kursquellen &amp; Einrichtung</summary><div id="ivProviders" class="compact-muted">Verfügbarkeit nach Anmeldung prüfen.</div><p>Gespeicherte Kurse und CSV benötigen keinen neuen Anbieter-Schlüssel. Alpha Vantage ist optional. Die Quellenwahl bleibt ausdrücklich; es wird keine Abrechnung aktiviert.</p></details></section>
+  <section id="directSettings" class="direct-settings card" hidden aria-label="Verwaltung"><div class="compact-heading"><h2>Verwaltung</h2><button id="ivCloseSettings" class="btn" type="button">Schließen</button></div><div class="ss-actions"><button id="ivAllNews" class="btn" type="button">Alle Nachrichten</button><button id="ivBenchmark" class="btn" type="button">Benchmark-Depot</button><button id="ivImport" class="btn" type="button">Analysen/Pläne importieren</button><button id="ivExport" class="btn" type="button">Analysen/Pläne exportieren</button><button id="ivAccount" class="btn" type="button">Konto / Telegram</button><button id="ivLock" class="btn" type="button">Sperren</button></div><details><summary>Kursquellen &amp; Einrichtung</summary><div id="ivProviders" class="compact-muted">Verfügbarkeit nach Anmeldung prüfen.</div><p>Gespeicherte Kurse und CSV benötigen keinen neuen Anbieter-Schlüssel. Alpha Vantage ist optional. Die Quellenwahl bleibt ausdrücklich; es wird keine Abrechnung aktiviert.</p></details></section>
   <nav class="compact-dock" aria-label="Schnellnavigation">
     <button type="button" data-compact-page="decision">Cockpit</button>
     <button type="button" data-compact-page="signal">Analyse</button>
     <button type="button" data-compact-page="deep">Deep</button>
     <button type="button" id="compactMenuBtn" aria-expanded="false" aria-controls="compactMainNav">Mehr</button>
   </nav>
-    <nav class="main-nav" id="compactMainNav" hidden aria-hidden="true" aria-label="Interne Kompatibilitätssteuerung" data-release-label="V39.1.0 · INVESTITION DASHBOARD">
+    <nav class="main-nav" id="compactMainNav" hidden aria-hidden="true" aria-label="Interne Kompatibilitätssteuerung" data-release-label="V39.2.0 · INVESTITION DASHBOARD">
       <button class="nav-btn active" id="navDecisionBtn" data-page="decision">◆ Mein Portfolio</button>
       <button class="nav-btn" id="navSignalSimulationBtn" data-page="signals">↗ Wertpapier prüfen</button>
       <button class="nav-btn iv-nav-more" id="reviewMoreBtn" type="button" aria-expanded="false" aria-controls="compactMainNav">Mehr Werkzeuge</button>
@@ -1134,11 +1134,12 @@ setTimeout(function(){
     <section id="investmentPortfolio" class="iv-portfolio card" aria-labelledby="ivTitle">
       <div class="compact-heading"><div><p class="compact-eyebrow" id="ivEyebrow">Deine Investments</p><h2 id="ivTitle">Mein Depot</h2></div><button id="ivArchive" class="btn" type="button" hidden>Analysearchiv</button></div>
       <div id="ivValueHero"></div><p class="compact-muted" id="ivListHelp"></p>
-      <div class="ss-actions direct-load-actions"><button id="ivLoad" class="btn" type="button">Depot abgleichen</button><button id="ivCheck" class="btn" type="button">Jetzt prüfen · ohne KI</button></div>
-      <p id="ivStatus" class="compact-status" role="status" aria-live="polite">Gespeicherte Einschätzungen nach Anmeldung laden. Kursdatum, Analysezeit und Abrufstatus bleiben getrennt sichtbar.</p>
+      <div class="ss-actions direct-load-actions"><button id="ivAddPosition" class="btn primary" type="button">＋ Position hinzufügen</button><button id="ivLoad" class="btn" type="button">Depot neu laden</button><button id="ivCheck" class="btn" type="button">Analysen aktualisieren · ohne KI</button></div>
+      <p id="ivSetupStatus" class="compact-status" role="status" aria-live="polite"></p>
+      <p id="ivStatus" class="compact-status" role="status" aria-live="polite">Depotpositionen nach Anmeldung laden. Stückzahl und Einstand können unabhängig von Kursdaten und Analyse erfasst werden.</p>
       <p id="ivMonitorStatus" class="compact-muted">Hintergrundstatus nach Anmeldung verfügbar.</p><div id="ivFilters" class="iv-filters" role="group" aria-label="Kurs- und Abrufstatus filtern"></div><div id="ivAssets" class="iv-grid"></div><div id="ivUnmapped"></div>
       <section id="ivLegacySection" hidden><h3>Bereits hinterlegte Werte</h3><p class="compact-muted">Aus früheren Analysen und Trade-Plänen übernommen. Ohne bestätigten Bestand werden keine Stückzahlen oder Depotwerte unterstellt. Wert öffnen, um ihn zu analysieren oder den tatsächlichen Bestand zu erfassen.</p><div id="ivLegacyAssets"></div></section>
-      <button id="ivNew" class="btn primary" type="button">WKN/ISIN prüfen</button>
+      <button id="ivNew" class="btn" type="button">Weiteren Wert zur Analyse suchen</button>
     </section>
     <section id="compactHomeSection" class="compact-home card" aria-labelledby="compactHomeTitle">
       <div class="compact-heading"><div><p class="compact-eyebrow">Dein Überblick</p><h2 id="compactHomeTitle">Was braucht Aufmerksamkeit?</h2></div><button class="btn" id="compactHomeLoad" type="button">Analysen laden</button></div>
@@ -1155,7 +1156,7 @@ setTimeout(function(){
           <p>Priorisierte Signale, Investmentthesen, Ereignisse, Szenarien, Portfoliorisiken, Signalvalidierung und Systemgesundheit in einer gemeinsamen Entscheidungskette.</p>
         </div>
         <div class="decision-version">
-          <span class="chip good">Dashboard <span data-release-version>39.1.0</span></span>
+          <span class="chip good">Dashboard <span data-release-version>39.2.0</span></span>
           <span class="chip neutral">Eventanalyse 30.0</span>
           <span class="chip neutral">Ausbaustufen 18–23 + 25</span>
           <button class="btn small" id="decisionRefreshBtn" type="button">↻ Aktualisieren</button>
@@ -1358,8 +1359,52 @@ setTimeout(function(){
   <div class="direct-security-nav"><button class="btn" id="rvBack" type="button">← Zurück</button><button class="btn" id="rvRemember" type="button">+ Merken</button></div>
   <header class="iv-head"><div><p class="compact-eyebrow" id="rvHeadingLabel">Suche</p><h2 id="rvSecurityName">Wertpapier finden</h2><p class="compact-muted" id="rvSecurityInfo">Gespeicherte Werte nach Name, Ticker, WKN oder ISIN finden. Neue Werte per WKN/ISIN zuordnen.</p></div><button class="btn" id="rvNew" type="button">Neuen Wert suchen</button></header>
   <section id="rvSavedSearch"><label>Gespeicherte Werte<input id="rvSavedQuery" type="search" autocomplete="off" placeholder="Name, Ticker, WKN oder ISIN"></label><div id="rvSavedMatches"></div></section>
-  <div id="rvAssetActions" class="direct-asset-actions" hidden><button class="btn" id="rvHolding" type="button">Bestand erfassen / ändern</button><button class="btn" id="rvPlan" type="button">Plan bearbeiten</button><button class="btn primary" id="rvAnalyze" type="button">Analyse aktualisieren</button><button class="btn" id="rvAsk" type="button">Gespräch / KI</button><label class="iv-monitor"><input id="rvMonitor" type="checkbox"> Automatisch prüfen · ohne KI</label></div>
-  <section id="rvHoldingPanel" class="direct-holding" hidden><div class="compact-heading"><h3>Tatsächlicher Depotbestand</h3><button id="rvHoldingCancel" class="btn" type="button">Schließen</button></div><p id="rvHoldingStatus" class="compact-status" role="status"></p><form id="rvHoldingForm"><label>Position<select id="rvHoldingSelect"><option value="new">Neue tatsächliche Position</option></select></label><div class="iv-fields"><label>Stückzahl<input id="rvHoldingQuantity" type="number" min="0.000001" max="1000000000" step="any" required></label><label>Tatsächlicher Einstand je Stück<input id="rvHoldingEntry" type="number" min="0.000001" max="1000000000" step="any" required></label><label>Bestandsrichtung<select id="rvHoldingDirection" required><option value="Long">Long / gehaltene Aktien</option><option value="Short">Short</option><option value="">Richtung bitte bestätigen</option></select></label><label>Wertpapierart<select id="rvHoldingType"><option>Aktie</option><option>ETF</option></select></label></div><p class="compact-muted">Absolute Stückzahl dieser Position, kein zusätzlicher Kauf. Nur selbst bestätigte Bestände erfassen. Eine gespeicherte Analyse oder ein Referenzkurs ersetzt keinen Einstand.</p><div class="ss-actions"><button id="rvHoldingSave" class="btn primary" type="submit">Bestand speichern</button><button id="rvHoldingClose" class="btn" type="button" disabled>Diese Position als geschlossen markieren</button></div></form></section>
+  <div id="rvAssetActions" class="direct-asset-actions" hidden><button class="btn" id="rvHolding" type="button">Depotbestand bearbeiten</button><button class="btn" id="rvPlan" type="button">Analyseplan bearbeiten</button><button class="btn primary" id="rvAnalyze" type="button">Analyse aktualisieren</button><button class="btn" id="rvAsk" type="button">Gespräch / KI</button><label class="iv-monitor"><input id="rvMonitor" type="checkbox"> Automatisch prüfen · ohne KI</label></div>
+  <section id="rvPositionSummary" class="depot-position-summary" hidden aria-label="Aktueller Depotbestand"></section>
+  <section id="rvHoldingPanel" class="direct-holding" hidden aria-labelledby="rvHoldingTitle">
+    <div class="compact-heading"><div><p class="compact-eyebrow">Dein tatsächliches Depot</p><h2 id="rvHoldingTitle">Position hinzufügen</h2></div><button id="rvHoldingCancel" class="btn" type="button">← Zurück</button></div>
+    <p class="compact-muted">Wertpapier auswählen, Stückzahl und durchschnittlichen Einstand eintragen. Speichern funktioniert ohne Kursabruf und ohne Analyse.</p>
+    <p id="rvHoldingStatus" class="compact-status" role="status" aria-live="polite" tabindex="-1"></p>
+    <form id="rvHoldingForm">
+      <fieldset id="rvHoldingFields" class="depot-fieldset">
+        <legend>1 · Wertpapier</legend>
+        <label>Bereits gespeicherten Wert auswählen<select id="hpSavedAsset"><option value="">Neues Wertpapier / manuelle Eingabe</option></select></label>
+        <details id="hpWknDetails" open><summary>Neues Wertpapier per WKN / ISIN suchen</summary><div data-security-target="holding"></div></details>
+        <p id="hpSecurityLabel" class="compact-muted">Noch kein Wertpapier ausgewählt.</p>
+        <details id="hpIdentityDetails" open><summary>Notierung und Stammdaten</summary><div class="iv-fields">
+          <label>Wertpapiername<input id="hpCompany" maxlength="160" autocomplete="off" placeholder="z. B. Volkswagen Vz."></label>
+          <label>Kennung mit Handelsplatz<input id="hpSymbol" required maxlength="40" autocomplete="off" autocapitalize="characters" placeholder="VOW3.XETRA"></label>
+          <label>Notierungswährung<select id="hpCurrency"><option>EUR</option><option>USD</option><option>GBP</option><option>GBX</option><option>CHF</option><option>JPY</option><option>KRW</option><option>CNY</option><option>HKD</option><option>SEK</option><option>AUD</option><option>CAD</option><option>INR</option></select></label>
+        </div><details><summary>Zusätzliche Kennungen · optional, ohne Suche</summary><div class="iv-fields"><label>WKN als Stammdatum<input id="hpWkn" maxlength="6" autocomplete="off"></label><label>ISIN als Stammdatum<input id="hpIsin" maxlength="12" autocomplete="off"></label></div></details></details>
+        <label class="ss-check"><input id="hpConfirmed" type="checkbox" required> Wertpapier, Handelsplatz und Währung sind korrekt.</label>
+        <h3>2 · Bestand und Einstand</h3>
+        <label>Position<select id="rvHoldingSelect"><option value="new">Neue tatsächliche Position</option></select></label>
+        <p id="hpPositionHelp" class="compact-muted">Ein gespeicherter Analyseplan ist noch kein tatsächlicher Bestand.</p>
+        <label id="hpAdditionalRow" class="ss-check" hidden><input id="hpAdditionalConfirmed" type="checkbox"> Zusätzliche, getrennte Position erfassen. Vorhandene Positionen bleiben bestehen.</label>
+        <div class="iv-fields">
+          <label>Stückzahl<input id="rvHoldingQuantity" type="text" inputmode="decimal" autocomplete="off" required placeholder="z. B. 10 oder 10,5"></label>
+          <label>Durchschnittlicher Einstand je Stück<input id="rvHoldingEntry" type="text" inputmode="decimal" autocomplete="off" required placeholder="z. B. 95,50"></label>
+          <label>Kauf-/Einstandsdatum · optional<input id="hpEntryDate" type="date" min="1900-01-01"></label>
+        </div>
+        <details id="hpTypeDetails"><summary>Wertpapierart und Richtung</summary><div class="iv-fields"><label>Bestandsrichtung<select id="rvHoldingDirection" required><option value="Long">Long / gehaltene Aktien</option><option value="Short">Short</option><option value="">Richtung bitte bestätigen</option></select></label><label>Wertpapierart<select id="rvHoldingType"><option>Aktie</option><option>ETF</option></select></label></div></details>
+        <p class="compact-muted">Einstand und Bewertungskurs jeweils in der angezeigten Notierungswährung eintragen. Beim Bearbeiten gilt die absolute Stückzahl dieser Position. Für mehrere Käufe kannst du den gewichteten Durchschnittseinstand eintragen oder getrennte Positionen führen. Angaben ohne Tausendertrennzeichen; Komma und Dezimalpunkt sind möglich.</p>
+        <details id="hpValuationDetails"><summary>3 · Bewertung und eigener Kurs · optional</summary>
+        <label>Bewertungskurs<select id="hpValuation"><option value="keep">Bisherige Bewertung beibehalten</option><option value="market">Gespeicherten Anbieter-Kurs verwenden</option><option value="manual">Eigenen Kurs mit Datum erfassen</option></select></label>
+        <div id="hpManualFields" class="iv-fields" hidden>
+          <label>Manueller Bewertungskurs je Stück<input id="hpManualPrice" type="text" inputmode="decimal" autocomplete="off" placeholder="optional"></label>
+          <label>Kursdatum<input id="hpManualDate" type="date" min="1900-01-01"></label>
+        </div>
+        <p class="compact-muted">Ohne Kurs bleibt dein Einstand sichtbar; Marktwert und Gewinn/Verlust bleiben offen. Ein manueller Kurs wird als solcher gekennzeichnet und ersetzt keine Chartdaten. Short-Positionen werden separat geführt und nicht als Long-Depotwert addiert.</p>
+        </details><div id="hpPreview" class="depot-preview" aria-live="polite"></div>
+        <div class="ss-actions"><button id="rvHoldingSave" class="btn primary" type="submit">Im Depot speichern</button><button id="hpReload" class="btn" type="button">Bestand neu laden</button></div>
+      </fieldset>
+    </form>
+    <details id="hpClosePanel" class="compact-original" hidden><summary>Position schließen</summary>
+      <p>Die ausgewählte Position wird als nicht mehr gehalten markiert. Berichte bleiben erhalten. Ein realisierter Verkaufserlös wird dadurch nicht berechnet.</p>
+      <label class="ss-check"><input id="hpCloseConfirmed" type="checkbox"> Diese Position ist vollständig geschlossen.</label>
+      <button id="rvHoldingClose" class="btn" type="button" disabled>Position als geschlossen markieren</button>
+    </details>
+  </section>
   <p id="rvStatus" class="compact-status" role="status" aria-live="polite">WKN/ISIN suchen oder eine Depotposition öffnen. Kurse und KI werden nicht beim Öffnen abgerufen.</p>
   <section id="rvResult" hidden><div id="rvResultBody"></div><div class="ss-actions"><button class="btn" id="rvExport" type="button">Bericht als JSON</button><button class="btn" id="rvCopyContext" type="button">Kontext für ChatGPT kopieren</button><button class="btn" id="rvLegacy" type="button">Alle Chartdetails</button></div></section>
   <details id="rvInputs" class="compact-original" open><summary>Wertpapier auswählen / Analyse vorbereiten</summary>
@@ -1413,7 +1458,7 @@ setTimeout(function(){
       <h2>Signal- &amp; Verlaufssimulation</h2>
       <p>TRIGGER-KI-Meldung auswählen, KI manuell starten, News und Charttechniken auswerten und mögliche Verläufe sowie bedingte Ein-/Ausstiege prüfen.</p>
       <span class="ss-small">Tageskurse · getrennte Analyse · sichtbar begründete Chartmethoden · Ergebnisse mit Quellen und Datenstand</span>
-      <div class="ss-actions"><button class="btn" type="button" id="daOpen">V39.1.0 · Deep-Analyse öffnen</button></div>
+      <div class="ss-actions"><button class="btn" type="button" id="daOpen">V39.2.0 · Deep-Analyse öffnen</button></div>
       <p><button class="btn" type="button" data-compact-tab="paper">Fiktives Benchmark-Depot öffnen</button></p>
     </section>
     <p id="ssCompactStatus" class="compact-status" role="status" aria-live="polite">Wertpapier und Kursquelle wählen. Start ausschließlich manuell.</p>
@@ -1477,7 +1522,7 @@ setTimeout(function(){
 <!-- Embedded into index.html by the release build; do not navigate to this fragment. -->
 <section class="da-module" id="deepAnalysisModule">
   <article class="card da-hero">
-    <div><span class="da-eyebrow">V39.1.0 · DEEP-ANALYSE</span><h2>These prüfen. Szenarien vergleichen. Risiken verstehen.</h2>
+    <div><span class="da-eyebrow">V39.2.0 · DEEP-ANALYSE</span><h2>These prüfen. Szenarien vergleichen. Risiken verstehen.</h2>
     <p>News und Quellen, Tages- und Wochencharts, sechs Verläufe und Produktstress. Jede gespeicherte Analyse behält ihren ursprünglichen Datenstand.</p></div>
     <span class="chip">Manueller Start</span>
   </article>
@@ -1576,7 +1621,7 @@ setTimeout(function(){
         </details>
         <div class="da-actions"><button id="daRun" class="btn primary" type="submit">Deep-Analyse manuell starten</button><button id="daDemo" class="btn" type="button">Synthetische Demo</button></div>
       </form>
-      <p id="daStatus" class="da-status" role="status" aria-live="polite">V39.1.0 wird geladen … Falls dieser Text stehen bleibt, die Seite vollständig neu laden.</p>
+      <p id="daStatus" class="da-status" role="status" aria-live="polite">V39.2.0 wird geladen … Falls dieser Text stehen bleibt, die Seite vollständig neu laden.</p>
       </details>
     </article>
     <aside class="card da-panel">
@@ -1898,13 +1943,13 @@ setTimeout(function(){
 <script defer src="./analytics.js?v=29.4"></script>
 <script defer src="./event-analysis.js?v=30.1"></script>
 
-<script type="module" src="./signal-simulation.js?v=39.1.0"></script>
-<script type="module" src="./deep-analysis.js?v=39.1.0"></script>
+<script type="module" src="./signal-simulation.js?v=39.2.0"></script>
+<script type="module" src="./deep-analysis.js?v=39.2.0"></script>
 <script type="module" src="./paper-portfolio.js?v=33.0"></script>
-<script type="module" src="./security-picker.js?v=39.1.0"></script>
-<script type="module" src="./market-data.js?v=39.1.0"></script>
-<script type="module" src="./compact-ui.js?v=39.1.0"></script>
-<script type="module" src="./investment-ui.js?v=39.1.0"></script>
+<script type="module" src="./security-picker.js?v=39.2.0"></script>
+<script type="module" src="./market-data.js?v=39.2.0"></script>
+<script type="module" src="./compact-ui.js?v=39.2.0"></script>
+<script type="module" src="./investment-ui.js?v=39.2.0"></script>
 
 </body>
 </html>

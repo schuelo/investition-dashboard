@@ -6,7 +6,7 @@ const $=id=>document.getElementById(id);
 let epoch=0;
 export function currentSecurityFields(scope) {
   if(scope==='trade'){const form=$('tradeForm');return Object.fromEntries(['id','name','symbol','marketSymbol','currency','type'].map(k=>[k,form.elements[k]?.value||'']));}
-  const keys={signal:['ssSymbol','ssCurrency'],deep:['daSymbol','daCurrency'],review:['rvSymbol','rvCurrency'],paper:['ppSymbols','ppCurrency'],csv:['ppCsvSymbol'],history:['daHistorySymbol'],event:['eventAnalysisInput']}[scope]||[];
+  const keys={signal:['ssSymbol','ssCurrency'],deep:['daSymbol','daCurrency'],review:['rvSymbol','rvCurrency'],holding:['hpSymbol','hpCurrency'],paper:['ppSymbols','ppCurrency'],csv:['ppCsvSymbol'],history:['daHistorySymbol'],event:['eventAnalysisInput']}[scope]||[];
   return Object.fromEntries(keys.map(k=>[k,$(k)?.value||'']));
 }
 export function writeSecurityFields(scope,changes) {
@@ -31,7 +31,7 @@ export function mountSecurityPicker(root) {
     '<button class="btn" type="button" data-sec-search>Suchen</button><button class="btn" type="button" data-sec-cancel>Verwerfen</button></div>'+
     '<p class="security-picker-status" role="status" aria-live="polite">Aktie oder ETF auswählen. Die Übernahme füllt dieses Formular; Speichern und Analysestart erfolgen wie bisher.</p>'+
     '<div data-sec-results hidden><label for="'+uid+'-result">Gefundene und geprüfte Notierung<select id="'+uid+'-result" data-sec-select></select></label><div data-sec-preview></div>'+
-    '<label for="'+uid+'-currency" data-sec-currency-label hidden>Notierungswährung bestätigen (für CSV, falls Kursmetadaten fehlen)<select id="'+uid+'-currency" data-sec-currency><option value="">Bitte wählen</option>'+['EUR','USD','GBP','GBX','CHF','JPY','KRW','CNY','HKD','SEK','AUD','CAD','INR'].map(c=>'<option>'+c+'</option>').join('')+'</select></label>'+
+    '<label for="'+uid+'-currency" data-sec-currency-label hidden>Notierungswährung bestätigen (falls nicht in den Stammdaten enthalten)<select id="'+uid+'-currency" data-sec-currency><option value="">Bitte wählen</option>'+['EUR','USD','GBP','GBX','CHF','JPY','KRW','CNY','HKD','SEK','AUD','CAD','INR'].map(c=>'<option>'+c+'</option>').join('')+'</select></label>'+
     (scope==='trade'?'<div data-sec-chart-block hidden><label for="'+uid+'-chart" data-sec-chart-dropdown>US-Chartbörse bestätigen<select id="'+uid+'-chart" data-sec-chart><option value="">Bitte wählen</option><option>NASDAQ</option><option>NYSE</option><option>AMEX</option><option>OTC</option></select></label><label for="'+uid+'-chart-custom">Alternativ bestätigte TradingView-Kennung<input id="'+uid+'-chart-custom" data-sec-chart-custom maxlength="60" autocapitalize="characters" spellcheck="false" placeholder="BÖRSE:TICKER"></label></div>':'')+
     (scope==='paper'?'<label>Im neuen Experiment<select data-sec-append><option value="replace">Symbolauswahl ersetzen</option><option value="append">Symbol hinzufügen</option></select></label>':'')+
     (scope==='trade'?'<label data-sec-disable-eod-label hidden><span><input type="checkbox" data-sec-disable-eod> Nur Chart/Stammdaten übernehmen; EODHD-Kennung und Kursalarmfelder in diesem Formular leeren (noch nicht speichern).</span></label>':'')+
@@ -60,7 +60,7 @@ export function mountSecurityPicker(root) {
         if(capabilities.error||!capabilities.data?.features?.includes('independent_market_v36'))throw Error('Unabhängige WKN-Suche noch nicht installiert. Zuerst V36-Gesamtupdate deployen; keine EODHD-Abfrage gestartet.');
       }
       const mainPrefix={signal:'ss',deep:'da'}[scope];
-      const csvOnly=mainPrefix?$(mainPrefix+'MarketSource')?.value==='csv':['history','event','csv','paper','review'].includes(scope);
+      const csvOnly=mainPrefix?$(mainPrefix+'MarketSource')?.value==='csv':['history','event','csv','paper','review','holding'].includes(scope);
       const payload={query:body.query,preferred_exchange:body.preferred_exchange,manual_start:true,...(source==='independent'?{catalogue_source:'independent',quote_metadata:!csvOnly}: {})};
       const response=await sb.functions.invoke('resolve-security',{body:payload});
       if(captured!==epoch||request!==token||access().session?.user?.id!==owner)return;
@@ -89,7 +89,7 @@ export function mountSecurityPicker(root) {
   });
   const guard=e=>{if(pending||busy){e.preventDefault();e.stopImmediatePropagation();status('Zuerst die gesuchte WKN übernehmen oder die Suche verwerfen.',true);}};
   root.closest('form')?.addEventListener('submit',guard,true);
-  const standalone={event:['eventAnalysisRunBtn'],history:['daHistoryLoad'],review:['rvSave','rvRemember','rvHolding']}[scope]||[];for(const id of standalone)$(id)?.addEventListener('click',guard,true);
+  const standalone={event:['eventAnalysisRunBtn'],history:['daHistoryLoad'],review:['rvSave','rvRemember','rvHolding'],holding:['rvHoldingClose','hpReload']}[scope]||[];for(const id of standalone)$(id)?.addEventListener('click',guard,true);
   window.addEventListener('investition:reset-security-picker',event=>{if(event.detail?.scope===scope)clear();});
   window.addEventListener('investition:auth-changed',()=>{clear();status('Sitzung geändert. WKN-Suche bei Bedarf neu starten.');});
   return {lookup,clear};

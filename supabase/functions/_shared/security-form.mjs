@@ -1,11 +1,11 @@
 // Field changes are calculated before touching a form; this module never saves a trade.
 export const ANALYSIS_CURRENCIES=['EUR','USD','GBP','GBX','CHF','JPY','KRW','CNY','HKD','SEK','AUD','CAD','INR'];
-export const SECURITY_TARGETS=['trade','signal','deep','paper','csv','history','event','review'];
+export const SECURITY_TARGETS=['trade','signal','deep','paper','csv','history','event','review','holding'];
 export function securityFieldChanges(scope,candidate,current={},options={}) {
   if(!SECURITY_TARGETS.includes(scope)||!candidate?.verified||!/^[A-Z0-9_^+\-]{1,25}\.[A-Z0-9]{1,12}$/.test(candidate.market_symbol||''))throw Error('Keine verifizierte Notierung ausgewählt.');
   const c={...candidate,currency:candidate.currency||options.currency||null,isin:candidate.isin||''},values={},messages=[];
-  if(['trade','signal','deep','paper','csv','review'].includes(scope)&&!c.currency)throw Error('Notierungswährung fehlt. Im Suchergebnis ausdrücklich auswählen; sie wird nicht aus der Börse geraten.');
-  if(['signal','deep','review'].includes(scope)&&!ANALYSIS_CURRENCIES.includes(c.currency))throw Error('Diese Notierungswährung wird von der Analyse noch nicht unterstützt. Anderen Handelsplatz wählen.');
+  if(['trade','signal','deep','paper','csv','review','holding'].includes(scope)&&!c.currency)throw Error('Notierungswährung fehlt. Im Suchergebnis ausdrücklich auswählen; sie wird nicht aus der Börse geraten.');
+  if(['signal','deep','review','holding'].includes(scope)&&!ANALYSIS_CURRENCIES.includes(c.currency))throw Error('Diese Notierungswährung wird von der Analyse noch nicht unterstützt. Anderen Handelsplatz wählen.');
   const changed=(oldSymbol,oldCurrency)=>oldSymbol!==c.market_symbol||!!oldCurrency&&oldCurrency!==c.currency;
   if(scope==='trade') {
     const product=current.type==='Knock-out';
@@ -25,6 +25,10 @@ export function securityFieldChanges(scope,candidate,current={},options={}) {
       for(const key of ['alertEntry','alertLimit','alertStop','alertTarget1','alertTarget2','alertTarget3','alertKo'])values[key]=false;
       messages.push('EODHD-Kennung und Kursalarm-Checkboxen nur in diesem ungespeicherten Formular geleert.');
     }
+  } else if(scope==='holding'){
+    Object.assign(values,{hpSymbol:c.market_symbol,hpCompany:c.name,hpCurrency:c.currency,hpWkn:c.wkn||'',hpIsin:c.isin||''});
+    if(changed(current.hpSymbol,current.hpCurrency))Object.assign(values,{rvHoldingQuantity:'',rvHoldingEntry:'',hpEntryDate:'',hpManualPrice:'',hpManualDate:'',hpValuation:'keep',hpConfirmed:false});
+    messages.push('Depotbestand und Einstand anschließend bestätigen; kein Kurs- oder KI-Aufruf.');
   } else if(scope==='review'){
     Object.assign(values,{rvSymbol:c.market_symbol,rvCompany:c.name,rvCurrency:c.currency,rvWkn:c.wkn||'',rvIsin:c.isin||''});
     if(changed(current.rvSymbol,current.rvCurrency)){

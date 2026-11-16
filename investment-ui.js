@@ -1,22 +1,23 @@
-import {e,dateTime,assetView,assetCard,portfolioCounts,reviewHtml} from './investment-view.mjs?v=39.1.0';
+import {e,dateTime,assetView,assetCard,portfolioCounts,reviewHtml} from './investment-view.mjs?v=39.2.0';
 import {parseOhlcvCsv} from './supabase/functions/_shared/signal-engine.mjs';
 import {alphaSymbolFor} from './supabase/functions/_shared/review-market-input.mjs';
 import {modelChart} from './compact-analysis.mjs';
 import {quoteStatus} from './supabase/functions/_shared/investment-review.mjs';
-import {watched,directAssets,attention,assetRow,portfolioHero,valueChart,directReviewHtml} from './direct-view.mjs';
+import {watched,directAssets,attention,assetRow,portfolioHero,valueChart,directReviewHtml,holdingMetricsHtml} from './direct-view.mjs';
 import {createHoldingEditor} from './holding-editor.mjs';
 
 export function createInvestmentUI({window,document,now=()=>new Date()}){
   const $=id=>document.getElementById(id),access=()=>({sb:window.InvestitionDashboard?.getSupabase?.(),owner:window.InvestitionDashboard?.getSession?.()?.user?.id||null});
   let assets=[],unmapped=[],selected=null,current=null,imported=null,epoch=0,loadToken=0,openToken=0,csvToken=0,csvLoading=false,loading=false,running=false,chatting=false,filter='all',scenario='base',direction='long',messages=[],messageLimit=40,lastLoaded=0,lastOwner=null,observer=null,capabilities=null;
-  let route='portfolio',origin='portfolio',archive=false,portfolio=null,valueCurrency='',valuePeriod='1M',valueObserver=null,remembering=false;
-  const holdingEditor=createHoldingEditor({document,invoke,getAsset:()=>selected,ensureAsset,onBusy:setBusy,isRunning:()=>running,onSaved:async r=>{unmapped=r.unmapped||unmapped;portfolio=r.portfolio||portfolio;await loadAssets({force:true,sync:false});renderAssetHeader();status('Bestand gespeichert. Vor einer neuen Handlungseinschätzung Analyse aktualisieren.');}});
+  let route='portfolio',origin='portfolio',holdingReturn='portfolio',archive=false,portfolio=null,valueCurrency='',valuePeriod='1M',valueObserver=null,remembering=false;
+  const holdingEditor=createHoldingEditor({document,window,invoke,now,getAssets:()=>assets,getAsset:()=>selected,onBusy:setBusy,isRunning:()=>running,onOpen:()=>{holdingReturn=route==='holding'?holdingReturn:route;navigate('holding');},onCancel:()=>navigate(holdingReturn==='detail'?'review':['portfolio','watch','search'].includes(holdingReturn)?holdingReturn:'portfolio'),onSaved:async r=>{const captured=epoch;unmapped=r.unmapped||[];portfolio=r.portfolio||null;if(r.asset){const i=assets.findIndex(a=>a.id===r.asset.id);if(i<0)assets.push(r.asset);else assets[i]=r.asset;selected=r.asset;current=null;fillForm(r.asset);valueCurrency=r.asset.currency;}filter='all';archive=false;setBusy(false);holdingEditor.close();navigate('portfolio');await loadAssets({force:true,sync:false});if(captured===epoch&&route==='portfolio')status(r.sync_warning||r.portfolio_warning||'Depotposition gespeichert. Bestand und Einstand sind aktualisiert; Kursdaten und Analyse haben eigene Zeitstempel.',!!(r.sync_warning||r.portfolio_warning),'ivStatus');}});
   const identityKey=()=>JSON.stringify([$('rvSymbol').value.trim().toUpperCase(),$('rvCurrency').value]);let lastIdentity=identityKey();
   function status(message,bad=false,id='rvStatus'){const el=$(id);if(!el)return;el.textContent=message;el.className='compact-status '+(bad?'bad':'');el.setAttribute('role',bad?'alert':'status');}
   function closeMenu(){delete document.documentElement.dataset.investmentMenu;$('directSettings').hidden=true;for(const id of ['reviewMoreBtn','reviewDockMore'])$(id)?.setAttribute('aria-expanded','false');}
   function updateNav(){document.querySelectorAll('[data-review-nav]').forEach(b=>{const target=route==='detail'?origin:route,yes=b.dataset.reviewNav===(target==='review'?'search':target);if(yes)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});}
   function navigate(view){
     if(view==='legacy')view=selected?'review':'portfolio';
+    if(route==='holding'&&view!=='holding')holdingEditor.close();if(['portfolio','watch'].includes(view)&&route!==view)filter='all';
     route=view==='review'?(selected?'detail':'search'):view;
     if(['portfolio','watch'].includes(route)){$('navDecisionBtn').click();document.documentElement.dataset.directView=route;renderPortfolio();}
     else if(route==='news'){$('navNewsBtn').click();document.documentElement.dataset.directView='news';}
@@ -29,7 +30,8 @@ export function createInvestmentUI({window,document,now=()=>new Date()}){
     $('rvSecurityName').textContent=detail?(selected?.company||$('rvCompany').value||selected?.symbol||$('rvSymbol').value):'Wertpapier finden';
     $('rvSecurityInfo').textContent=detail?[(selected?.symbol||$('rvSymbol').value),selected?.currency||$('rvCurrency').value,selected?.state?.plan_pending?'Plan geändert · erneute Prüfung erforderlich':'Analysen und Gespräch bleiben bei diesem Wert.'].join(' · '):'Gespeicherte Werte nach Name, Ticker, WKN oder ISIN finden. Neue Werte per WKN/ISIN zuordnen.';
     $('rvRemember').textContent=selected?.id&&watched(selected)?'✓ Gemerkt':'+ Merken';$('rvRemember').setAttribute('aria-pressed',String(!!selected?.id&&watched(selected)));
-    $('rvMonitor').checked=selected?.enabled===true;$('rvMonitor').disabled=!selected?.id;$('rvAsk').disabled=!current?.saved;
+    $('rvHolding').textContent=selected?.is_portfolio?'Bestand bearbeiten':'Ins Depot aufnehmen';$('rvMonitor').checked=selected?.enabled===true;$('rvMonitor').disabled=!selected?.id;$('rvAsk').disabled=!current?.saved;
+    const h=portfolio?.holdings?.find(h=>h.asset_id===selected?.id);$('rvPositionSummary').hidden=!detail||!h;$('rvPositionSummary').innerHTML=h?holdingMetricsHtml(h):'';
     renderSourceHelp();
   }
   function renderSourceHelp(){
@@ -54,31 +56,32 @@ export function createInvestmentUI({window,document,now=()=>new Date()}){
   }
   function renderPortfolio(){
     const view=route==='watch'?'watch':'portfolio',rows=directAssets(assets,view,{archive}),counts=portfolioCounts(rows.map(r=>r.asset),now()),labels={all:'Alle',attention:'Prüfen',current:'Kurs aktuell',stale:'Veraltet',missing:'Kurs fehlt',failed:'Abruf fehlgeschlagen',not_run:'Abruf nicht erfolgt'};counts.attention=rows.filter(r=>attention(r.asset,now())).length;
+    $('ivAddPosition').hidden=view==='watch';$('ivLoad').textContent=view==='watch'?'Werte neu laden':'Depot neu laden';$('ivNew').textContent=view==='watch'?'+ Wert beobachten':'Weiteren Wert zur Analyse suchen';
     $('ivTitle').textContent=view==='watch'?(archive?'Gespeicherte Analysen':'Beobachtung'):'Mein Depot';$('ivEyebrow').textContent=view==='watch'?'Kandidaten und Analysen':'Deine Investments';$('ivArchive').hidden=view!=='watch';$('ivArchive').textContent=archive?'Zur Beobachtung':'Analysearchiv';
-    $('ivListHelp').textContent=view==='watch'?'Gemerkte Werte werden bei aktivierter Überwachung ohne KI geprüft. Entfernen aus der Beobachtung erhält Berichte und Gespräche im Archiv.':'Wert antippen für Einschätzung, Chart, Plan und Gespräch. Kurse, Newsprüfung und erfolgreiche Analyse haben eigene Zeitstempel.';
+    $('ivListHelp').textContent=view==='watch'?'Gemerkte Werte werden bei aktivierter Überwachung ohne KI geprüft. Entfernen aus der Beobachtung erhält Berichte und Gespräche im Archiv.':'Position hinzufügen für Stückzahl und Einstand. Bestand direkt in der Liste bearbeiten; ein Tipp auf den Wert öffnet Analyse, Chart und Gespräch.';
     valueObserver?.disconnect();valueObserver=null;
     $('ivValueHero').innerHTML=view==='portfolio'?portfolioHero(portfolio,{currency:valueCurrency,period:valuePeriod,now:now(),width:$('ivValueHero').clientWidth||320}):'';
     const chart=$('ivValueChart');if(chart&&window.ResizeObserver){const g=portfolio?.groups.find(g=>g.currency===valueCurrency)||portfolio?.groups[0];valueObserver=new window.ResizeObserver(()=>{if(g)chart.innerHTML=valueChart(portfolio.marks,g.currency,{period:valuePeriod,now:now(),width:chart.clientWidth||320});});valueObserver.observe(chart);}
     $('ivFilters').innerHTML=Object.entries(labels).map(([k,v])=>'<button class="btn" type="button" data-review-filter="'+k+'" aria-pressed="'+(filter===k)+'">'+e(v)+' · '+counts[k]+'</button>').join('');
-    $('ivAssets').innerHTML=rows.map(({asset:a,index:i})=>({a,i,v:assetView(a,now())})).filter(({a,v})=>filter==='all'||filter==='attention'&&attention(a,now())||filter==='failed'&&v.failed||filter==='not_run'&&v.notRun||filter===v.quote.code).map(({a,i})=>assetRow(a,{index:i,now:now()})).join('')||'<p class="iv-empty">Keine Werte für diesen Filter. Depot abgleichen oder einen Wert über die Suche merken.</p>';
+    $('ivAssets').innerHTML=rows.map(({asset:a,index:i})=>({a,i,v:assetView(a,now())})).filter(({a,v})=>filter==='all'||filter==='attention'&&attention(a,now())||filter==='failed'&&v.failed||filter==='not_run'&&v.notRun||filter===v.quote.code).map(({a,i})=>assetRow(a,{index:i,now:now(),holding:portfolio?.holdings?.find(h=>h.asset_id===a.id)})).join('')||'<p class="iv-empty">Keine Werte für diesen Filter. Über „Position hinzufügen“ einen Bestand mit Einstand erfassen oder den Filter ändern.</p>';
     const legacy=assets.map((a,i)=>({a,i})).filter(({a})=>!a.is_portfolio&&a.legacy_trade_ids?.length);$('ivLegacySection').hidden=view!=='portfolio'||!legacy.length;$('ivLegacyAssets').innerHTML=view==='portfolio'?legacy.map(({a,i})=>assetRow(a,{index:i,now:now()})).join(''):'';
     $('ivUnmapped').innerHTML=unmapped.length?'<details class="compact-original" open><summary>Depotzuordnung ergänzen · '+unmapped.length+'</summary>'+unmapped.map((p,i)=>'<button class="iv-history-item" type="button" data-review-unmapped="'+i+'">'+e(p.name||'Depotposition')+' · '+e(p.symbol||'Kennung fehlt')+' · Zuordnung über WKN/ISIN prüfen</button>').join('')+'</details>':'';
     renderSavedSearch();
   }
   async function loadAssets({force=false,sync=true}={}){
     const {sb,owner}=access();if(!sb||!owner){status('Depot nach Anmeldung verfügbar.',false,'ivStatus');return;}
-    if(loading||!force&&owner===lastOwner&&now().getTime()-lastLoaded<60000)return;
+    if(loading&&!force||!force&&owner===lastOwner&&now().getTime()-lastLoaded<60000)return;
     const token=++loadToken,captured=epoch;loading=true;$('ivLoad').disabled=true;status('Eigene Depotzuordnungen und gespeicherte Ergebnisse laden. Kein KI- oder Kursabruf.',false,'ivStatus');
     try{
       let warning='';try{const r=await invoke({action:sync?'sync_portfolio':'portfolio_overview'});if(token!==loadToken||captured!==epoch)return;if(sync)unmapped=r.unmapped||[];portfolio=r.portfolio||null;warning=r.portfolio_warning||'';}catch(e){if(e.name==='StaleResponse')throw e;warning=e.message;}
       const r=await sb.from('investment_assets').select('*').eq('user_id',owner).order('is_portfolio',{ascending:false}).order('company',{ascending:true}).limit(500);
       if(token!==loadToken||captured!==epoch||owner!==access().owner)return;if(r.error)throw Error('V39-Datenbank noch nicht erreichbar. V38-Basistabellen, setup-v39-direct.sql und Function installieren.');
-      assets=(r.data||[]).filter(a=>a.user_id===owner);if(selected?.id){const fresh=assets.find(a=>a.id===selected.id);if(fresh)selected=fresh;}lastLoaded=now().getTime();lastOwner=owner;renderPortfolio();renderAssetHeader();status(warning?'Wertpapierliste geladen. Hinweis: '+warning:'Gespeicherte Werte und Einschätzungen geladen. Bisherige Analysen stehen gegebenenfalls unter „Bereits hinterlegte Werte“.',!!warning,'ivStatus');
-      try{capabilities=await invoke({action:'capabilities'});if(captured===epoch){renderSourceHelp();$('ivMonitorStatus').textContent=capabilities.monitor_last_run?'Letzter Hintergrundlauf: '+dateTime(capabilities.monitor_last_run)+' · Nur aktiv markierte Werte werden geprüft.':'Noch kein Hintergrundlauf nachgewiesen. V38-Zeitplan installieren; markierte Werte bleiben bis dahin manuell prüfbar.';}}catch{}
+      assets=(r.data||[]).filter(a=>a.user_id===owner);if(selected?.id){const fresh=assets.find(a=>a.id===selected.id);if(fresh)selected=fresh;}lastLoaded=now().getTime();lastOwner=owner;renderPortfolio();renderAssetHeader();status(warning?'Wertpapierliste geladen. Hinweis: '+warning:'Depotpositionen und gespeicherte Analysen geladen. Ältere Analysen ohne bestätigten Bestand stehen unter „Bereits hinterlegte Werte“.',!!warning,'ivStatus');
+      try{capabilities=await invoke({action:'capabilities'});if(captured===epoch){renderSourceHelp();const ready=capabilities.features?.includes('depot_editor_v392')&&capabilities.depot_ready===true;status(ready?'Depotverwaltung bereit · Website 39.2.0 · Server '+capabilities.version:'Depot-Update unvollständig · Website 39.2.0 · Server '+(capabilities.version||'unbekannt')+'. V39.2-SQL und Function-Deployment prüfen.',!ready,'ivSetupStatus');$('ivMonitorStatus').textContent=capabilities.monitor_last_run?'Letzter Hintergrundlauf: '+dateTime(capabilities.monitor_last_run)+' · Nur aktiv markierte Werte werden geprüft.':'Noch kein Hintergrundlauf nachgewiesen. V38-Zeitplan installieren; markierte Werte bleiben bis dahin manuell prüfbar.';}}catch{}
     }catch(error){if(captured===epoch&&error.name!=='StaleResponse')status(error.message,true,'ivStatus');}
     finally{if(token===loadToken){loading=false;$('ivLoad').disabled=false;}}
   }
-  function setBusy(value){running=value;for(const id of ['rvRun','rvSave','rvNew','rvAnalyze','rvPlan','rvBack','rvRemember','rvHolding'])$(id).disabled=value;document.querySelectorAll('[data-review-nav]').forEach(b=>b.disabled=value);$('investmentReviewModule').setAttribute('aria-busy',String(value));}
+  function setBusy(value){running=value;for(const id of ['rvRun','rvSave','rvNew','rvAnalyze','rvPlan','rvBack','rvRemember','rvHolding','ivAddPosition','ivNew'])$(id).disabled=value;document.querySelectorAll('[data-review-nav]').forEach(b=>b.disabled=value);$('investmentReviewModule').setAttribute('aria-busy',String(value));}
   function fillForm(asset){
     window.dispatchEvent(new CustomEvent('investition:reset-security-picker',{detail:{scope:'review'}}));
     const c=asset.config||{},p=c.policy||{};
@@ -156,7 +159,7 @@ export function createInvestmentUI({window,document,now=()=>new Date()}){
     $('rvChatContext').textContent='';
     $('rvResult').hidden=true;$('rvConversation').hidden=true;$('rvHistoryPanel').hidden=true;$('rvChatPanel').open=false;
     status('Sitzung geändert. Wertpapier neu öffnen.');status('Gespräch nach Anmeldung neu öffnen.',false,'rvChatStatus');status('Depot nach Anmeldung neu laden.',false,'ivStatus');
-    $('ivMonitorStatus').textContent='Hintergrundstatus nach Anmeldung verfügbar.';renderPortfolio();renderAssetHeader();document.documentElement.dataset.directView='portfolio';closeMenu();
+    $('ivMonitorStatus').textContent='Hintergrundstatus nach Anmeldung verfügbar.';$('ivSetupStatus').textContent='';renderPortfolio();renderAssetHeader();document.documentElement.dataset.directView='portfolio';closeMenu();
   }
   document.addEventListener('click',event=>{
     const b=event.target.closest?.('button');if(!b)return;
@@ -164,6 +167,7 @@ export function createInvestmentUI({window,document,now=()=>new Date()}){
     if(b.dataset.reviewNav==='more'||b.id==='reviewMoreBtn'){const open=$('directSettings').hidden;if(open){document.documentElement.dataset.investmentMenu='open';$('directSettings').hidden=false;renderSourceHelp();}else closeMenu();for(const id of ['reviewMoreBtn','reviewDockMore'])$(id)?.setAttribute('aria-expanded',String(open));}
     if(b.dataset.reviewFilter){filter=b.dataset.reviewFilter;renderPortfolio();}
     if(b.dataset.reviewPeriod&&['1W','1M','1J','Max'].includes(b.dataset.reviewPeriod)){valuePeriod=b.dataset.reviewPeriod;renderPortfolio();}
+    if(b.dataset.holdingEdit!==undefined){const a=assets[Number(b.dataset.holdingEdit)];if(a&&!running)holdingEditor.open(a);}
     if(b.dataset.reviewOpen!==undefined){const a=assets[Number(b.dataset.reviewOpen)];if(a&&!running)openAsset(a);}
     if(b.dataset.reviewUnmapped!==undefined){const p=unmapped[Number(b.dataset.reviewUnmapped)];if(p){newSecurity();$(p.kind==='legacy_plan'?'rvLegacyTradeId':'rvPositionId').value=p.id;$('rvCompany').value=p.name||'';if(p.currency)$('rvCurrency').value=p.currency;status('Hinterlegten Wert über WKN/ISIN eindeutig zuordnen. Der bestehende Eintrag bleibt erhalten.');}}
     if(b.dataset.reviewScenario&&current?.analysis?.scenarios.some(s=>s.id===b.dataset.reviewScenario)){scenario=b.dataset.reviewScenario;renderReview();}
@@ -184,7 +188,7 @@ export function createInvestmentUI({window,document,now=()=>new Date()}){
   $('rvForm').addEventListener('invalid',event=>{$('rvInputs').open=true;$('rvQuoteSettings').open=true;$('rvPlanSettings').open=true;status('Eingabe prüfen: '+(event.target.labels?.[0]?.textContent||event.target.id),true);},true);
   $('rvSave').addEventListener('click',()=>run(true));$('rvNew').addEventListener('click',newSecurity);$('ivNew').addEventListener('click',newSecurity);$('ivLoad').addEventListener('click',()=>loadAssets({force:true}));
   $('rvSavedQuery').addEventListener('input',renderSavedSearch);$('ivArchive').addEventListener('click',()=>{archive=!archive;filter='all';renderPortfolio();});
-  $('rvHolding').addEventListener('click',holdingEditor.open);$('rvUseStored').addEventListener('click',()=>{$('rvSource').value='stored';$('rvQuoteConfirmed').checked=false;clearImport();renderSourceHelp();status('Gespeicherte Kurse / News gewählt. Ohne ausreichende Historie bleiben aktuelle Chartmarken offen.');});
+  $('rvHolding').addEventListener('click',()=>holdingEditor.open());$('ivAddPosition').addEventListener('click',()=>holdingEditor.open(null));$('rvUseStored').addEventListener('click',()=>{$('rvSource').value='stored';$('rvQuoteConfirmed').checked=false;clearImport();renderSourceHelp();status('Gespeicherte Kurse / News gewählt. Ohne ausreichende Historie bleiben aktuelle Chartmarken offen.');});
   $('ivCloseSettings').addEventListener('click',closeMenu);$('ivAllNews').addEventListener('click',()=>navigate('news'));$('ivBenchmark').addEventListener('click',()=>navigate('benchmark'));$('ivImport').addEventListener('click',()=>{$('importBtn').click();closeMenu();});$('ivExport').addEventListener('click',()=>{$('exportBtn').click();closeMenu();});$('ivAccount').addEventListener('click',()=>{$('cloudBtn').click();closeMenu();});$('ivLock').addEventListener('click',()=>{$('quickLockBtn').click();closeMenu();});
   $('rvBack').addEventListener('click',()=>{if(origin==='search')newSecurity();else navigate(origin==='watch'?'watch':'portfolio');});
   $('rvPlan').addEventListener('click',()=>{$('rvInputs').open=true;$('rvPlanSettings').open=true;$('rvInputs').scrollIntoView?.({behavior:'smooth',block:'start'});$('rvStop').focus?.();});

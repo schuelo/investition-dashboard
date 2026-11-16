@@ -4,6 +4,7 @@ import {callReviewChat} from './review-chat.mjs';
 import {discoverFreeSources} from './deep-sources.mjs';
 import {loadManualSources} from './manual-sources.mjs';
 import {portfolioValues} from './portfolio-value.mjs';
+import {validateDepotInput} from './depot-input.mjs';
 import {targetedFeed} from './review-feed.mjs';
 import {isEquity,isClosedPlan,mappedPlan,mergedPositions} from './legacy-portfolio.mjs';
 
@@ -38,7 +39,11 @@ export function createInvestmentHandler({createClient,getEnv,fetchImpl=fetch,now
       }
       responseOwner=userId;
       const admin=createClient(getEnv('SUPABASE_URL'),getEnv('SUPABASE_SERVICE_ROLE_KEY'),{auth:{persistSession:false}});
-      if(body.action==='capabilities'){const health=await admin.from('investment_monitor_health').select('last_run_at').eq('id',true).maybeSingle();return reply({ok:true,version:'39.1.0',features:['investment_review_v38','portfolio_monitor_v38','persistent_gemini_chat_v38','legacy_depot_v391','holding_editor_v391'],monitor_last_run:health.data?.last_run_at||null,alpha_configured:!!getEnv('ALPHAVANTAGE_API_KEY'),eodhd_configured:!!getEnv('EODHD_API_TOKEN'),chat_provider:'gemini',chat_configured:getEnv('DEEP_GEMINI_FREE_TIER_CONFIRMED')==='true'&&!!getEnv('GEMINI_API_KEY')});}
+      if(body.action==='capabilities'){
+        const checks=await Promise.allSettled([admin.from('investment_monitor_health').select('last_run_at').eq('id',true).maybeSingle(),admin.from('investment_depot_requests').select('request_id').limit(0)]);
+        const health=checks[0].status==='fulfilled'?checks[0].value:null,depotReady=checks[1].status==='fulfilled'&&!checks[1].value.error;
+        return reply({ok:true,version:'39.2.0',features:['investment_review_v38','portfolio_monitor_v38','persistent_gemini_chat_v38','legacy_depot_v391','holding_editor_v391','depot_editor_v392'],depot_ready:depotReady,monitor_last_run:health?.data?.last_run_at||null,alpha_configured:!!getEnv('ALPHAVANTAGE_API_KEY'),eodhd_configured:!!getEnv('EODHD_API_TOKEN'),chat_provider:'gemini',chat_configured:getEnv('DEEP_GEMINI_FREE_TIER_CONFIRMED')==='true'&&!!getEnv('GEMINI_API_KEY')});
+      }
       const ownAsset=async(id,owner=userId)=>{
         if(!uuid(id))throw new ReviewError('Wertpapier-ID fehlt.',400);
         const a=result(await admin.from('investment_assets').select('*').eq('id',id).eq('user_id',owner).maybeSingle(),'Wertpapier nicht lesbar. V38-SQL prüfen.');
@@ -88,7 +93,7 @@ export function createInvestmentHandler({createClient,getEnv,fetchImpl=fetch,now
         for(const g of summary.groups){
           if(g.positions===g.missing)continue;
           const fingerprint=[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(g.components))))].map(v=>v.toString(16).padStart(2,'0')).join('');
-          const {components,...value}=g;
+          const value={currency:g.currency,amount:g.amount,cost_basis:g.cost_basis,missing:g.missing,stale:g.stale,positions:g.positions,price_dates:g.price_dates};
           result(await admin.from('investment_portfolio_marks').upsert({user_id:owner,...value,fingerprint,recorded_at:now().toISOString()},{onConflict:'user_id,currency,fingerprint',ignoreDuplicates:true}),'V39-Bewertungstabelle fehlt.');
         }
         const marks=result(await admin.from('investment_portfolio_marks').select('*').eq('user_id',owner).order('recorded_at',{ascending:false}).limit(1000),'Depotverlauf nicht lesbar.')||[];
@@ -143,8 +148,27 @@ export function createInvestmentHandler({createClient,getEnv,fetchImpl=fetch,now
       if(body.action==='sync_portfolio'){const unmapped=await sync(userId);return reply({ok:true,unmapped,...await optionalOverview(userId)});}
       if(body.action==='portfolio_overview')return reply({ok:true,...await optionalOverview(userId)});
       if(body.action==='get_holdings'){
-        const asset=await ownAsset(body.asset_id),all=(await positions(userId)).filter(p=>p.symbol===asset.symbol&&p.currency===asset.currency);
-        return reply({ok:true,positions:all.filter(isEquity).map(p=>({id:p.id,trade_id:p.trade_id,position_origin:p.position_origin,quantity:p.quantity,average_entry_price:p.average_entry_price,direction:p.direction,instrument_type:p.instrument_type})),legacy_trade_ids:asset.legacy_trade_ids||[]});
+        let asset;if(body.asset_id)asset=await ownAsset(body.asset_id);else{const input=validateReviewInput({symbol:body.symbol,currency:body.currency,source:'stored'});asset=result(await admin.from('investment_assets').select('*').eq('user_id',userId).eq('symbol',input.symbol).eq('currency',input.currency).maybeSingle(),'Wertpapier nicht lesbar.');}
+        if(!asset)return reply({ok:true,asset:null,positions:[],legacy_trade_ids:[]});
+        const all=(await positions(userId)).filter(p=>p.symbol===asset.symbol&&p.currency===asset.currency).sort((a,b)=>String(a.entry_date||'9999').localeCompare(String(b.entry_date||'9999'))||String(a.id).localeCompare(String(b.id)));
+        return reply({ok:true,asset,positions:all.filter(isEquity).map(p=>({id:p.id,trade_id:p.trade_id,position_origin:p.position_origin,quantity:p.quantity,average_entry_price:p.average_entry_price,entry_date:p.entry_date||null,direction:p.direction,instrument_type:p.instrument_type})),legacy_trade_ids:asset.legacy_trade_ids||[]});
+      }
+      if(body.action==='save_position'){
+        let input;try{input=validateDepotInput(body,now());}catch(e){throw new ReviewError(e.message,422);}
+        if(input.asset_id){const a=await ownAsset(input.asset_id);if(a.symbol!==input.symbol||a.currency!==input.currency)throw new ReviewError('Wertpapier geändert. Position für die neue Notierung separat anlegen.',409);}
+        const saved=await admin.rpc('save_depot_position',{p_user_id:userId,p_request_id:input.request_id,p_asset_id:input.asset_id,p_symbol:input.symbol,p_currency:input.currency,p_company:input.company,p_wkn:input.wkn,p_isin:input.isin,p_position_id:input.position_id,p_legacy_trade_id:input.legacy_trade_id,p_quantity:input.quantity,p_entry:input.average_entry_price,p_direction:input.direction,p_type:input.instrument_type,p_entry_date:input.entry_date,p_valuation_mode:input.valuation_mode,p_manual_price:input.manual_price,p_manual_price_date:input.manual_price_date,p_close:input.close,p_additional_confirmed:input.additional_position_confirmed});
+        if(saved.error){
+          const message=saved.error.message||'';
+          if(/Review in progress/i.test(message))throw new ReviewError('Für diesen Wert läuft eine Analyse. Danach den Bestand erneut speichern.',409);
+          if(/Request reference already used/i.test(message))throw new ReviewError('Dieser Speichervorgang wurde bereits verarbeitet. Bestand neu laden und danach bearbeiten.',409);
+          if(/Additional position requires/i.test(message))throw new ReviewError('Für diesen Wert besteht bereits ein Depotbestand. Bestand neu laden, die Position bearbeiten oder eine zusätzliche Position ausdrücklich bestätigen.',409);
+          if(/identity|Own .*missing|migrated/i.test(message))throw new ReviewError('Die Position passt nicht mehr zur Auswahl. Bestand neu laden und erneut auswählen.',409);
+          throw new ReviewError('Depotposition nicht gespeichert. setup-v39-2-depot.sql und die Action „V39.2 Depotverwaltung deployen“ prüfen.',503);
+        }
+        if(!saved.data?.asset_id||saved.data.saved!==true)throw new ReviewError('Speicherbestätigung unvollständig. Bestand neu laden, bevor eine weitere Position angelegt wird.',503);
+        let unmapped=[],syncWarning='';try{unmapped=await sync(userId);}catch{syncWarning='Position gespeichert; der anschließende Abgleich ist nicht vollständig. Depot erneut laden.';}
+        let asset=saved.data.asset;try{asset=await ownAsset(saved.data.asset_id);}catch{/* The committed receipt remains a valid save confirmation. */}
+        return reply({ok:true,saved:true,position:saved.data,asset,unmapped,sync_warning:syncWarning,...await optionalOverview(userId)});
       }
       if(body.action==='save_holding'){
         const asset=await ownAsset(body.asset_id);if(body.manual_start!==true||!uuid(body.request_id))throw new ReviewError('Bestand ausdrücklich speichern; Anfragereferenz fehlt.',400);

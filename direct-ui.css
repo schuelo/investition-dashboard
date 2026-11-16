@@ -13,6 +13,15 @@ html[data-direct-ui=ready]:not([data-direct-view=benchmark]) #signalSimulationPa
 html[data-direct-ui=ready][data-direct-view=benchmark] #signalSimulationPage>:not(#paperPortfolioModule){display:none!important}
 html[data-direct-ui=ready][data-direct-view=benchmark] #paperPortfolioModule{display:block!important}
 .direct-settings{padding:18px;margin-bottom:18px}.direct-settings summary{padding:12px 0;min-height:44px}.direct-holding{padding:16px;background:#151515;border:1px solid var(--border);border-radius:12px;margin:15px 0}
+html[data-direct-ui=ready] [hidden]{display:none!important}
+html[data-direct-view=holding] #investmentReviewModule>:not(#rvHoldingPanel){display:none!important}
+html[data-direct-ui=ready]:not([data-direct-view=holding]) #rvHoldingPanel{display:none!important}
+.depot-fieldset{border:0;padding:0;margin:0;min-width:0}.depot-fieldset legend{font-weight:600;font-size:18px;margin:14px 0}.depot-fieldset h3{font-size:18px;margin-top:25px}
+.depot-preview,.depot-position-summary{padding:15px;background:#101010;border:1px solid var(--border);border-radius:12px;margin:16px 0}.depot-preview small{color:var(--muted)}
+.depot-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:10px 0}.depot-metrics small{display:block;color:var(--muted);font-size:12px}.depot-metrics strong{display:block;margin-top:5px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.depot-position-actions{display:flex;gap:10px;flex-wrap:wrap;margin:8px 0 12px 48px}.depot-position-actions button{min-height:44px}.depot-row-value{margin:0 0 10px 48px;font-size:13px}.depot-row-value p{margin:6px 0}.depot-row-value small{color:var(--muted)}
+.direct-load-actions button,.direct-holding button,.direct-holding label.ss-check{min-height:44px}
+@media(max-width:600px){.depot-row-value,.depot-position-actions{margin-left:38px}.direct-holding{padding:13px}.depot-metrics{gap:10px}.depot-position-actions button{flex:1}}
 #ivLegacySection{margin:24px 0;border-top:1px solid var(--border);padding-top:18px}
 html[data-direct-ui=ready] .iv-dock{display:grid;position:fixed;grid-template-columns:repeat(3,minmax(0,1fr));bottom:0;left:50%;right:auto;transform:translateX(-50%);width:100%;max-width:1100px;z-index:45;padding:10px 10px calc(10px + env(safe-area-inset-bottom,0px));gap:8px;background:#050505;border-top:1px solid var(--border)}
 html[data-direct-ui=ready] .iv-dock button{min-height:50px;background:none;color:var(--muted);border:0;border-radius:10px;font-size:13px}

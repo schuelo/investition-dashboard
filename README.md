@@ -1,4 +1,18 @@
-# V39.1.0 — Depotabgleich mit Altbestand und einheitlicher Oberfläche
+# V39.2.0 — Depot direkt mit Stückzahl und Einstand verwalten
+
+Aktuelle Anleitung: [INSTALLATION-V39.2.md](INSTALLATION-V39.2.md). **Depot → Position hinzufügen → Wertpapier, Stückzahl, durchschnittlichen Einstand eingeben → Im Depot speichern.** Eine Analyse oder ein funktionierender Kursanbieter ist dafür nicht erforderlich. Vorhandene Positionen werden direkt in der Liste bearbeitet. Zusätzliche Kaufpositionen werden getrennt erfasst und in der Übersicht zu einem gewichteten Einstand zusammengefasst.
+
+Die Depotansicht zeigt Bestand, investierten Betrag und Ergebnis zum Einstand. Auch ohne Kursdaten bleibt das eingesetzte Kapital sichtbar. Ein eigener Bewertungskurs mit Datum ist optional; er wird als manuell erfasst gekennzeichnet und getrennt von den Chartdaten gespeichert. Währungen bleiben getrennt. Der Verlauf zeigt tatsächlich aufgezeichnete Depotbewertungen und keine nachträglich erfundene oder um Ein-/Auszahlungen bereinigte Rendite.
+
+Die Bedienung verwendet einen gemeinsamen Bestandseditor für Hinzufügen, Bearbeiten, Übernehmen aus Beobachtung und Schließen. Speichern kehrt sofort ins Depot zurück und setzt einen alten Filter zurück. WKN/ISIN-Suche steht auch in diesem Editor zur Verfügung. Website-/Serverversion und fehlende Datenbankerweiterungen werden sichtbar geprüft; fehlendes Alpha blockiert die Bestandsverwaltung nicht.
+
+**Update von V36 bis V39.1:** Die gemeinsame Datei **`setup-v39-2-depotupdate.sql`** im Supabase SQL Editor ausführen, **V39.2 Depotverwaltung deployen** in GitHub Actions starten und die statische Website veröffentlichen. Alle Dateien und Unterordner des vollständigen Pakets übernehmen. Auf der Anmeldung muss **39.2.0** erscheinen. Im Depot anschließend **Depotverwaltung bereit** prüfen. Keine neuen Cronjobs oder Billingfreigaben nötig.
+
+Prüfung: **477 automatisierte Tests und 169 SQL-Prüfungen bestanden**, einschließlich tatsächlicher UI-Controller → Function → PostgreSQL-Transaktionen für den Depotablauf. Details und Grenzen: [TESTPROTOKOLL-V39.2.md](TESTPROTOKOLL-V39.2.md). Noch kein Live-Deployment oder gerenderter iPhone-Test im Zielprojekt.
+
+---
+
+## Historischer Stand V39.1.0 — Depotabgleich mit Altbestand und einheitlicher Oberfläche
 
 Aktuelle Anleitung: [INSTALLATION-V39.1.md](INSTALLATION-V39.1.md). Das vollständige Paket behebt den Abgleich älterer gespeicherter Werte wie **Volkswagen Vz. / VOW3.XETRA**. Gespeicherte Analysen erscheinen im Depot unter **Bereits hinterlegte Werte**; tatsächliche Bestände lassen sich direkt beim Wert mit Stückzahl und Einstand erfassen, ändern oder schließen. Eine bloße Analyse wird nicht automatisch als ausgeführter Kauf behandelt. Doppelte Speicheranfragen erzeugen keine zusätzlichen Positionen.
 
