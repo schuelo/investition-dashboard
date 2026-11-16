@@ -31,6 +31,14 @@ html[data-direct-ui=ready] .iv-portfolio{background:none;border:0;box-shadow:non
 html[data-direct-ui=ready] .iv-grid{display:block}
 .direct-total{font-size:clamp(30px,5vw,42px);line-height:1.2;letter-spacing:-.04em;font-variant-numeric:tabular-nums;margin:12px 0}
 .direct-value-chart{width:100%;display:block;height:auto;min-height:130px}.direct-value-chart text{font:12px system-ui;fill:var(--muted)}
+.price-chart{display:block;width:100%;height:auto;min-height:180px;overflow:visible}.price-chart text{font:12px system-ui}.price-line{filter:none}
+.price-spark{display:block;max-width:128px;margin-top:7px}.price-sparkline{display:block;width:122px;max-width:100%;height:48px}.price-spark small,.price-spark-empty{display:block;color:var(--muted);font-size:10px;line-height:1.5}.price-spark-empty{max-width:122px;margin-top:12px}
+.price-panel{margin:18px 0;padding:16px;background:#111;border:1px solid var(--border);border-radius:14px}.price-panel h3{margin:4px 0}.price-panel button{min-height:44px}.price-panel input[type=range]{padding:0;background:transparent;min-height:44px;accent-color:#50d2c2}
+.price-readout{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;margin:8px 0 15px}.price-readout strong{font-size:20px;font-variant-numeric:tabular-nums}.price-readout span{font-size:12px;color:var(--muted)}
+.price-empty{padding:24px 14px;border:1px dashed #424242;border-radius:12px;color:var(--muted);line-height:1.6;margin:12px 0}.price-compare-legend{display:flex;gap:12px;flex-wrap:wrap;margin:12px 0}.price-compare-legend span{font-size:12px}.price-compare-legend i{display:inline-block;width:9px;height:9px;margin-right:6px;border-radius:50%}
+.external-chart-host{margin-top:16px;min-height:0}.external-chart-host:empty{display:none}.external-chart-host .tradingview-widget-container{min-height:340px}.tradingview-widget-copyright{padding:8px 0;font-size:12px}.tradingview-widget-copyright a{color:#70aaff}
+.price-mini-host{margin:10px 0 10px 48px}.price-mini-host:empty{display:none}.price-mini-host .tradingview-widget-container{min-height:160px}.price-mini-host .tradingview-widget-copyright{font-size:10px;padding:4px 0}
+@media(max-width:600px){.price-panel{padding:12px}.price-chart{min-height:170px}.price-sparkline{width:94px}.price-spark{max-width:94px}.price-readout strong{font-size:18px}.price-compare-legend{display:grid;gap:7px}}
 .direct-periods{display:flex;gap:8px;justify-content:space-around;margin:8px 0 18px}.direct-periods button{flex:1;border:0;background:transparent}.direct-periods button[aria-pressed=true]{background:#202020;color:var(--text)}
 .direct-row{border-bottom:1px solid var(--border);padding:6px 0}
 .direct-row-main{display:grid;grid-template-columns:36px minmax(0,1fr) auto;gap:12px;align-items:start;width:100%;background:none;border:0;color:var(--text);text-align:left;padding:14px 0;min-height:44px}

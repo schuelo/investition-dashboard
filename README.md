@@ -1,4 +1,16 @@
-# V39.2.0 — Depot direkt mit Stückzahl und Einstand verwalten
+# V39.3.0 — sichtbare Verläufe in Depot, Beobachtung und Wertpapier
+
+Aktuelle Anleitung: [INSTALLATION-V39.3.md](INSTALLATION-V39.3.md). Die Depotgrafik zeigt echte gespeicherte Bewertungen mit Euro-/Währungswerten, sichtbaren Einzelpunkten und Linien auch bei unverändertem Wert. Depot, Beobachtung und gespeicherte Suche erhalten Kurs-Minicharts; Beobachtung zusätzlich einen Vergleich mit gemeinsamem Startwert 100. Jede Wertpapierseite hat eine eigene historische Kursgrafik mit Zeitraumwahl und Datenstand, unabhängig von der Freigabe eines Prognosemodells.
+
+Gespeicherte Kurse und echte Historien bisheriger Analysen werden ohne neuen Anbieter- oder KI-Aufruf gelesen. **Kursverlauf aktualisieren** fordert nur Kursdaten aus der bewusst gewählten Quelle an. Wo eine gespeicherte Historie fehlt, kann ein separater TradingView-Chart erscheinen. Dafür wird ausschließlich die öffentliche Wertpapierkennung übergeben; Widgetwerte werden nicht in die eigene Depotbewertung oder Analyse übernommen. Unklare US-Sammelcodes werden keiner Börse zugeordnet.
+
+**Bei vollständig aktivem V39.2 ist kein neues SQL nötig:** sämtliche Dateien einschließlich Unterordnern übernehmen, **Actions → V39.3 Kursgrafiken deployen → Run workflow**, anschließend die statische Website veröffentlichen. Anmeldung: **39.3.0**. Bei älteren V36–V39.1-Installationen zuerst **setup-v39-3-depotupdate.sql** ausführen. Die neue Action veröffentlicht nur die Function, nicht SQL oder Website.
+
+Prüfung: **512 automatisierte Tests und 169 SQL-Prüfungen bestanden**, einschließlich realer PostgreSQL-/UI-Datenwege für die Grafiken. Details: [TESTPROTOKOLL-V39.3.md](TESTPROTOKOLL-V39.3.md). Kein Live-Deployment und keine gerenderte iPhone-Abnahme durchgeführt.
+
+---
+
+## Historischer Stand V39.2.0 — Depot direkt mit Stückzahl und Einstand verwalten
 
 Aktuelle Anleitung: [INSTALLATION-V39.2.md](INSTALLATION-V39.2.md). **Depot → Position hinzufügen → Wertpapier, Stückzahl, durchschnittlichen Einstand eingeben → Im Depot speichern.** Eine Analyse oder ein funktionierender Kursanbieter ist dafür nicht erforderlich. Vorhandene Positionen werden direkt in der Liste bearbeitet. Zusätzliche Kaufpositionen werden getrennt erfasst und in der Übersicht zu einem gewichteten Einstand zusammengefasst.
 

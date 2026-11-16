@@ -1,9 +1,9 @@
 import {createInvestmentHandler} from '../../supabase/functions/_shared/investment-endpoint.mjs';
 import {now} from './independent-market.mjs';
 export const alice='11111111-1111-4111-8111-111111111111',bob='22222222-2222-4222-8222-222222222222';
-export function apiHarness({owner=alice,tables={},fetchImpl=async()=>{throw Error('Unexpected network');},env={},beforeQuery=null,rpcImpl=null}={}){
+export function apiHarness({owner=alice,tables={},fetchImpl=async()=>{throw Error('Unexpected network');},env={},beforeQuery=null,rpcImpl=null,nowImpl=()=>now}={}){
   const db=structuredClone(tables),calls=[],rpcs=[],requests=[];let sequence=0;
-  const stamp=()=>now.toISOString(),newId=()=>crypto.randomUUID();
+  const stamp=()=>nowImpl().toISOString(),newId=()=>crypto.randomUUID();
   class Query{
     constructor(table){this.table=table;this.filters=[];this.orders=[];this.limitN=Infinity;this.mode='many';this.action='read';this.payload=null;this.options={};}
     select(){return this;}eq(k,v){this.filters.push(r=>r[k]===v);return this;}in(k,v){this.filters.push(r=>v.includes(r[k]));return this;}
@@ -48,7 +48,7 @@ export function apiHarness({owner=alice,tables={},fetchImpl=async()=>{throw Erro
   }};
   const settings={SUPABASE_URL:'https://project.test',SUPABASE_ANON_KEY:'anon',SUPABASE_SERVICE_ROLE_KEY:'service',CRON_SECRET:'private-cron-secret',...env};
   const createClient=(u,k)=>k==='service'?admin:{auth:{getUser:async()=>({data:{user:owner?{id:owner}:null},error:null})}};
-  const handler=createInvestmentHandler({createClient,getEnv:k=>settings[k]||'',fetchImpl:async(...args)=>{requests.push(args);return fetchImpl(...args);},now:()=>now,parseRss:()=>[],getPage:async()=>{throw Error('No page');}});
+  const handler=createInvestmentHandler({createClient,getEnv:k=>settings[k]||'',fetchImpl:async(...args)=>{requests.push(args);return fetchImpl(...args);},now:nowImpl,parseRss:()=>[],getPage:async()=>{throw Error('No page');}});
   const post=async(body,{auth=true,secret=null}={})=>{const headers={'Content-Type':'application/json'};if(auth)headers.Authorization='Bearer user-token';if(secret)headers['x-cron-secret']=secret;const r=await handler(new Request('https://test/functions/v1/review-investments',{method:'POST',headers,body:JSON.stringify(body)}));return{status:r.status,body:await r.json()};};
   return {db,calls,rpcs,requests,post,handler,admin,settings};
 }

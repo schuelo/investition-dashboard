@@ -4,7 +4,8 @@ import {callReviewChat} from './review-chat.mjs';
 import {discoverFreeSources} from './deep-sources.mjs';
 import {loadManualSources} from './manual-sources.mjs';
 import {portfolioValues} from './portfolio-value.mjs';
-import {validateDepotInput} from './depot-input.mjs';
+import {validateDepotInput,depotDay} from './depot-input.mjs';
+import {loadPriceSeries} from './price-series.mjs';
 import {targetedFeed} from './review-feed.mjs';
 import {isEquity,isClosedPlan,mappedPlan,mergedPositions} from './legacy-portfolio.mjs';
 
@@ -42,7 +43,7 @@ export function createInvestmentHandler({createClient,getEnv,fetchImpl=fetch,now
       if(body.action==='capabilities'){
         const checks=await Promise.allSettled([admin.from('investment_monitor_health').select('last_run_at').eq('id',true).maybeSingle(),admin.from('investment_depot_requests').select('request_id').limit(0)]);
         const health=checks[0].status==='fulfilled'?checks[0].value:null,depotReady=checks[1].status==='fulfilled'&&!checks[1].value.error;
-        return reply({ok:true,version:'39.2.0',features:['investment_review_v38','portfolio_monitor_v38','persistent_gemini_chat_v38','legacy_depot_v391','holding_editor_v391','depot_editor_v392'],depot_ready:depotReady,monitor_last_run:health?.data?.last_run_at||null,alpha_configured:!!getEnv('ALPHAVANTAGE_API_KEY'),eodhd_configured:!!getEnv('EODHD_API_TOKEN'),chat_provider:'gemini',chat_configured:getEnv('DEEP_GEMINI_FREE_TIER_CONFIRMED')==='true'&&!!getEnv('GEMINI_API_KEY')});
+        return reply({ok:true,version:'39.3.0',features:['investment_review_v38','portfolio_monitor_v38','persistent_gemini_chat_v38','legacy_depot_v391','holding_editor_v391','depot_editor_v392','price_charts_v393'],depot_ready:depotReady,monitor_last_run:health?.data?.last_run_at||null,alpha_configured:!!getEnv('ALPHAVANTAGE_API_KEY'),eodhd_configured:!!getEnv('EODHD_API_TOKEN'),chat_provider:'gemini',chat_configured:getEnv('DEEP_GEMINI_FREE_TIER_CONFIRMED')==='true'&&!!getEnv('GEMINI_API_KEY')});
       }
       const ownAsset=async(id,owner=userId)=>{
         if(!uuid(id))throw new ReviewError('Wertpapier-ID fehlt.',400);
@@ -89,17 +90,19 @@ export function createInvestmentHandler({createClient,getEnv,fetchImpl=fetch,now
       };
       const portfolioOverview=async(owner)=>{
         const held=await positions(owner),all=result(await admin.from('investment_assets').select('*').eq('user_id',owner),'Depotbewertung nicht erreichbar.')||[];
-        const summary=portfolioValues(held,all,now());
+        const summary=portfolioValues(held,all,now());let historyWarning='';
+        try{
         for(const g of summary.groups){
           if(g.positions===g.missing)continue;
-          const fingerprint=[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(g.components))))].map(v=>v.toString(16).padStart(2,'0')).join('');
+          const fingerprint=[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify({valuation_day:depotDay(now()),components:g.components}))))].map(v=>v.toString(16).padStart(2,'0')).join('');
           const value={currency:g.currency,amount:g.amount,cost_basis:g.cost_basis,missing:g.missing,stale:g.stale,positions:g.positions,price_dates:g.price_dates};
           result(await admin.from('investment_portfolio_marks').upsert({user_id:owner,...value,fingerprint,recorded_at:now().toISOString()},{onConflict:'user_id,currency,fingerprint',ignoreDuplicates:true}),'V39-Bewertungstabelle fehlt.');
         }
-        const marks=result(await admin.from('investment_portfolio_marks').select('*').eq('user_id',owner).order('recorded_at',{ascending:false}).limit(1000),'Depotverlauf nicht lesbar.')||[];
-        return {...summary,marks:marks.filter(m=>m.user_id===owner).reverse()};
+        }catch{historyWarning='Aktueller Depotwert verfügbar; eine neue Verlaufsmessung konnte nicht gespeichert werden.';}
+        let marks=[];try{marks=result(await admin.from('investment_portfolio_marks').select('*').eq('user_id',owner).order('recorded_at',{ascending:false}).limit(1000),'Depotverlauf nicht lesbar.')||[];}catch{historyWarning='Aktueller Depotwert verfügbar; die gespeicherte Verlaufshistorie ist nicht erreichbar.';}
+        return {...summary,marks:marks.filter(m=>m.user_id===owner).reverse(),history_warning:historyWarning};
       };
-      const optionalOverview=async(owner)=>{try{return {portfolio:await portfolioOverview(owner)};}catch(e){return {portfolio:null,portfolio_warning:e instanceof ReviewError?e.message:'Depotbewertung nicht verfügbar. Die Wertpapierliste bleibt nutzbar.'};}};
+      const optionalOverview=async(owner)=>{try{const portfolio=await portfolioOverview(owner);return {portfolio,portfolio_warning:portfolio.history_warning||''};}catch(e){return {portfolio:null,portfolio_warning:e instanceof ReviewError?e.message:'Depotbewertung nicht verfügbar. Die Wertpapierliste bleibt nutzbar.'};}};
       const withLease=async(asset,kind,fn)=>{
         const token=crypto.randomUUID(),q=await admin.rpc('claim_investment_operation',{p_user_id:asset.user_id,p_asset_id:asset.id,p_kind:kind,p_token:token});
         if(q.error)throw new ReviewError('V38-Sperrfunktion fehlt oder ist nicht erreichbar.',503);if(q.data!==true)throw new ReviewError('Für diesen Wert läuft bereits eine '+(kind==='chat'?'Chatantwort':'Prüfung')+'.',409);
@@ -145,6 +148,26 @@ export function createInvestmentHandler({createClient,getEnv,fetchImpl=fetch,now
        };
        return leaseToken?run(leaseToken):withLease(asset,'review',run);
       };
+      if(body.action==='get_chart_series'){
+        if(!Array.isArray(body.asset_ids)||body.asset_ids.length<1||body.asset_ids.length>24||body.asset_ids.some(id=>!uuid(id)))throw new ReviewError('Ein bis 24 eigene Wertpapier-IDs für Kursverläufe angeben.',400);
+        const ids=[...new Set(body.asset_ids)],owned=result(await admin.from('investment_assets').select('*').eq('user_id',userId).in('id',ids),'Eigene Werte nicht lesbar.')||[];
+        if(owned.length!==ids.length)throw new ReviewError('Eigene Wertpapiere für den Kursverlauf nicht gefunden.',404);
+        return reply({ok:true,series:await loadPriceSeries(admin,userId,owned,now())});
+      }
+      if(body.action==='refresh_chart'){
+        if(body.manual_start!==true)throw new ReviewError('Kursverlauf ausdrücklich aktualisieren.',400);
+        const asset=await ownAsset(body.asset_id),input=validateReviewInput(body);
+        if(input.symbol!==asset.symbol||input.currency!==asset.currency)throw new ReviewError('Wertpapier und Kursformular passen nicht zusammen.',409);
+        return await withLease(asset,'review',async()=>{
+          const market=await acquireReviewMarket(input,reviewMarketAdapters(admin,userId,{getEnv,fetchImpl,force:body.force_quote===true}),now());
+          const bars=(market.bars||[]).filter(b=>b.date<now().toISOString().slice(0,10)),last=bars.at(-1),state={...asset.state};
+          if(last&&typeof last.close==='number'&&Number.isFinite(last.close)&&last.close>0){if(state.price!==last.close||state.price_date!==last.date)state.plan_pending=true;state.price=last.close;state.price_date=last.date;state.provider=market.provider;}
+          if(market.attempt)state.last_attempt=market.attempt;
+          if(JSON.stringify(state)!==JSON.stringify(asset.state))result(await admin.from('investment_assets').update({state}).eq('id',asset.id).eq('user_id',userId),'Kursstatus nicht gespeichert.');
+          const updated={...asset,state},series=(await loadPriceSeries(admin,userId,[updated],now()))[0];
+          return reply({ok:true,series,asset:updated,attempt:market.attempt||null,warning:market.warning||'',...await optionalOverview(userId)});
+        });
+      }
       if(body.action==='sync_portfolio'){const unmapped=await sync(userId);return reply({ok:true,unmapped,...await optionalOverview(userId)});}
       if(body.action==='portfolio_overview')return reply({ok:true,...await optionalOverview(userId)});
       if(body.action==='get_holdings'){
