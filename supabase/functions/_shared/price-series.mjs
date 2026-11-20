@@ -11,19 +11,21 @@ function candidate(asset,row,snapshot,{now,source,kind='price_history',createdAt
  if(!points.length)return null;return {asset_id:asset.id,symbol:asset.symbol,currency:asset.currency,status:'ready',kind,points,source:snapshot.provider||source,recorded_at:createdAt||row.updated_at||row.created_at||null,price_date:points.at(-1).date};
 }
 export function selectPriceSeries(asset,{caches=[],reviews=[],deep=[],signals=[],warnings=[]}={},now=new Date()){
+ const newest=deep.filter(r=>r.user_id===asset.user_id&&r.symbol===asset.symbol&&r.currency===asset.currency&&r.raw_result?.symbol===asset.symbol&&r.raw_result.currency===asset.currency&&Number.isFinite(Date.parse(r.created_at))&&Date.parse(r.created_at)<=now.getTime()).sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at)))[0];
+ const finish=value=>({...value,latest_deep:newest&&/^[0-9a-f-]{36}$/i.test(newest.id||'')?{id:newest.id,created_at:newest.created_at,price_date:newest.raw_result.price_date||null}:null});
  const ownReviews=reviews.filter(r=>r.user_id===asset.user_id&&r.asset_id===asset.id),candidates=[];
  for(const r of caches){if(r.symbol!==asset.symbol||r.currency!==asset.currency)continue;const c=candidate(asset,r,r.snapshot,{now,source:'Gespeicherte Tageskurse'});if(c)candidates.push(c);}
  for(const r of ownReviews){const c=candidate(asset,r,r.snapshot,{now,source:r.snapshot?.provider||'Gespeicherter Analysebericht'});if(c)candidates.push(c);}
  for(const [rows,label] of [[deep,'Ältere Deep-Analyse'],[signals,'Ältere Signalanalyse']])for(const r of rows){if(r.symbol!==asset.symbol||r.currency!==asset.currency)continue;const c=candidate(asset,r,r.raw_result,{now,source:r.raw_result?.provider||label});if(c)candidates.push(c);}
  candidates.sort((a,b)=>Number(b.points.length>=2)-Number(a.points.length>=2)||b.price_date.localeCompare(a.price_date)||b.points.length-a.points.length||String(b.recorded_at).localeCompare(String(a.recorded_at)));
- if(candidates.length)return {...candidates[0],warnings};
+ if(candidates.length)return finish({...candidates[0],warnings});
  const observed=ownReviews.filter(r=>r.snapshot?.symbol===asset.symbol&&r.snapshot.currency===asset.currency).map(r=>({date:r.snapshot.price_date,value:r.snapshot.price}));
  if(typeof asset.state?.price==='number')observed.push({date:asset.state.price_date,value:asset.state.price});
  const points=cleanPricePoints(observed,{now});
- if(points.length)return {asset_id:asset.id,symbol:asset.symbol,currency:asset.currency,status:'ready',kind:'observed_prices',points,source:'Gespeicherte Einzelkurse',price_date:points.at(-1).date,warnings};
+ if(points.length)return finish({asset_id:asset.id,symbol:asset.symbol,currency:asset.currency,status:'ready',kind:'observed_prices',points,source:'Gespeicherte Einzelkurse',price_date:points.at(-1).date,warnings});
  const manual=asset.valuation_override,manualPoints=manual?.source==='manual'?cleanPricePoints([{date:manual.price_date,value:manual.price}],{now,allowToday:true}):[];
- if(manualPoints.length)return {asset_id:asset.id,symbol:asset.symbol,currency:asset.currency,status:'ready',kind:'manual_valuation',points:manualPoints,source:'Eigene Bewertung · manuell',price_date:manualPoints[0].date,warnings};
- return {asset_id:asset.id,symbol:asset.symbol,currency:asset.currency,status:'missing',kind:null,points:[],source:null,price_date:null,warnings};
+ if(manualPoints.length)return finish({asset_id:asset.id,symbol:asset.symbol,currency:asset.currency,status:'ready',kind:'manual_valuation',points:manualPoints,source:'Eigene Bewertung · manuell',price_date:manualPoints[0].date,warnings});
+ return finish({asset_id:asset.id,symbol:asset.symbol,currency:asset.currency,status:'missing',kind:null,points:[],source:null,price_date:null,warnings});
 }
 export async function loadPriceSeries(admin,owner,assets,now=new Date()){
  if(!assets.length)return [];
@@ -31,7 +33,7 @@ export async function loadPriceSeries(admin,owner,assets,now=new Date()){
  const queries=[
   ['Kurscache',()=>admin.from('investment_market_cache').select('user_id,symbol,currency,snapshot,updated_at').eq('user_id',owner).in('symbol',symbols).order('updated_at',{ascending:false}).limit(n*5)],
   ['Analysehistorie',()=>admin.from('investment_reviews').select('user_id,asset_id,snapshot,created_at').eq('user_id',owner).in('asset_id',ids).order('created_at',{ascending:false}).limit(n*4)],
-  ['Ältere Deep-Historie',()=>admin.from('deep_analyses').select('user_id,symbol,currency,raw_result,created_at').eq('user_id',owner).in('symbol',symbols).order('created_at',{ascending:false}).limit(n*3)],
+  ['Ältere Deep-Historie',()=>admin.from('deep_analyses').select('id,user_id,symbol,currency,raw_result,created_at').eq('user_id',owner).in('symbol',symbols).order('created_at',{ascending:false}).limit(n*3)],
   ['Ältere Signalhistorie',()=>admin.from('signal_simulations').select('user_id,symbol,currency,raw_result,created_at').eq('user_id',owner).in('symbol',symbols).order('created_at',{ascending:false}).limit(n*3)],
   ['Letzter Analysebericht',()=>admin.from('investment_reviews').select('user_id,asset_id,snapshot,created_at').eq('user_id',owner).in('id',assets.map(a=>a.latest_review_id).filter(Boolean)).limit(n)]
  ];

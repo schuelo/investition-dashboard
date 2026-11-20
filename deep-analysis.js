@@ -1,6 +1,6 @@
-import { buildDeepAnalysis, validateDeepInput, comparePrior } from './supabase/functions/_shared/deep-engine.mjs?v=39.3.0';
+import { buildDeepAnalysis, validateDeepInput, comparePrior } from './supabase/functions/_shared/deep-engine.mjs?v=39.4.0';
 import { parseOhlcvCsv } from './supabase/functions/_shared/signal-engine.mjs?v=31.2';
-import { canonicalUrl } from './supabase/functions/_shared/deep-sources.mjs?v=39.3.0';
+import { canonicalUrl } from './supabase/functions/_shared/deep-sources.mjs?v=39.4.0';
 
 const $=id=>document.getElementById(id);
 const root=$('deepAnalysisModule');
@@ -291,6 +291,18 @@ function demo(){
   a.warnings=['Synthetische Testdaten; keine Investmentidee, echten Kurse oder realen Produktpreise.'];open(a);status('Synthetische Demonstration · keine echten Preise oder Produktdaten.','warn');
 }
 if(root){
+  $('daBackToAsset')?.addEventListener('click',()=>window.InvestitionReview?.navigate('review'));
+  window.addEventListener('investition:prepare-deep-security',event=>{
+    if(busy){status('Deep-Analyse läuft bereits. Nach Abschluss einen anderen Wert öffnen.','warn');return;}
+    const d=event.detail||{};if(!/^[A-Z0-9_^+\-]{1,25}\.[A-Z0-9]{1,12}$/.test(d.symbol||''))return;
+    epoch++;historyToken++;current=null;selected.clear();page=0;historyRows=[];historyTotal=0;clearImport();launchOrigin=null;if(window.InvestitionCompactReports)delete window.InvestitionCompactReports.deep;
+    $('daForm').reset();$('daSymbol').value=d.symbol;$('daCurrency').value=d.currency;$('daCompany').value=d.company||'';$('daContext').value=d.context||'';$('daManualUrls').value=Array.isArray(d.manual_urls)?d.manual_urls.join('\n'):d.manual_urls||'';
+    $('daDays').value=String(d.days||20);$('daLookback').value=String(d.lookback||252);$('daHistorySymbol').value=d.symbol;$('daUseAi').checked=false;$('daMarketSource').value='csv';$('daQuoteConfirmed').checked=false;
+    imported=Array.isArray(d.bars)&&d.bars.length>=60?d.bars:null;
+    $('daCsvStatus').textContent=imported?imported.length+' gespeicherte echte OHLCV-Tageskerzen übernommen · '+(d.provider||'eigene Historie')+' · Stand '+(d.price_date||imported.at(-1).date):'Keine ausreichende gespeicherte Historie. CSV importieren oder einen Kursanbieter ausdrücklich wählen.';
+    $('daResults').hidden=true;for(const id of ['daHistory','daArchive','daJournal','daComparison'])$(id).textContent='Für diesen Wert neu laden.';
+    $('daInputPanel').open=true;setBusy(false);status(imported?'Wert und gespeicherte Kurse übernommen. Keine externe Kursanfrage. Deep-Analyse und optionale KI starten erst ausdrücklich über den Startknopf.':'Wert übernommen. Kursquelle/CSV auswählen; es wurde keine Analyse gestartet.','warn');
+  });
   $('daForm').addEventListener('invalid',invalidInput,true);
   $('daForm').addEventListener('input',event=>{
     if(event.target.validity?.valid)event.target.removeAttribute('aria-invalid');
@@ -323,12 +335,12 @@ if(root){
     const a=document.createElement('a');a.href=url;a.download='Deep-Analyse-'+current.symbol+'-'+current.price_date+'.json';a.click();URL.revokeObjectURL(url);
   });
   window.addEventListener('investition:auth-changed',()=>{
-    epoch++;historyToken++;current=null;selected.clear();historyRows=[];historyTotal=0;page=0;if(window.InvestitionCompactReports)delete window.InvestitionCompactReports.deep;clearImport();launchOrigin=null;setBusy(false);
+    epoch++;historyToken++;current=null;selected.clear();historyRows=[];historyTotal=0;page=0;if(window.InvestitionCompactReports)delete window.InvestitionCompactReports.deep;clearImport();launchOrigin=null;$('daForm').reset();setBusy(false);
     $('daResults').hidden=true;for(const id of ['daHistory','daArchive','daJournal','daComparison'])$(id).textContent='Nach Anmeldung neu laden.';
     $('daTrigger').innerHTML='<option value="">Ohne ausgewählte Meldung</option>';$('daPrev').disabled=true;$('daNext').disabled=true;
     $('daManualUrls').value='';$('daManualSourceResults').innerHTML='';
     status('Anmeldung geändert. Analyse und Kontextauswahl zurückgesetzt.');
   });
   // Deliberately no invoke on auth, news, visibility, link opening, history or context selection.
-  status('V39.3.0 bereit. Deep-Analyse über den Startknopf manuell starten.');
+  status('V39.4.0 bereit. Deep-Analyse über den Startknopf manuell starten.');
 }

@@ -6,6 +6,8 @@ import {loadManualSources} from './manual-sources.mjs';
 import {portfolioValues} from './portfolio-value.mjs';
 import {validateDepotInput,depotDay} from './depot-input.mjs';
 import {loadPriceSeries} from './price-series.mjs';
+import {normalizeBars} from './signal-engine.mjs';
+import {FREE_DEEP_MODELS} from './deep-service.mjs';
 import {targetedFeed} from './review-feed.mjs';
 import {isEquity,isClosedPlan,mappedPlan,mergedPositions} from './legacy-portfolio.mjs';
 
@@ -41,9 +43,10 @@ export function createInvestmentHandler({createClient,getEnv,fetchImpl=fetch,now
       responseOwner=userId;
       const admin=createClient(getEnv('SUPABASE_URL'),getEnv('SUPABASE_SERVICE_ROLE_KEY'),{auth:{persistSession:false}});
       if(body.action==='capabilities'){
-        const checks=await Promise.allSettled([admin.from('investment_monitor_health').select('last_run_at').eq('id',true).maybeSingle(),admin.from('investment_depot_requests').select('request_id').limit(0)]);
+        const checks=await Promise.allSettled([admin.from('investment_monitor_health').select('last_run_at').eq('id',true).maybeSingle(),admin.from('investment_depot_requests').select('request_id').limit(0),admin.from('investment_portfolio_marks').select('id').eq('user_id',userId).limit(0),admin.from('investment_market_cache').select('symbol').eq('user_id',userId).limit(0),admin.from('deep_analyses').select('id').eq('user_id',userId).limit(0)]);
         const health=checks[0].status==='fulfilled'?checks[0].value:null,depotReady=checks[1].status==='fulfilled'&&!checks[1].value.error;
-        return reply({ok:true,version:'39.3.0',features:['investment_review_v38','portfolio_monitor_v38','persistent_gemini_chat_v38','legacy_depot_v391','holding_editor_v391','depot_editor_v392','price_charts_v393'],depot_ready:depotReady,monitor_last_run:health?.data?.last_run_at||null,alpha_configured:!!getEnv('ALPHAVANTAGE_API_KEY'),eodhd_configured:!!getEnv('EODHD_API_TOKEN'),chat_provider:'gemini',chat_configured:getEnv('DEEP_GEMINI_FREE_TIER_CONFIRMED')==='true'&&!!getEnv('GEMINI_API_KEY')});
+        const ready=i=>checks[i].status==='fulfilled'&&!checks[i].value.error;
+        return reply({ok:true,version:'39.4.0',features:['investment_review_v38','portfolio_monitor_v38','persistent_gemini_chat_v38','legacy_depot_v391','holding_editor_v391','depot_editor_v392','price_charts_v393','dashboard_audit_v394','cached_deep_v394'],depot_ready:depotReady,table_health:{depot:ready(1),history:ready(2),market_cache:ready(3),deep:ready(4)},monitor_last_run:health?.data?.last_run_at||null,alpha_configured:!!getEnv('ALPHAVANTAGE_API_KEY'),eodhd_configured:!!getEnv('EODHD_API_TOKEN'),chat_provider:'gemini',chat_configured:getEnv('DEEP_GEMINI_FREE_TIER_CONFIRMED')==='true'&&!!getEnv('GEMINI_API_KEY')&&FREE_DEEP_MODELS.includes(getEnv('DEEP_GEMINI_MODEL'))});
       }
       const ownAsset=async(id,owner=userId)=>{
         if(!uuid(id))throw new ReviewError('Wertpapier-ID fehlt.',400);
@@ -100,7 +103,7 @@ export function createInvestmentHandler({createClient,getEnv,fetchImpl=fetch,now
         }
         }catch{historyWarning='Aktueller Depotwert verfügbar; eine neue Verlaufsmessung konnte nicht gespeichert werden.';}
         let marks=[];try{marks=result(await admin.from('investment_portfolio_marks').select('*').eq('user_id',owner).order('recorded_at',{ascending:false}).limit(1000),'Depotverlauf nicht lesbar.')||[];}catch{historyWarning='Aktueller Depotwert verfügbar; die gespeicherte Verlaufshistorie ist nicht erreichbar.';}
-        return {...summary,marks:marks.filter(m=>m.user_id===owner).reverse(),history_warning:historyWarning};
+        return {...summary,as_of:now().toISOString(),marks:marks.filter(m=>m.user_id===owner).reverse(),history_warning:historyWarning};
       };
       const optionalOverview=async(owner)=>{try{const portfolio=await portfolioOverview(owner);return {portfolio,portfolio_warning:portfolio.history_warning||''};}catch(e){return {portfolio:null,portfolio_warning:e instanceof ReviewError?e.message:'Depotbewertung nicht verfügbar. Die Wertpapierliste bleibt nutzbar.'};}};
       const withLease=async(asset,kind,fn)=>{
@@ -153,6 +156,16 @@ export function createInvestmentHandler({createClient,getEnv,fetchImpl=fetch,now
         const ids=[...new Set(body.asset_ids)],owned=result(await admin.from('investment_assets').select('*').eq('user_id',userId).in('id',ids),'Eigene Werte nicht lesbar.')||[];
         if(owned.length!==ids.length)throw new ReviewError('Eigene Wertpapiere für den Kursverlauf nicht gefunden.',404);
         return reply({ok:true,series:await loadPriceSeries(admin,userId,owned,now())});
+      }
+      if(body.action==='prepare_deep'){
+        const asset=await ownAsset(body.asset_id);let cached=null,report=null;
+        try{cached=await reviewMarketAdapters(admin,userId,{getEnv,fetchImpl,allowNetwork:false}).readCache({symbol:asset.symbol,currency:asset.currency,source:'stored'},now());}catch{/* A saved report can supply real OHLCV even when the optional cache is unavailable. */}
+        try{report=await readReview(asset);}catch{/* Preparing the page must not require a new analysis. */}
+        let bars=[],provider='';for(const candidate of [cached,{symbol:report?.symbol,currency:report?.currency,bars:report?.analysis?.history,provider:report?.provider}]){
+          if(candidate?.symbol!==asset.symbol||candidate?.currency!==asset.currency)continue;
+          try{const normalized=normalizeBars(candidate.bars,now()).bars.filter(b=>b.date<now().toISOString().slice(0,10));if(normalized.length>=60){bars=normalized;provider=candidate.provider||'Gespeicherte OHLCV';break;}}catch{}
+        }
+        return reply({ok:true,symbol:asset.symbol,currency:asset.currency,company:asset.company,bars,provider,price_date:bars.at(-1)?.date||null,warning:bars.length?'':'Keine ausreichende eigene OHLCV-Historie. CSV importieren oder einen Anbieter ausdrücklich wählen. Kein Kurs- oder KI-Aufruf ausgelöst.'});
       }
       if(body.action==='refresh_chart'){
         if(body.manual_start!==true)throw new ReviewError('Kursverlauf ausdrücklich aktualisieren.',400);

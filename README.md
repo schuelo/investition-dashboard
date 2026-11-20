@@ -1,4 +1,18 @@
-# V39.3.0 — sichtbare Verläufe in Depot, Beobachtung und Wertpapier
+# V39.4.0 — Dashboardprüfung, nachvollziehbare Depotgrafik und direkter Deep-Zugang
+
+Aktuelle Anleitung: [INSTALLATION-V39.4.md](INSTALLATION-V39.4.md). Vollständiger Abgleich der bisherigen Anforderungen: [ANFORDERUNGSABGLEICH-V39.4.md](ANFORDERUNGSABGLEICH-V39.4.md).
+
+Die Depotgrafik wählt zwischen gespeicherten Messungen, ausdrücklich gekennzeichneter Rückrechnung des heutigen offenen Bestands aus echten Kursen und Kursvergleich mit Index 100. Fehlende Kaufdaten, Kurse und Verlaufsspeicher bleiben erkennbar. Eine gescheiterte Depotantwort löscht nicht die letzte gültige Übersicht. Die Übersicht zeigt ihre Datenmenge und hat eine kopierbare technische Statusprüfung ohne private Bestandsdetails.
+
+Deep, Szenarien und Hebel sind wieder direkt am Wertpapier erreichbar. Echte eigene OHLCV können ohne neuen Anbieterabruf vorbereitet werden. Der letzte Deep-Zeitpunkt erscheint zusätzlich in der Liste. Der Start bleibt manuell; Gemini ist zunächst ausgeschaltet.
+
+**Update:** Alle Dateien einschließlich Unterordnern übernehmen; **Actions → V39.4 Dashboard prüfen und deployen** starten; anschließend die **statische Website veröffentlichen**. Diese Action deployt Basis- und Deep-Function, nicht SQL oder Website. Anmeldung und Server müssen **39.4.0** zeigen. Bei vollständig aktivem V39.2/V39.3 kein neues SQL für die Depotgrafik nötig. Ältere Versionen und fehlende Deep-Tabellen siehe Anleitung.
+
+Prüfung: **537 automatisierte Tests und 169 SQL-Prüfungen bestanden**. Zusätzlich drei vom tatsächlichen Controller erzeugte Diagrammtypen bei 375/1000 Pixeln gerendert. [TESTPROTOKOLL-V39.4.md](TESTPROTOKOLL-V39.4.md) trennt diese Prüfung von der noch offenen produktiven Website-/iPhone-Abnahme. Die Rückrechnung ist keine vollständige historische Depotperformance mit Cash und Verkäufen.
+
+---
+
+## Historischer Stand V39.3.0 — sichtbare Verläufe in Depot, Beobachtung und Wertpapier
 
 Aktuelle Anleitung: [INSTALLATION-V39.3.md](INSTALLATION-V39.3.md). Die Depotgrafik zeigt echte gespeicherte Bewertungen mit Euro-/Währungswerten, sichtbaren Einzelpunkten und Linien auch bei unverändertem Wert. Depot, Beobachtung und gespeicherte Suche erhalten Kurs-Minicharts; Beobachtung zusätzlich einen Vergleich mit gemeinsamem Startwert 100. Jede Wertpapierseite hat eine eigene historische Kursgrafik mit Zeitraumwahl und Datenstand, unabhängig von der Freigabe eines Prognosemodells.
 

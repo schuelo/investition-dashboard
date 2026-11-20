@@ -9,6 +9,7 @@ class Element {
   async trigger(name,e={}){for(const fn of this.events[name] || [])await fn({preventDefault(){},target:this,...e});}
   setAttribute(k,v){this.attributes[k]=v;}removeAttribute(k){delete this.attributes[k];}getAttribute(k){return this.attributes[k] ?? null;}
   querySelectorAll(){return [];}focus(){this.focused=true;}scrollIntoView(){this.revealed=true;}
+  reset(){for(const[id,v]of Object.entries(defaults))if(id.startsWith('da')){elements[id].value=v.value;elements[id].checked=v.checked;}}
 }
 const elements=Object.fromEntries([...html.matchAll(/id="([^"]+)"/g)].map(m=>[m[1],new Element(m[1])]));
 for(const m of html.matchAll(/<input[^>]*id="([^"]+)"[^>]*>/g)){
@@ -17,6 +18,7 @@ for(const m of html.matchAll(/<input[^>]*id="([^"]+)"[^>]*>/g)){
 }
 for(const [id,value] of Object.entries({daCurrency:'USD',daDays:'20',daLookback:'252',daNewsDays:'14',daEventDirection:'neutral',daProductType:'none',daProductDirection:'long',daObservation:'unknown',daValProvenance:'assumption'}))elements[id].value=value;
 const fakeWindow=new EventTarget();let invocations=0,release;
+const defaults=Object.fromEntries(Object.entries(elements).map(([id,el])=>[id,{value:el.value,checked:el.checked}]));
 let session=null;
 const sample=Array.from({length:250},(_,i)=>{const d=new Date();d.setUTCDate(d.getUTCDate()-260+i);const close=100*Math.exp(.001*i+.01*Math.sin(i));return {date:d.toISOString().slice(0,10),open:close,high:close*1.01,low:close*.99,close,volume:1e6};});
 const analysis=buildDeepAnalysis(validateDeepInput({symbol:'NVDA.US',currency:'USD',days:20,use_ai:false,manual_start:true}),sample);
@@ -93,4 +95,9 @@ test('New deploy workflow deploys only the independent function and leaves V31 w
   const wf=readFileSync(new URL('../.github/workflows/deploy-deep-analysis.yml',import.meta.url),'utf8');
   assert.equal((wf.match(/supabase functions deploy/g)||[]).length,1);assert.match(wf,/deploy analyze-deep-signal/);
   assert.doesNotMatch(wf,/send-news-alerts|cron/);
+});
+test('Actual Deep module accepts a prepared security and real cached OHLCV without any edge or model request',()=>{
+ const before=invocations;elements.daProductType.value='ko';elements.daManualUrls.value='https://old.example.test/';
+ window.dispatchEvent(new CustomEvent('investition:prepare-deep-security',{detail:{symbol:'SND.XETRA',currency:'EUR',company:'Schneider',bars:sample,provider:'Eigener Kurscache',price_date:sample.at(-1).date,manual_urls:'https://new.example.test/',days:60,lookback:126}}));
+ assert.equal(elements.daSymbol.value,'SND.XETRA');assert.equal(elements.daCurrency.value,'EUR');assert.equal(elements.daMarketSource.value,'csv');assert.equal(elements.daUseAi.checked,false);assert.equal(elements.daProductType.value,'none');assert.equal(elements.daHistorySymbol.value,'SND.XETRA');assert.equal(elements.daManualUrls.value,'https://new.example.test/');assert.equal(elements.daResults.hidden,true);assert.match(elements.daCsvStatus.textContent,/250 gespeicherte echte OHLCV/);assert.equal(invocations,before);
 });

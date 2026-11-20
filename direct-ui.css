@@ -12,6 +12,8 @@ html[data-direct-ui=ready] #decisionPage>.compact-original,html[data-direct-ui=r
 html[data-direct-ui=ready]:not([data-direct-view=benchmark]) #signalSimulationPage>:not(#investmentReviewModule){display:none!important}
 html[data-direct-ui=ready][data-direct-view=benchmark] #signalSimulationPage>:not(#paperPortfolioModule){display:none!important}
 html[data-direct-ui=ready][data-direct-view=benchmark] #paperPortfolioModule{display:block!important}
+html[data-direct-ui=ready][data-direct-view=deep] #signalSimulationPage>:not(#deepAnalysisModule){display:none!important}
+html[data-direct-ui=ready][data-direct-view=deep] #deepAnalysisModule{display:block!important}
 .direct-settings{padding:18px;margin-bottom:18px}.direct-settings summary{padding:12px 0;min-height:44px}.direct-holding{padding:16px;background:#151515;border:1px solid var(--border);border-radius:12px;margin:15px 0}
 html[data-direct-ui=ready] [hidden]{display:none!important}
 html[data-direct-view=holding] #investmentReviewModule>:not(#rvHoldingPanel){display:none!important}
@@ -32,6 +34,7 @@ html[data-direct-ui=ready] .iv-grid{display:block}
 .direct-total{font-size:clamp(30px,5vw,42px);line-height:1.2;letter-spacing:-.04em;font-variant-numeric:tabular-nums;margin:12px 0}
 .direct-value-chart{width:100%;display:block;height:auto;min-height:130px}.direct-value-chart text{font:12px system-ui;fill:var(--muted)}
 .price-chart{display:block;width:100%;height:auto;min-height:180px;overflow:visible}.price-chart text{font:12px system-ui}.price-line{filter:none}
+.portfolio-chart-shell{display:block;min-width:0;min-height:230px;margin-top:18px}.portfolio-chart-shell select{max-width:100%;min-height:44px;background:#111;color:#eee;border:1px solid #424242;border-radius:8px;padding:8px;font-size:14px}.portfolio-chart-shell label{display:flex;flex-direction:column;gap:5px;max-width:100%;color:var(--muted);font-size:12px}.chart-evidence{font-size:12px;color:#aebbc8;overflow-wrap:anywhere}.dashboard-diagnostics{margin:16px 0;padding:12px;background:#111;border:1px solid #333;border-radius:10px}.dashboard-diagnostics summary{min-height:44px;cursor:pointer}.dashboard-diagnostics dl{display:grid;grid-template-columns:minmax(90px,.7fr) minmax(0,1fr);gap:8px;font-size:12px}.dashboard-diagnostics dd{margin:0;overflow-wrap:anywhere}.dashboard-diagnostics .bad{color:#ef7b82}
 .price-spark{display:block;max-width:128px;margin-top:7px}.price-sparkline{display:block;width:122px;max-width:100%;height:48px}.price-spark small,.price-spark-empty{display:block;color:var(--muted);font-size:10px;line-height:1.5}.price-spark-empty{max-width:122px;margin-top:12px}
 .price-panel{margin:18px 0;padding:16px;background:#111;border:1px solid var(--border);border-radius:14px}.price-panel h3{margin:4px 0}.price-panel button{min-height:44px}.price-panel input[type=range]{padding:0;background:transparent;min-height:44px;accent-color:#50d2c2}
 .price-readout{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;margin:8px 0 15px}.price-readout strong{font-size:20px;font-variant-numeric:tabular-nums}.price-readout span{font-size:12px;color:var(--muted)}
