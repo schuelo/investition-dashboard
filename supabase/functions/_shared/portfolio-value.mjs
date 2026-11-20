@@ -6,7 +6,7 @@ export function valuationQuote(asset,now=new Date()){
  const manual=asset?.valuation_override?.source==='manual',source=manual?asset.valuation_override:asset?.state||{};let q=quoteStatus(source.price_date,now);
  // A user's dated valuation may be intraday. It is never substituted for closed OHLCV chart data.
  if(manual&&/^\d{4}-\d{2}-\d{2}$/.test(source.price_date||'')&&Number.isFinite(Date.parse(source.price_date))&&new Date(source.price_date).toISOString().slice(0,10)===source.price_date&&source.price_date<=depotDay(now))q={...q,code:source.price_date>=q.expected?'current':'stale'};
- return {price:positive(source.price)&&q.code!=='missing'?Number(source.price):null,price_date:source.price_date||null,manual,source:manual?'Manuell erfasst':source.provider||'Gespeicherter Anbieter-Kurs',status:q.code};
+ return {price:positive(source.price)&&q.code!=='missing'?Number(source.price):null,price_date:source.price_date||null,manual,source:manual?'Manuell erfasst':source.provider||'Gespeicherter Anbieter-Kurs',status:q.code,...(source.valuation_from_history?{from_history:true}:{})};
 }
 export function holdingSummary(rows,asset,now=new Date()){
  const all=rows.filter(p=>p.symbol===asset.symbol&&p.currency===asset.currency),included=all.filter(p=>supported(p)&&positive(p.quantity)),quantity=included.reduce((s,p)=>s+Number(p.quantity),0);

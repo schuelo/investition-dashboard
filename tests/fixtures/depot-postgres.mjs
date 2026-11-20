@@ -18,6 +18,7 @@ export async function createDepotDatabase({withV392=true}={}){
  }catch(error){await db.close();throw error;}
 }
 const identifier=value=>{if(!/^[a-z_][a-z0-9_]*$/.test(value))throw Error('Invalid SQL identifier');return '"'+value+'"';};
+const selectField=value=>{const m=/^([a-z_]+):([a-z_]+)((?:->>?[a-z_]+)+)$/.exec(value);if(!m)return identifier(value);const path=[...m[3].matchAll(/(->>?)([a-z_]+)/g)].map(x=>x[1]+"'"+x[2]+"'").join('');return identifier(m[2])+path+' as '+identifier(m[1]);};
 const normalize=(v,key='')=>v instanceof Date?v.toISOString().slice(0,key==='entry_date'?10:undefined):Array.isArray(v)?v.map(x=>normalize(x)):v&&typeof v==='object'?Object.fromEntries(Object.entries(v).map(([k,x])=>[k,normalize(x,k)])):typeof v==='bigint'?Number(v):v;
 export async function postgresDepotApi(options={}){
  const db=await createDepotDatabase(options),calls=[],rpcs=[],requests=[];let owner=options.owner||alice;
@@ -42,7 +43,7 @@ export async function postgresDepotApi(options={}){
     }else{
      if(this.action==='update')sql='update '+identifier(this.table)+' set '+Object.keys(this.payload).map(k=>identifier(k)+'='+bind(k,this.payload[k])).join(',')+where()+' returning *';
      else if(this.action==='delete')sql='delete from '+identifier(this.table)+where()+' returning *';
-     else sql='select '+(this.fields==='*'?'*':this.fields.split(',').map(identifier).join(','))+' from '+identifier(this.table)+where()+(this.orders.length?' order by '+this.orders.map(([k,d])=>identifier(k)+' '+d).join(','):'')+(this.limitN!==null?' limit '+Number(this.limitN):'');
+     else sql='select '+(this.fields==='*'?'*':this.fields.split(',').map(selectField).join(','))+' from '+identifier(this.table)+where()+(this.orders.length?' order by '+this.orders.map(([k,d])=>identifier(k)+' '+d).join(','):'')+(this.limitN!==null?' limit '+Number(this.limitN):'');
      rows=(await db.query(sql,params)).rows;
     }
     if(this.mode==='required'&&rows.length!==1)return {data:null,error:{message:'Expected exactly one row'}};

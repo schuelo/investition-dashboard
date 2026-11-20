@@ -3,18 +3,18 @@
   <div class="direct-security-nav"><button class="btn" id="rvBack" type="button">← Zurück</button><button class="btn" id="rvRemember" type="button">+ Merken</button></div>
   <header class="iv-head"><div><p class="compact-eyebrow" id="rvHeadingLabel">Suche</p><h2 id="rvSecurityName">Wertpapier finden</h2><p class="compact-muted" id="rvSecurityInfo">Gespeicherte Werte nach Name, Ticker, WKN oder ISIN finden. Neue Werte per WKN/ISIN zuordnen.</p></div><button class="btn" id="rvNew" type="button">Neuen Wert suchen</button></header>
   <section id="rvSavedSearch"><label>Gespeicherte Werte<input id="rvSavedQuery" type="search" autocomplete="off" placeholder="Name, Ticker, WKN oder ISIN"></label><div id="rvSavedMatches"></div></section>
-  <div id="rvAssetActions" class="direct-asset-actions" hidden><button class="btn" id="rvHolding" type="button">Depotbestand bearbeiten</button><button class="btn" id="rvPlan" type="button">Analyseplan bearbeiten</button><button class="btn primary" id="rvAnalyze" type="button">Analyse aktualisieren</button><button class="btn" id="rvDeep" type="button">Deep, Szenarien &amp; Hebel</button><button class="btn" id="rvAsk" type="button">Gespräch / KI</button><label class="iv-monitor"><input id="rvMonitor" type="checkbox"> Automatisch prüfen · ohne KI</label></div>
+  <div id="rvAssetActions" class="direct-asset-actions" hidden><button class="btn primary" id="rvAnalyze" type="button">Analyse aktualisieren</button><button class="btn" id="rvAsk" type="button">Gespräch</button><details id="rvMoreActions" class="asset-more"><summary>Mehr</summary><div><button class="btn" id="rvHolding" type="button">Bestand bearbeiten</button><button class="btn" id="rvPlan" type="button">Analyseplan</button><button class="btn" id="rvDeep" type="button">Deep, Szenarien &amp; Hebel</button><label class="iv-monitor"><input id="rvMonitor" type="checkbox"> Automatisch prüfen · ohne KI</label></div></details></div>
   <section id="rvPricePanel" class="price-panel" hidden aria-label="Historischer Kursverlauf">
     <div class="compact-heading"><h3>Kursverlauf</h3><button id="rvRefreshPrices" class="btn" type="button">Kursdaten aktualisieren · ohne KI</button></div>
-    <div id="rvPricePeriods" class="direct-periods" role="group" aria-label="Zeitraum des Kursverlaufs"></div><div id="rvPricePlot"></div>
+    <div id="rvPricePlot"></div><div id="rvPricePeriods" class="direct-periods" role="group" aria-label="Zeitraum des Kursverlaufs"></div>
     <label id="rvPriceCursorLabel" hidden>Datum im Kursverlauf ansehen<input id="rvPriceCursor" type="range" min="0" max="0" value="0"></label>
     <p id="rvPriceInfo" class="compact-muted"></p><p id="rvPriceStatus" class="compact-status" role="status" aria-live="polite"></p>
-    <button id="rvChoosePriceSource" class="btn" type="button">Kursquelle / CSV wählen</button>
+    <details class="chart-notes"><summary>Datenquellen</summary><button id="rvChoosePriceSource" class="btn" type="button">Kursquelle / CSV wählen</button>
     <details id="rvExternalDetails"><summary>Separaten Börsenchart öffnen · ohne eigenen API-Schlüssel</summary><p class="compact-muted">TradingView zeigt einen eigenen Kurschart. Seine Werte werden nicht in Depotbewertungen oder Analysen übernommen. Verfügbarkeit und Verzögerung hängen vom Handelsplatz ab.</p>
       <label>TradingView-Kennung mit Handelsplatz<input id="rvExternalSymbol" maxlength="60" autocomplete="off" placeholder="XETR:VOW3 oder NASDAQ:AAPL"></label><label class="ss-check"><input id="rvExternalConfirmed" type="checkbox"> Kennung und Handelsplatz geprüft.</label><button id="rvExternalLoad" class="btn" type="button">Börsenchart laden</button><div id="rvExternalHost" class="external-chart-host"></div>
-    </details>
+    </details></details>
   </section>
-  <section id="rvPositionSummary" class="depot-position-summary" hidden aria-label="Aktueller Depotbestand"></section>
+  <details id="rvPositionSummary" class="depot-position-summary" hidden aria-label="Aktueller Depotbestand"></details>
   <section id="rvHoldingPanel" class="direct-holding" hidden aria-labelledby="rvHoldingTitle">
     <div class="compact-heading"><div><p class="compact-eyebrow">Dein tatsächliches Depot</p><h2 id="rvHoldingTitle">Position hinzufügen</h2></div><button id="rvHoldingCancel" class="btn" type="button">← Zurück</button></div>
     <p class="compact-muted">Wertpapier auswählen, Stückzahl und durchschnittlichen Einstand eintragen. Speichern funktioniert ohne Kursabruf und ohne Analyse.</p>

@@ -1,24 +1,19 @@
-import {e} from './investment-view.mjs';
-import {CHART_PERIODS,lineChart,periodPoints} from './price-charts.mjs';
+import {CHART_PERIODS,lineChart} from './price-charts.mjs';
 import {externalChartSymbol,mountExternalChart} from './external-chart.mjs';
+import {historyWindow,periodButtons,windowCaption} from './chart-window.mjs';
 export function createPriceUI({document,window,invoke,getAssets,getAsset,getVisible,getInput,ensureAsset,getOwner,getCapabilities,onCapabilities=()=>{},onSeriesChanged=()=>{},onChanged=()=>{},onBusy=()=>{},isRunning=()=>false,now=()=>new Date()}){
  const $=id=>document.getElementById(id);let series={},versions={},generation=0,operation=0,busy=false,period='1M',userPeriod=false,pickedDate=null,openedKey='',destroyExternal=null,externalMode='';
  const status=(text,bad=false)=>{$('rvPriceStatus').textContent=text;$('rvPriceStatus').setAttribute('role',bad?'alert':'status');};
  const key=a=>a?.id||[a?.symbol,a?.currency].join('|');
  function clearExternal(){destroyExternal?.();destroyExternal=null;externalMode='';$('rvExternalHost').innerHTML='';}
- async function support(){let c=getCapabilities();if(!c){c=await invoke({action:'capabilities'});onCapabilities(c);}if(!c.features?.includes('price_charts_v393'))throw Error('Kursgrafiken benötigen die V39.3-Function. Action „V39.3 Kursgrafiken deployen“ ausführen.');return c;}
+ async function support(){let c=getCapabilities();if(!c){c=await invoke({action:'capabilities'});onCapabilities(c);}if(!c.features?.includes('price_charts_v393'))throw Error('Kursgrafiken benötigen die aktuelle Function. Action „V39.5 Übersicht und Charts deployen“ ausführen.');return c;}
  function render(){
   const a=getAsset(),visible=getVisible()&&!!a;$('rvPricePanel').hidden=!visible;if(!visible){clearExternal();return;}
   const k=key(a);if(k!==openedKey){openedKey=k;period='1M';userPeriod=false;pickedDate=null;clearExternal();$('rvExternalSymbol').value=externalChartSymbol(a);$('rvExternalConfirmed').checked=false;$('rvExternalDetails').open=false;}
-  const s=series[a.id];if(!userPeriod&&s?.points?.length>=2&&periodPoints(s.points,period,now()).length<2)period='Max';const points=periodPoints(s?.points,period,now());
-  $('rvPricePeriods').innerHTML=CHART_PERIODS.map(p=>'<button class="btn" type="button" data-price-period="'+p+'" aria-pressed="'+(p===period)+'">'+p+'</button>').join('');
-  $('rvPricePlot').innerHTML=s?.points?.length?lineChart(s.points,{period,now:now(),width:$('rvPricePlot').clientWidth||640,currency:a.currency,selected:pickedDate,label:s.kind==='manual_valuation'?'Manuell erfasste Bewertung':'Gespeicherter historischer Kursverlauf'}):'<div class="price-empty">'+(s?.status==='loading'?'Gespeicherten Kursverlauf laden …':'Noch keine Kursreihe gespeichert. Kursquelle/CSV wählen oder den separaten Börsenchart öffnen.')+'</div>';
-  $('rvPriceInfo').textContent=s?.points?.length?[s.source,'Stand '+s.price_date,s.points.length+' gespeicherte Werte',s.kind==='observed_prices'?'Einzelkurse, keine vollständige Tageshistorie':s.kind==='manual_valuation'?'Eigene Bewertung, keine Markthistorie':'Historische Tageskurse; kein Prognoseband'].join(' · '):'Historie und Prognose sind getrennt. Es werden keine Verläufe erfunden.';
-  const fullHistory=s?.kind==='price_history'&&s.points?.length>=2,externalSymbol=externalChartSymbol(a);
-  if(fullHistory&&externalMode==='auto'){clearExternal();$('rvExternalDetails').open=false;}
-  if(!fullHistory&&(s&&s.status!=='loading'||!a.id)&&!destroyExternal&&externalSymbol&&getOwner()&&typeof document.createElement==='function'){
-   try{const captured=generation;destroyExternal=mountExternalChart({document,container:$('rvExternalHost'),symbol:externalSymbol,confirmed:true,onStatus:(message,bad)=>{if(captured===generation)status(message,bad);}});externalMode='auto';$('rvExternalDetails').open=true;$('rvExternalSymbol').value=externalSymbol;$('rvExternalConfirmed').checked=true;}catch(error){status(error.message,true);}
-  }
+  const s=series[a.id],points=historyWindow(s?.points,period,{now:now()}).points;
+  $('rvPricePeriods').innerHTML=periodButtons(s?.points,{selected:period,scope:'price',now:now()});
+  $('rvPricePlot').innerHTML=s?.points?.length?lineChart(s.points,{period,now:now(),anchor:'latest',width:$('rvPricePlot').clientWidth||640,currency:a.currency,selected:pickedDate,label:s.kind==='manual_valuation'?'Manuell erfasste Bewertung':'Gespeicherter historischer Kursverlauf'}):'<div class="price-empty">'+(s?.status==='loading'?'Gespeicherten Kursverlauf laden …':'Keine gespeicherte Historie. Kursdaten laden oder eine CSV importieren.')+'</div>';
+  $('rvPriceInfo').textContent=s?.points?.length?[s.source,s.points.length+' gespeicherte Werte',windowCaption(s.points,period,{now:now()}),s.kind==='observed_prices'?'Einzelkurse':s.kind==='manual_valuation'?'Eigene Bewertung':''].filter(Boolean).join(' · '):'Ein externer Börsenchart ist bei Bedarf separat unter Datenquellen aufrufbar.';
   $('rvPriceCursorLabel').hidden=points.length<2;$('rvPriceCursor').max=String(Math.max(0,points.length-1));$('rvPriceCursor').value=String(Math.max(0,pickedDate?points.findIndex(p=>p.date===pickedDate):points.length-1));$('rvPriceCursor').disabled=busy;
   $('rvRefreshPrices').disabled=busy||isRunning();
  }
@@ -50,7 +45,7 @@ export function createPriceUI({document,window,invoke,getAssets,getAsset,getVisi
  }
  function clear(){generation++;operation++;series={};versions={};busy=false;period='1M';pickedDate=null;openedKey='';clearExternal();for(const id of ['rvPricePlot','rvPricePeriods'])$(id).innerHTML='';$('rvPriceInfo').textContent='';$('rvExternalSymbol').value='';$('rvExternalConfirmed').checked=false;$('rvPriceCursor').value='0';$('rvPriceCursorLabel').hidden=true;$('rvPricePanel').hidden=true;status('');}
  $('rvPricePeriods').addEventListener('click',event=>{const p=event.target.closest?.('button')?.dataset?.pricePeriod;if(CHART_PERIODS.includes(p)){period=p;userPeriod=true;pickedDate=null;render();}});
- $('rvPriceCursor').addEventListener('input',()=>{const a=getAsset(),s=series[a?.id],rows=periodPoints(s?.points,period,now());pickedDate=rows[Number($('rvPriceCursor').value)]?.date||null;if(a&&s)$('rvPricePlot').innerHTML=lineChart(s.points,{period,now:now(),width:$('rvPricePlot').clientWidth||640,currency:a.currency,selected:pickedDate});});
+ $('rvPriceCursor').addEventListener('input',()=>{const a=getAsset(),s=series[a?.id],rows=historyWindow(s?.points,period,{now:now()}).points;pickedDate=rows[Number($('rvPriceCursor').value)]?.date||null;if(a&&s)$('rvPricePlot').innerHTML=lineChart(s.points,{period,now:now(),anchor:'latest',width:$('rvPricePlot').clientWidth||640,currency:a.currency,selected:pickedDate});});
  $('rvRefreshPrices').addEventListener('click',refresh);
  $('rvChoosePriceSource').addEventListener('click',()=>{$('rvInputs').open=true;$('rvQuoteSettings').open=true;$('rvQuoteSettings').scrollIntoView?.({behavior:'smooth',block:'start'});});
  $('rvExternalLoad').addEventListener('click',()=>{if(!getOwner()||!getAsset()||busy||isRunning())return;try{clearExternal();const captured=generation;destroyExternal=mountExternalChart({document,container:$('rvExternalHost'),symbol:$('rvExternalSymbol').value.trim().toUpperCase(),confirmed:$('rvExternalConfirmed').checked,onStatus:(message,bad)=>{if(captured===generation)status(message,bad);}});externalMode='manual';status('Externer Börsenchart angefordert. Widgetkurse werden nicht als Depot-/Analysekurse übernommen.');}catch(error){status(error.message,true);}});

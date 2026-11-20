@@ -1,5 +1,5 @@
 import {e} from './investment-view.mjs';
-export function dashboardDiagnostics({version='39.4.0',capabilities=null,portfolio=null,assets=[],series={},now=new Date()}={}){
+export function dashboardDiagnostics({version='39.5.0',capabilities=null,portfolio=null,assets=[],series={},now=new Date()}={}){
  const known=Object.values(series),validMarks=(portfolio?.marks||[]).filter(m=>m.amount!==null&&Number.isFinite(Number(m.amount))&&Number.isFinite(Date.parse(m.recorded_at))),histories=known.filter(s=>s.kind==='price_history'&&s.points?.length>=2),manual=known.filter(s=>s.kind==='manual_valuation'),pricesMissing=assets.filter(a=>!Number.isFinite(Number(a.state?.price))||Number(a.state.price)<=0).length;
  const elapsed=capabilities?.monitor_last_run?now.getTime()-Date.parse(capabilities.monitor_last_run):Infinity;
  const checks=[

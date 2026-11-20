@@ -1,6 +1,22 @@
-# V39.4.0 — Dashboardprüfung, nachvollziehbare Depotgrafik und direkter Deep-Zugang
+# V39.5.0 — Puristische Übersicht und einheitliche Charts
 
-Aktuelle Anleitung: [INSTALLATION-V39.4.md](INSTALLATION-V39.4.md). Vollständiger Abgleich der bisherigen Anforderungen: [ANFORDERUNGSABGLEICH-V39.4.md](ANFORDERUNGSABGLEICH-V39.4.md).
+Aktuelle Anleitung: [INSTALLATION-V39.5.md](INSTALLATION-V39.5.md). Prüfnachweise: [TESTPROTOKOLL-V39.5.md](TESTPROTOKOLL-V39.5.md).
+
+Depot und Beobachtung zeigen gleich große schwarze Minicharts. Die Übersicht konzentriert sich auf Name, Einschätzung, Kurs-/Analysedatum und Positionswert beziehungsweise Stückkurs. Stückzahl, Einstand, Bearbeitung und Abrufmeldungen bleiben unter **Details & Bestand** verfügbar. Filter, Datenbasis, Archiv und technische Statusprüfung sind aufklappbar. Am Wertpapier stehen **Analyse aktualisieren**, **Gespräch** und **Mehr** bereit; dort bleiben Deep, Hebel, Plan und automatische Prüfung erreichbar.
+
+**1W / 1M / 3M / 1J / Max** enden am letzten tatsächlich gespeicherten Wert. Alte Kurse und kürzere Historien sind ausdrücklich gekennzeichnet. Ohne Daten bleiben die Zeiträume deaktiviert. Beim Umschalten bleibt die Datenbasis gleich; Depotbewertungen, Rückrechnung, Indexvergleich und Simulation sind getrennt beschriftet. TradingView wird nur nach bewusster Auswahl in den Details geladen.
+
+Passende bereits gespeicherte echte Kurse können fehlende oder ältere Depotkurse zur Bewertung ergänzen, ohne neue Anbieter- oder KI-Anfrage. Kursdatum und Analysestand werden dabei nicht neu datiert; eine gewählte manuelle Bewertung hat Vorrang.
+
+**Update:** Alle Dateien und Unterordner übernehmen; **Actions → V39.5 Übersicht und Charts deployen → Run workflow** starten; anschließend die **statische Website veröffentlichen**. Der Workflow deployt die Funktionen, nicht SQL oder Website. Anmeldung und Server müssen **39.5.0** zeigen. Bei vollständig aktivem V39.2–V39.4 ist kein neues SQL nötig.
+
+Prüfung: **560 automatisierte Tests und 169 SQL-Prüfungen bestanden**. Sieben tatsächlich erzeugte SVGs wurden in 14 Rasterbildern bei schmalen und breiten Größen geprüft. Keine produktive Veröffentlichung und keine vollständige Browser-/iPhone-Abnahme durchgeführt.
+
+---
+
+## Historischer Stand V39.4.0 — Dashboardprüfung, nachvollziehbare Depotgrafik und direkter Deep-Zugang
+
+Anleitung dieses Stands: [INSTALLATION-V39.4.md](INSTALLATION-V39.4.md). Vollständiger Abgleich der bisherigen Anforderungen: [ANFORDERUNGSABGLEICH-V39.4.md](ANFORDERUNGSABGLEICH-V39.4.md).
 
 Die Depotgrafik wählt zwischen gespeicherten Messungen, ausdrücklich gekennzeichneter Rückrechnung des heutigen offenen Bestands aus echten Kursen und Kursvergleich mit Index 100. Fehlende Kaufdaten, Kurse und Verlaufsspeicher bleiben erkennbar. Eine gescheiterte Depotantwort löscht nicht die letzte gültige Übersicht. Die Übersicht zeigt ihre Datenmenge und hat eine kopierbare technische Statusprüfung ohne private Bestandsdetails.
 

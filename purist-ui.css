@@ -1,0 +1,75 @@
+/* One compact overview; detailed evidence and tools remain available on demand. */
+html[data-direct-ui=ready]{--panel:#080808;--panel-2:#111;--border:#292929;--muted:#91999f}
+html[data-direct-ui=ready] .chart-heading,html[data-direct-ui=ready] .portfolio-heading{display:flex;justify-content:space-between;align-items:center;gap:12px}
+html[data-direct-ui=ready] .chart-heading h3{font-size:15px;font-weight:500;margin:0}
+html[data-direct-ui=ready] .chart-kind{font-size:11px;color:#9da3aa;white-space:nowrap}
+html[data-direct-ui=ready] .chart-window-note,html[data-direct-ui=ready] .chart-fineprint{font-size:11px;line-height:1.6;color:#92989e;margin:7px 0}
+html[data-direct-ui=ready] .chart-notes,html[data-direct-ui=ready] .portfolio-facts{border-top:1px solid #252525;margin-top:14px;padding-top:4px;font-size:12px;color:#9da3aa}
+html[data-direct-ui=ready] .chart-notes summary,html[data-direct-ui=ready] .portfolio-facts summary{min-height:40px;padding:10px 0;cursor:pointer}
+html[data-direct-ui=ready] .chart-notes p,html[data-direct-ui=ready] .portfolio-facts p{font-size:12px;line-height:1.65}
+html[data-direct-ui=ready] .chart-notes label{display:flex;flex-direction:column;gap:7px}
+html[data-direct-ui=ready] .chart-notes select{font-size:14px;min-height:44px;background:#101010;color:#eee;border:1px solid #333;border-radius:8px;padding:8px}
+html[data-direct-ui=ready] .portfolio-result{display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-size:15px}
+html[data-direct-ui=ready] .portfolio-result small{font-size:11px;color:#9da3aa}
+html[data-direct-ui=ready] .portfolio-cost{font-size:12px;color:#9da3aa}
+html[data-direct-ui=ready] .portfolio-cost strong{font-weight:500;color:#ddd}
+html[data-direct-ui=ready] .valuation-status{font-size:11px;color:#b8a575;margin:8px 0 0}
+html[data-direct-ui=ready] .currency-picker{font-size:11px;color:#999;display:flex;gap:5px;align-items:center}
+html[data-direct-ui=ready] .currency-picker select{background:#111;border:1px solid #303030;color:#ddd;min-height:40px;border-radius:7px;padding:7px}
+html[data-direct-ui=ready] .list-filters{margin:20px 0 4px;border:0}
+html[data-direct-ui=ready] .list-filters summary{font-size:12px;color:#a6a6a6;cursor:pointer;min-height:40px;padding:10px 0}
+html[data-direct-ui=ready] .direct-row{border-bottom:1px solid #242424;padding:4px 0}
+html[data-direct-ui=ready] .direct-row-main{grid-template-columns:36px minmax(0,1fr) 128px;gap:12px;padding:14px 0 5px;align-items:center}
+html[data-direct-ui=ready] .direct-row-text strong{font-size:15px;font-weight:550}
+html[data-direct-ui=ready] .direct-row-text .row-identity{font-size:11px;color:#939ba1}
+html[data-direct-ui=ready] .row-tags{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin-top:4px}
+html[data-direct-ui=ready] .row-tags .direct-verdict{display:inline;font-size:12px;margin:2px 0}
+html[data-direct-ui=ready] .quote-tag{display:inline-block;font-size:11px;color:#90979d;padding:2px 5px;border:1px solid #272727;border-radius:5px}
+html[data-direct-ui=ready] .quote-tag.warn{color:#bea66c;border-color:#3a3323}
+html[data-direct-ui=ready] .direct-row-text .row-dates{font-size:11px;color:#8f9499;line-height:1.55;margin-top:5px}
+html[data-direct-ui=ready] .direct-row-price{width:128px;max-width:100%;overflow-wrap:anywhere}
+html[data-direct-ui=ready] .direct-row-price>strong{font-weight:550;font-size:16px}
+html[data-direct-ui=ready] .direct-row-price>small{font-size:10px}
+html[data-direct-ui=ready] .direct-row-main .price-spark small{font-size:10px;font-weight:400;color:#a5adb3}
+html[data-direct-ui=ready] .price-spark-empty{display:block;margin-top:7px;max-width:128px}
+html[data-direct-ui=ready] .price-spark-empty small{font-size:10px;color:#73797e}
+html[data-direct-ui=ready] .direct-row-status.row-details{margin:0 0 3px 48px;padding:0;border:0!important}
+html[data-direct-ui=ready] .row-details>summary{min-height:44px;padding:10px 0;color:#90969c;font-size:12px;cursor:pointer}
+html[data-direct-ui=ready] .row-details .depot-position-actions{margin-left:0}
+html[data-direct-ui=ready] .row-details .depot-metrics{margin-top:15px}
+html[data-direct-ui=ready] .row-details p{font-size:12px;line-height:1.6;color:#a2a7ac}
+html[data-direct-ui=ready] .asset-more{flex:1;min-width:70px;margin:0}
+html[data-direct-ui=ready] .asset-more>summary{padding:10px 12px;min-height:44px;cursor:pointer;font-size:13px;border:1px solid #303030;border-radius:9px;list-style:inside}
+html[data-direct-ui=ready] .asset-more[open]{flex-basis:100%}
+html[data-direct-ui=ready] .asset-more>div{display:flex;gap:8px;flex-wrap:wrap;padding:12px 0}
+html[data-direct-ui=ready] .asset-more>div>.iv-monitor{flex-basis:100%;margin:5px 0}
+html[data-direct-ui=ready] .asset-more[open]>summary{width:max-content}
+html[data-direct-ui=ready] .depot-position-summary>summary{font-size:13px;min-height:44px;cursor:pointer}
+html[data-direct-ui=ready] .direct-load-actions{gap:8px}
+html[data-direct-ui=ready] .direct-load-actions .btn{border-radius:999px;background:transparent;border:1px solid #353535;font-size:12px;min-height:42px}
+html[data-direct-ui=ready] .direct-load-actions .btn.primary{background:#e7ebed;color:#080808;border-color:#e7ebed}
+html[data-direct-ui=ready] .dashboard-diagnostics{border-color:#242424;background:transparent;color:#8e959b}
+html[data-direct-ui=ready] .dashboard-diagnostics summary{font-size:12px}
+html[data-direct-ui=ready] #ivStatus:not(.bad){font-size:11px;color:#777d83;margin:8px 0}
+html[data-direct-ui=ready] #ivChartsStatus:empty,html[data-direct-ui=ready] #ivListHelp:empty{display:none}
+html[data-direct-ui=ready] .price-panel{margin:18px 0;padding:0;background:transparent;border:0;border-radius:0}
+html[data-direct-ui=ready] .price-panel h3{margin:4px 0;font-size:16px}
+html[data-direct-ui=ready] .direct-periods{display:flex;gap:4px;justify-content:space-around;margin:12px 0}
+html[data-direct-ui=ready] .direct-periods button{flex:1;border:0;background:transparent;border-radius:999px;font-size:12px;min-height:44px;color:#8f979e}
+html[data-direct-ui=ready] .direct-periods button[aria-pressed=true]{background:#202020;color:#f1f1f1}
+html[data-direct-ui=ready] .direct-periods button:disabled{opacity:.3;cursor:not-allowed}
+html[data-direct-ui=ready] .direct-news-summary{padding:5px 0;border:0;background:transparent}
+html[data-direct-ui=ready] .direct-news-summary summary{font-size:13px;color:#aeb7bd;min-height:44px;padding:10px 0;cursor:pointer}
+@media(max-width:600px){
+ html[data-direct-ui=ready] .direct-row-main{grid-template-columns:30px minmax(0,1fr) 94px;gap:8px;align-items:start}
+ html[data-direct-ui=ready] .direct-row-price{width:94px}
+ html[data-direct-ui=ready] .direct-row-price>strong{font-size:15px}
+ html[data-direct-ui=ready] .direct-row-text strong{font-size:14px}
+ html[data-direct-ui=ready] .direct-row-status.row-details{margin-left:38px}
+ html[data-direct-ui=ready] .quote-tag{font-size:10px;padding:1px 4px}
+ html[data-direct-ui=ready] .row-tags{gap:5px}
+ html[data-direct-ui=ready] .portfolio-result{gap:7px;font-size:14px}
+ html[data-direct-ui=ready] .chart-heading{align-items:flex-start;flex-wrap:wrap;gap:4px}
+ html[data-direct-ui=ready] .iv-module input,html[data-direct-ui=ready] .iv-module select{font-size:16px}
+ html[data-direct-ui=ready] .asset-more>div .btn{flex:1 1 130px}
+}
