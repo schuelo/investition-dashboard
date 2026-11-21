@@ -1,0 +1,132 @@
+/* V40: portfolio first, security detail second, explicit position actions. */
+html[data-direct-ui=ready]{--panel:#080808;--panel-2:#141414;--border:#252525;--muted:#a0a0a0;--text:#f4f4f4;background:#000;color:#f4f4f4;font-size:16px}
+html[data-direct-ui=ready] body{background:#000;line-height:1.5}
+html[data-direct-ui=ready] .app-shell{max-width:1040px;padding-left:28px;padding-right:28px}
+html[data-direct-ui=ready] .direct-top{padding:24px 0 15px;margin:0}
+html[data-direct-ui=ready] .direct-top strong{font-size:16px;letter-spacing:.12em}
+html[data-direct-ui=ready] .direct-top small{font-size:13px}
+html[data-direct-ui=ready] .btn{min-height:44px;border-radius:999px;font-size:14px;padding:10px 18px;line-height:1.35}
+html[data-direct-ui=ready] .btn.primary{background:#f4f4f4;border-color:#f4f4f4;color:#050505;font-weight:650}
+html[data-direct-ui=ready] .btn.danger{color:#ff9b9b;border:1px solid #683535;background:#211010}
+html[data-direct-ui=ready] .quiet-danger{background:transparent;border:0;color:#d38d8d;margin:15px 0}
+html[data-direct-ui=ready] .compact-muted,html[data-direct-ui=ready] .compact-status{font-size:14px;line-height:1.6}
+html[data-direct-ui=ready] .compact-eyebrow{font-size:14px;color:#999;text-transform:none;letter-spacing:0}
+html[data-direct-ui=ready] #ivTitle{font-size:28px;font-weight:600;letter-spacing:-.035em;margin:3px 0 18px}
+html[data-direct-ui=ready] .direct-total{font-size:clamp(38px,6vw,56px);font-weight:550;letter-spacing:-.055em;margin:4px 0 10px}
+html[data-direct-ui=ready] .portfolio-result{font-size:16px;gap:16px}
+html[data-direct-ui=ready] .portfolio-result small,html[data-direct-ui=ready] .portfolio-cost{font-size:14px}
+html[data-direct-ui=ready] .valuation-status{font-size:14px;color:#c6aa6b;margin:10px 0}
+html[data-direct-ui=ready] .chart-heading h3{font-size:16px;font-weight:500}
+html[data-direct-ui=ready] .chart-kind{font-size:13px}
+html[data-direct-ui=ready] .chart-window-note,html[data-direct-ui=ready] .chart-fineprint{font-size:13px;color:#aaa;line-height:1.6}
+html[data-direct-ui=ready] .chart-notes,html[data-direct-ui=ready] .portfolio-facts{font-size:14px}
+html[data-direct-ui=ready] .chart-notes p,html[data-direct-ui=ready] .portfolio-facts p{font-size:14px}
+html[data-direct-ui=ready] .direct-periods{gap:6px;max-width:600px;margin:18px auto}
+html[data-direct-ui=ready] .direct-periods button{font-size:14px;min-height:44px;padding:8px}
+html[data-direct-ui=ready] .direct-periods button[aria-pressed=true]{background:#f0f0f0;color:#000;font-weight:600}
+html[data-direct-ui=ready] .automation-strip{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 0;margin:0 0 16px;border-bottom:1px solid #252525}
+html[data-direct-ui=ready] .automation-strip strong{font-size:14px;font-weight:500}
+html[data-direct-ui=ready] .automation-strip p{font-size:13px;color:#a7a7a7;margin:4px 0;max-width:650px}
+html[data-direct-ui=ready] .automation-strip .btn{flex-shrink:0;font-size:13px;padding:8px 13px}
+html[data-direct-ui=ready] .direct-load-actions{margin:22px 0 8px;gap:8px}
+html[data-direct-ui=ready] .direct-load-actions .btn{font-size:14px;min-height:44px}
+html[data-direct-ui=ready] .direct-load-actions #ivLoad{background:transparent;color:#a5a5a5;border-color:transparent}
+html[data-direct-ui=ready] .list-filters{margin-top:24px}
+html[data-direct-ui=ready] .list-filters summary{font-size:14px}
+html[data-direct-ui=ready] .direct-row{padding:10px 0 5px;border-bottom:1px solid #222}
+html[data-direct-ui=ready] .direct-row-main{grid-template-columns:36px minmax(0,1fr) 122px;gap:14px;padding:12px 0 5px;align-items:center}
+html[data-direct-ui=ready] .direct-row-text strong{font-size:17px;font-weight:600;line-height:1.4}
+html[data-direct-ui=ready] .direct-row-text .row-identity{font-size:13px;margin:2px 0}
+html[data-direct-ui=ready] .row-tags .direct-verdict{font-size:14px}
+html[data-direct-ui=ready] .quote-tag{font-size:12px;border:0;padding:2px 0}
+html[data-direct-ui=ready] .direct-row-text .row-dates{font-size:13px;line-height:1.65;color:#aaa;margin-top:5px}
+html[data-direct-ui=ready] .direct-row-price>strong{font-size:19px;font-weight:500}
+html[data-direct-ui=ready] .direct-row-price>small{font-size:12px}
+html[data-direct-ui=ready] .direct-row-main .price-spark small{font-size:12px}
+html[data-direct-ui=ready] .row-position-tools{margin:3px 0 0 50px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+html[data-direct-ui=ready] .row-position-tools>small{font-size:13px;color:#b3b3b3}
+html[data-direct-ui=ready] .row-position-tools>div{display:flex;gap:4px;flex-wrap:wrap}
+html[data-direct-ui=ready] .row-position-tools .btn{background:transparent;border-color:#303030;min-height:44px;font-size:13px;padding:8px 13px}
+html[data-direct-ui=ready] .direct-row-status.row-details{margin-left:50px}
+html[data-direct-ui=ready] .row-details>summary{font-size:13px;color:#989898}
+html[data-direct-ui=ready] .row-details p{font-size:14px}
+html[data-direct-ui=ready] .iv-dock{max-width:1040px;background:rgba(5,5,5,.98);padding-top:8px;gap:4px}
+html[data-direct-ui=ready] .iv-dock button{min-height:54px;font-size:14px;border-radius:999px}
+html[data-direct-ui=ready] .iv-dock button[aria-current=page]{background:#eee;color:#000;font-weight:600}
+html[data-direct-ui=ready] #rvSecurityName{font-size:clamp(28px,4vw,38px);font-weight:600;letter-spacing:-.04em;line-height:1.2;margin:8px 0}
+html[data-direct-ui=ready] #rvSecurityInfo{font-size:14px;line-height:1.6}
+html[data-direct-ui=ready] .direct-security-nav{margin:10px 0 22px}
+html[data-direct-ui=ready] .security-tabs{display:flex;gap:20px;border-bottom:1px solid #2a2a2a;margin:22px 0}
+html[data-direct-ui=ready] .security-tabs button{min-height:48px;font-size:15px;border:0;border-bottom:2px solid transparent;background:none;color:#999;padding:10px 0}
+html[data-direct-ui=ready] .security-tabs button[aria-selected=true]{color:#f5f5f5;border-color:#f5f5f5}
+html[data-direct-ui=ready] .market-summary{margin:20px 0 14px}
+html[data-direct-ui=ready] .security-price{font-size:clamp(36px,5vw,50px);font-weight:500;letter-spacing:-.045em;line-height:1.3;font-variant-numeric:tabular-nums}
+html[data-direct-ui=ready] .security-price small{font-size:20px;color:#a5a5a5;letter-spacing:0}
+html[data-direct-ui=ready] .security-price-date{font-size:14px;color:#bca36b;margin:6px 0}
+html[data-direct-ui=ready] .position-card,html[data-direct-ui=ready] .quote-status-card,html[data-direct-ui=ready] .quote-setup{border-top:1px solid #292929;padding:24px 0;margin:24px 0;background:transparent}
+html[data-direct-ui=ready] .position-heading,html[data-direct-ui=ready] .quote-heading{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}
+html[data-direct-ui=ready] .position-heading h3,html[data-direct-ui=ready] .quote-heading h3{font-size:20px;font-weight:500;margin:0}
+html[data-direct-ui=ready] .position-heading>span{font-size:13px;color:#999}
+html[data-direct-ui=ready] .position-facts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px;margin:22px 0}
+html[data-direct-ui=ready] .position-facts small{font-size:14px;color:#aaa;display:block;margin-bottom:5px}
+html[data-direct-ui=ready] .position-facts strong{font-size:18px;font-weight:500;display:block;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+html[data-direct-ui=ready] .position-actions{display:flex;gap:9px;flex-wrap:wrap;margin:18px 0}
+html[data-direct-ui=ready] .position-footnote{font-size:13px;color:#999;max-width:750px}
+html[data-direct-ui=ready] .quote-status-card p,html[data-direct-ui=ready] .quote-setup p{font-size:14px;line-height:1.65;color:#aaa}
+html[data-direct-ui=ready] .quote-heading strong{display:block;font-size:14px;font-weight:400;color:#cab279;margin-top:6px}
+html[data-direct-ui=ready] .quote-meta{display:flex;gap:10px 22px;flex-wrap:wrap;font-size:14px;color:#bbb}
+html[data-direct-ui=ready] .quote-setup{padding:20px;border:1px solid #3b3b3b;border-radius:16px;background:#0d0d0d}
+html[data-direct-ui=ready] .quote-setup label{font-size:14px;margin:15px 0}
+html[data-direct-ui=ready] .quote-setup input,html[data-direct-ui=ready] .quote-setup select{font-size:16px;min-height:48px}
+html[data-direct-ui=ready] .archive-confirmation{padding:22px;border:1px solid #6c3c3c;border-radius:16px;background:#160c0c;margin:22px 0}
+html[data-direct-ui=ready] .archive-confirmation p{font-size:14px;line-height:1.7}
+html[data-direct-ui=ready] .position-timeline{list-style:none;padding:0;margin:24px 0}
+html[data-direct-ui=ready] .position-timeline li{padding:18px 0;border-bottom:1px solid #292929}
+html[data-direct-ui=ready] .position-timeline li>div{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+html[data-direct-ui=ready] .position-timeline time,html[data-direct-ui=ready] .position-timeline small{font-size:13px;color:#aaa}
+html[data-direct-ui=ready] .position-timeline p{font-size:16px;margin:6px 0}
+html[data-direct-ui=ready] .direct-holding{border:0;background:#000;padding:8px 0;max-width:700px;margin:0 auto}
+html[data-direct-ui=ready] .depot-fieldset legend,html[data-direct-ui=ready] .depot-fieldset h3{font-size:20px;font-weight:500}
+html[data-direct-ui=ready] .direct-holding label{font-size:14px;margin:16px 0}
+html[data-direct-ui=ready] .direct-holding input,html[data-direct-ui=ready] .direct-holding select{font-size:16px;min-height:48px}
+html[data-direct-ui=ready] .direct-holding .iv-fields{gap:16px}
+html[data-direct-ui=ready] #rvHoldingPanel[data-position-intent=close] #rvHoldingForm{display:none}
+html[data-direct-ui=ready] .direct-holding #hpClosePanel{border:1px solid #5f3838;border-radius:16px;padding:18px;margin-top:22px}
+html[data-direct-ui=ready] .direct-holding #hpClosePanel>summary{font-size:18px;min-height:44px}
+html[data-direct-ui=ready] #rvAssetActions #rvHolding{display:none}
+html[data-direct-ui=ready] .iv-module label{font-size:14px}
+html[data-direct-ui=ready] .iv-module input,html[data-direct-ui=ready] .iv-module textarea,html[data-direct-ui=ready] .iv-module select{font-size:16px}
+html[data-direct-ui=ready] .dashboard-diagnostics{background:none;border:0;border-top:1px solid #292929;padding:20px 0}
+html[data-direct-ui=ready] .dashboard-diagnostics dl,html[data-direct-ui=ready] .dashboard-diagnostics summary{font-size:14px}
+html[data-direct-ui=ready] button:focus-visible,html[data-direct-ui=ready] summary:focus-visible{outline:2px solid #ddd;outline-offset:4px}
+@media(max-width:600px){
+ html[data-direct-ui=ready] .app-shell{padding-left:16px;padding-right:16px}
+ html[data-direct-ui=ready] .direct-top{padding-top:18px}
+ html[data-direct-ui=ready] .automation-strip{align-items:flex-start;gap:8px}
+ html[data-direct-ui=ready] .automation-strip .btn{font-size:12px;padding:8px 10px}
+ html[data-direct-ui=ready] .direct-row-main{grid-template-columns:30px minmax(0,1fr) 90px;gap:9px}
+ html[data-direct-ui=ready] .direct-row-text strong{font-size:15px}
+ html[data-direct-ui=ready] .direct-row-price{width:90px}
+ html[data-direct-ui=ready] .direct-row-price>strong{font-size:16px}
+ html[data-direct-ui=ready] .direct-row-text .row-dates{font-size:12px}
+ html[data-direct-ui=ready] .row-position-tools{margin-left:39px;gap:5px}
+ html[data-direct-ui=ready] .row-position-tools .btn{padding:8px 11px;font-size:13px}
+ html[data-direct-ui=ready] .direct-row-status.row-details{margin-left:39px}
+ html[data-direct-ui=ready] .position-facts{grid-template-columns:repeat(2,minmax(0,1fr));gap:20px 14px}
+ html[data-direct-ui=ready] .position-actions .btn{flex:1 1 auto;padding:10px 13px}
+ html[data-direct-ui=ready] .quote-setup{padding:16px}
+ html[data-direct-ui=ready] .quote-meta{flex-direction:column;gap:6px}
+ html[data-direct-ui=ready] .security-tabs{gap:25px}
+ html[data-direct-ui=ready] .direct-load-actions #ivLoad{flex-basis:100%;text-align:left;padding-left:0}
+}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto!important}*{transition:none!important;animation:none!important}}
+
+/* Readable sign-in and focused position editing. */
+.auth-gate{background:#000!important;color:#f4f4f4}
+.auth-card{background:#080808!important;border:1px solid #292929!important;box-shadow:none!important}
+.auth-form label,.auth-card .auth-subtitle,.auth-security{font-size:14px!important;line-height:1.6}
+.auth-form input{font-size:16px!important;min-height:48px}
+.auth-form .btn.primary{background:#f4f4f4;color:#050505;border-color:#f4f4f4}
+html[data-direct-ui=ready] .direct-holding .sr-only{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
+html[data-direct-ui=ready] .direct-holding #hpSecurityLabel{font-size:16px;color:#eee;margin:12px 0 22px}
+html[data-direct-ui=ready] .direct-holding .depot-fieldset>details{margin:16px 0}

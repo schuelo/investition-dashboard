@@ -3,7 +3,8 @@
   "private": true,
   "scripts": {
     "test": "node --test tests/*.test.mjs",
-    "check:sql": "node scripts/check-v38-sql.mjs && node scripts/check-v39-sql.mjs && node scripts/check-v39-1-sql.mjs && node scripts/check-v39-2-sql.mjs"
+    "check:sql": "node scripts/check-v38-sql.mjs && node scripts/check-v39-sql.mjs && node scripts/check-v39-1-sql.mjs && node scripts/check-v39-2-sql.mjs && node scripts/check-v40-sql.mjs",
+    "build:static": "node scripts/build-static.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.16"

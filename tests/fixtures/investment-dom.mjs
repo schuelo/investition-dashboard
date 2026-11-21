@@ -7,7 +7,7 @@ export function uiHarness({api=apiHarness(),owner=alice,beforeInvoke=null,decora
   let activeOwner=owner,currentNow=now;const calls=[],listeners={},observed=[],copied=[];
   const window=new EventTarget(),document={hidden:false,documentElement:{dataset:{}},
     addEventListener(name,fn){(listeners[name]||=[]).push(fn);},
-    async fire(name,target){for(const fn of listeners[name]||[])await fn({target,preventDefault(){},stopPropagation(){}});}};
+    async fire(name,target){const pending=[];for(const fn of listeners[name]||[])pending.push(fn({target,preventDefault(){},stopPropagation(){}}));await Promise.all(pending);}};
   const els={};
   class El{
     constructor(id='',dataset={}){this.id=id;this.dataset=dataset;this.attributes={};this.events={};this.hidden=false;this.disabled=false;this.open=false;this.checked=false;this.value='';this.textContent='';this.clientWidth=320;this.files=[];this.scrolled=0;this._html='';this.dynamic=[];}
@@ -20,7 +20,7 @@ export function uiHarness({api=apiHarness(),owner=alice,beforeInvoke=null,decora
     click(){this.onClick?.();for(const fn of this.events.click||[])fn({target:this,preventDefault(){}});document.fire('click',this);}
     scrollIntoView(){this.scrolled++;}reset(){resetFields();}
   }
-  for(const m of html.matchAll(/id="([^"]+)"/g))els[m[1]]=new El(m[1]);
+  for(const m of html.matchAll(/<[a-z][^>]*\bid="([^"]+)"[^>]*>/gi)){const dataset={};for(const a of m[0].matchAll(/data-([a-z0-9-]+)="([^"]*)"/g))dataset[a[1].replace(/-([a-z])/g,(_,c)=>c.toUpperCase())]=a[2];els[m[1]]=new El(m[1],dataset);}
   const defaults={rvAssetId:'',rvPositionId:'',rvLegacyTradeId:'',rvSymbol:'',rvCompany:'',rvCurrency:'EUR',rvSource:'stored',rvQuoteSymbol:'',rvDays:'20',rvLookback:'252',rvWkn:'',rvIsin:'',rvBudget:'0',rvTranches:'3',rvStop:'',rvTarget:'',rvContext:'',rvUrls:'',rvCsv:'',rvMessage:'',rvChatMode:'chat'};
   function resetFields(){for(const[id,v]of Object.entries(defaults))els[id].value=v;els.rvQuoteConfirmed.checked=false;els.rvResearch.checked=false;}
   resetFields();els.decisionPage.hidden=true;els.signalSimulationPage.hidden=false;

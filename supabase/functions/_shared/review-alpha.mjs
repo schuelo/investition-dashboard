@@ -1,3 +1,4 @@
+import {expectedEodDate} from './investment-review.mjs';
 import {normalizeBars} from './signal-engine.mjs';
 import {MarketDataError,validateMarketChoice,alphaSymbolFor} from './review-market-input.mjs';
 
@@ -67,10 +68,10 @@ export async function loadAlphaMarket(input,deps,now=new Date()) {
   if(!deps.configured)throw fail('Alpha Vantage ist noch nicht eingerichtet. Kostenlosen Schlüssel in Supabase als ALPHAVANTAGE_API_KEY hinterlegen.',503);
   const key='AV:'+choice.quote_symbol+':'+input.currency,cached=await deps.readCache(key);let old=null,verifiedCache=null;
   if(cached?.schema==='alphavantage-compact-v1'&&Date.parse(cached.fetched_at)<=now.getTime()){
-    try{verifyMeta(cached.meta,input);const q=normalizeBars(cached.bars,now);verifiedCache=cached;if(q.ageDays<=4)old=cached;}catch{}
+    try{verifyMeta(cached.meta,input);const q=normalizeBars(cached.bars,now);verifiedCache=cached;if(q.bars.at(-1)?.date>=expectedEodDate(now))old=cached;}catch{}
   }
   let attempt=null;
-  let result=old&&Date.parse(old.fetched_at)>now.getTime()-12*3600000?{...old,cached:true}:null;
+  let result=!deps.force&&old&&Date.parse(old.fetched_at)>now.getTime()-12*3600000?{...old,cached:true}:null;
   if(!result){
     let meta=verifiedCache&&Date.parse(verifiedCache.meta_at)>now.getTime()-7*86400000?verifiedCache.meta:null;
     const request=async kind=>{if(!await deps.reserve())throw fail('Gemeinsames Alpha-Vantage-Schutzlimit von 25 API-Aufrufen pro UTC-Tag erreicht. CSV verwenden oder später erneut starten.',429);return deps.fetchChart(choice.quote_symbol,kind);};

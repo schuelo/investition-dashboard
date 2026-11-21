@@ -20,7 +20,7 @@ export async function acquireReviewMarket(input,deps,now=new Date()){
     await deps.writeCache(input,result);return result;
   }
   if(current&&!deps.force)return {...usable,attempt:null,cached:true};
-  if(cached?.retry_after&&Date.parse(cached.retry_after)>now.getTime())return {...(usable||{}),attempt:previousAttempt,cached:!!usable,warning:'Anbieterpause bis '+cached.retry_after+'. Letzter gültiger Kurs bleibt bestehen.'};
+  if(cached?.retry_after&&Date.parse(cached.retry_after)>now.getTime())return {...(usable||{}),attempt:previousAttempt,retry_after:cached.retry_after,cached:!!usable,warning:'Anbieterpause bis '+cached.retry_after+'. Letzter gültiger Kurs bleibt bestehen.'};
   let requested=false;
   const mark=()=>{requested=true;};
   try{
@@ -29,11 +29,11 @@ export async function acquireReviewMarket(input,deps,now=new Date()){
     normalizeBars(result.bars,now);
     const attempt=result.attempt||{status:requested?'success':'cache',at:now.toISOString()};
     const valid={...result,symbol:input.symbol,currency:input.currency,quote_symbol:input.quote_symbol,fetched_at:result.fetched_at||(attempt.status==='failed'?usable?.fetched_at:null)||now.toISOString(),attempt,
-      ...(attempt.status==='failed'?{retry_after:new Date(now.getTime()+6*3600000).toISOString()}: {})};
+      ...(attempt.status==='failed'?{retry_after:new Date(now.getTime()+6*3600000).toISOString()}:quoteStatus(result.bars.filter(b=>b.date<now.toISOString().slice(0,10)).at(-1)?.date,now).code!=='current'?{retry_after:new Date(now.getTime()+3600000).toISOString()}: {})};
     await deps.writeCache(input,valid);return valid;
   }catch(e){
     const attempt={status:requested?'failed':'not_run',at:now.toISOString(),error:String(e.message||'Kursabruf fehlgeschlagen.').slice(0,700)},retry_after=requested?new Date(now.getTime()+(e.status===429?6*3600000:3600000)).toISOString():null;
-    await deps.recordFailure(input,{attempt,retry_after});return {...(usable||{}),attempt,cached:!!usable,warning:attempt.error};
+    await deps.recordFailure(input,{attempt,retry_after});return {...(usable||{}),attempt,retry_after,cached:!!usable,warning:attempt.error};
   }
 }
 export function reviewMarketAdapters(admin,userId,{getEnv,fetchImpl=fetch,force=false,allowNetwork=true}={}){
@@ -55,12 +55,12 @@ export function reviewMarketAdapters(admin,userId,{getEnv,fetchImpl=fetch,force=
     recordFailure:async(input,failure)=>{const old=await get(input);await put(input,{...(old||{}),symbol:input.symbol,currency:input.currency,...failure});},
     fetchSource:async(input,now,mark)=>{
       if(input.source==='alphavantage'){
-        const adapters=alphaMarketAdapters(admin,userId,getEnv('ALPHAVANTAGE_API_KEY'),fetchImpl),fetchChart=adapters.fetchChart;
+        const adapters=alphaMarketAdapters(admin,userId,getEnv('ALPHAVANTAGE_API_KEY'),fetchImpl),fetchChart=adapters.fetchChart;adapters.force=force;
         adapters.fetchChart=(...args)=>{mark();return fetchChart(...args);};
         return loadAlphaMarket({...input,market_source:'alphavantage'},adapters,now);
       }
       if(input.source==='independent'){
-        const adapters=publicMarketAdapters(admin,userId,fetchImpl),fetchChart=adapters.fetchChart;
+        const adapters=publicMarketAdapters(admin,userId,fetchImpl),fetchChart=adapters.fetchChart;adapters.force=force;
         adapters.fetchChart=(...args)=>{mark();return fetchChart(...args);};
         return loadPublicMarket({...input,market_source:'independent'},adapters,now);
       }

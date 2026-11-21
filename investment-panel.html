@@ -1,9 +1,11 @@
 <!-- Embedded by scripts/set-version.mjs. -->
 <section id="investmentReviewModule" class="iv-module">
-  <div class="direct-security-nav"><button class="btn" id="rvBack" type="button">← Zurück</button><button class="btn" id="rvRemember" type="button">+ Merken</button></div>
+  <div class="direct-security-nav"><button class="btn" id="rvBack" type="button">Zurück</button><button class="btn" id="rvRemember" type="button">+ Merken</button></div>
   <header class="iv-head"><div><p class="compact-eyebrow" id="rvHeadingLabel">Suche</p><h2 id="rvSecurityName">Wertpapier finden</h2><p class="compact-muted" id="rvSecurityInfo">Gespeicherte Werte nach Name, Ticker, WKN oder ISIN finden. Neue Werte per WKN/ISIN zuordnen.</p></div><button class="btn" id="rvNew" type="button">Neuen Wert suchen</button></header>
+  <nav id="rvDetailTabs" class="security-tabs" role="tablist" aria-label="Wertpapierbereiche" hidden><button id="rvTabOverview" role="tab" type="button" data-security-tab="overview" aria-controls="rvOverviewContent" aria-selected="true">Überblick</button><button id="rvTabAnalysis" role="tab" type="button" data-security-tab="analysis" aria-controls="rvAnalysisContent" aria-selected="false">Analyse</button><button id="rvTabActivity" role="tab" type="button" data-security-tab="activity" aria-controls="rvActivityContent" aria-selected="false">Verlauf</button></nav>
   <section id="rvSavedSearch"><label>Gespeicherte Werte<input id="rvSavedQuery" type="search" autocomplete="off" placeholder="Name, Ticker, WKN oder ISIN"></label><div id="rvSavedMatches"></div></section>
-  <div id="rvAssetActions" class="direct-asset-actions" hidden><button class="btn primary" id="rvAnalyze" type="button">Analyse aktualisieren</button><button class="btn" id="rvAsk" type="button">Gespräch</button><details id="rvMoreActions" class="asset-more"><summary>Mehr</summary><div><button class="btn" id="rvHolding" type="button">Bestand bearbeiten</button><button class="btn" id="rvPlan" type="button">Analyseplan</button><button class="btn" id="rvDeep" type="button">Deep, Szenarien &amp; Hebel</button><label class="iv-monitor"><input id="rvMonitor" type="checkbox"> Automatisch prüfen · ohne KI</label></div></details></div>
+  <div id="rvOverviewContent" role="tabpanel" aria-labelledby="rvTabOverview">
+  <div id="rvMarketSummary" class="market-summary"></div>
   <section id="rvPricePanel" class="price-panel" hidden aria-label="Historischer Kursverlauf">
     <div class="compact-heading"><h3>Kursverlauf</h3><button id="rvRefreshPrices" class="btn" type="button">Kursdaten aktualisieren · ohne KI</button></div>
     <div id="rvPricePlot"></div><div id="rvPricePeriods" class="direct-periods" role="group" aria-label="Zeitraum des Kursverlaufs"></div>
@@ -14,35 +16,50 @@
       <label>TradingView-Kennung mit Handelsplatz<input id="rvExternalSymbol" maxlength="60" autocomplete="off" placeholder="XETR:VOW3 oder NASDAQ:AAPL"></label><label class="ss-check"><input id="rvExternalConfirmed" type="checkbox"> Kennung und Handelsplatz geprüft.</label><button id="rvExternalLoad" class="btn" type="button">Börsenchart laden</button><div id="rvExternalHost" class="external-chart-host"></div>
     </details></details>
   </section>
-  <details id="rvPositionSummary" class="depot-position-summary" hidden aria-label="Aktueller Depotbestand"></details>
+  <section id="rvPositionSummary" class="position-card" hidden aria-label="Deine Position"></section>
+  <section id="rvQuoteStatus" class="quote-status-card" hidden></section>
+  <section id="rvQuoteSetupPanel" class="quote-setup" hidden aria-labelledby="qsTitle">
+    <div class="compact-heading"><h3 id="qsTitle">Kursautomatik einrichten</h3><button id="qsCancel" class="btn" type="button">Schließen</button></div>
+    <form id="qsForm"><label>Kursquelle<select id="qsSource"><option value="stored">Nur gespeicherte Kurse · keine neuen Anbieterabfragen</option><option value="eodhd">EODHD · vorhandener eigener Schlüssel</option><option value="alphavantage">Alpha Vantage · eigener kostenloser Schlüssel</option><option value="independent">Yahoo · experimentelle öffentliche Quelle</option></select></label>
+    <label>Anbieterkennung<input id="qsSymbol" maxlength="40" autocomplete="off" autocapitalize="characters" placeholder="Quelle wählen und Kennung prüfen"></label>
+    <p id="qsHelp" class="compact-muted"></p><label class="ss-check"><input id="qsConfirmed" type="checkbox"> Anbieterkennung, Handelsplatz und Währung geprüft.</label>
+    <label>Prüfintervall<select id="qsInterval"><option value="30">Alle 30 Minuten</option><option value="60" selected>Stündlich</option><option value="120">Alle 2 Stunden</option><option value="360">Alle 6 Stunden</option><option value="1440">Täglich</option></select></label>
+    <label class="ss-check"><input id="qsEnabled" type="checkbox"> Automatische Kurs- und Newsprüfung aktivieren · ohne KI.</label>
+    <p class="compact-muted">Tageskurse statt Echtzeit. Kostenlose Kontingente bleiben begrenzt. Kein automatischer Anbieterwechsel und keine Billing-Aktivierung. CSV kannst du unter Analyse importieren.</p>
+    <button id="qsSave" class="btn primary" type="submit">Kurseinstellungen speichern</button><p id="qsStatus" class="compact-status" role="status" aria-live="polite"></p></form>
+  </section>
+  <section id="rvArchivePanel" class="archive-confirmation" hidden aria-labelledby="rvArchiveTitle"><h3 id="rvArchiveTitle">Wert vollständig entfernen</h3><p id="rvArchiveDescription"></p><label class="ss-check"><input id="rvArchiveConfirmed" type="checkbox"> Alle Bestände dieses Werts ausbuchen und aus Depot sowie Beobachtung entfernen.</label><div class="ss-actions"><button id="rvArchiveSubmit" class="btn danger" type="button" disabled>Wert entfernen &amp; archivieren</button><button id="rvArchiveCancel" class="btn" type="button">Abbrechen</button></div><p id="rvArchiveStatus" role="status" aria-live="polite"></p></section>
+  <button id="rvArchiveValue" class="btn quiet-danger" type="button">Wert entfernen / archivieren</button>
+  </div>
   <section id="rvHoldingPanel" class="direct-holding" hidden aria-labelledby="rvHoldingTitle">
-    <div class="compact-heading"><div><p class="compact-eyebrow">Dein tatsächliches Depot</p><h2 id="rvHoldingTitle">Position hinzufügen</h2></div><button id="rvHoldingCancel" class="btn" type="button">← Zurück</button></div>
-    <p class="compact-muted">Wertpapier auswählen, Stückzahl und durchschnittlichen Einstand eintragen. Speichern funktioniert ohne Kursabruf und ohne Analyse.</p>
+    <div class="compact-heading"><div><p class="compact-eyebrow">Dein tatsächliches Depot</p><h2 id="rvHoldingTitle">Position hinzufügen</h2></div><button id="rvHoldingCancel" class="btn" type="button">Zurück</button></div>
+    <p id="rvHoldingIntro" class="compact-muted">Wertpapier auswählen, Stückzahl und durchschnittlichen Einstand eintragen.</p>
     <p id="rvHoldingStatus" class="compact-status" role="status" aria-live="polite" tabindex="-1"></p>
+    <div id="hpPositionSelector"><label>Position<select id="rvHoldingSelect"><option value="new">Neue tatsächliche Position</option></select></label></div>
     <form id="rvHoldingForm">
       <fieldset id="rvHoldingFields" class="depot-fieldset">
-        <legend>1 · Wertpapier</legend>
+        <legend class="sr-only">Bestandsangaben</legend>
+        <p id="hpSecurityLabel" class="compact-muted">Noch kein Wertpapier ausgewählt.</p>
+        <div id="hpSecurityInputs">
         <label>Bereits gespeicherten Wert auswählen<select id="hpSavedAsset"><option value="">Neues Wertpapier / manuelle Eingabe</option></select></label>
         <details id="hpWknDetails" open><summary>Neues Wertpapier per WKN / ISIN suchen</summary><div data-security-target="holding"></div></details>
-        <p id="hpSecurityLabel" class="compact-muted">Noch kein Wertpapier ausgewählt.</p>
         <details id="hpIdentityDetails" open><summary>Notierung und Stammdaten</summary><div class="iv-fields">
           <label>Wertpapiername<input id="hpCompany" maxlength="160" autocomplete="off" placeholder="z. B. Volkswagen Vz."></label>
           <label>Kennung mit Handelsplatz<input id="hpSymbol" required maxlength="40" autocomplete="off" autocapitalize="characters" placeholder="VOW3.XETRA"></label>
           <label>Notierungswährung<select id="hpCurrency"><option>EUR</option><option>USD</option><option>GBP</option><option>GBX</option><option>CHF</option><option>JPY</option><option>KRW</option><option>CNY</option><option>HKD</option><option>SEK</option><option>AUD</option><option>CAD</option><option>INR</option></select></label>
         </div><details><summary>Zusätzliche Kennungen · optional, ohne Suche</summary><div class="iv-fields"><label>WKN als Stammdatum<input id="hpWkn" maxlength="6" autocomplete="off"></label><label>ISIN als Stammdatum<input id="hpIsin" maxlength="12" autocomplete="off"></label></div></details></details>
-        <label class="ss-check"><input id="hpConfirmed" type="checkbox" required> Wertpapier, Handelsplatz und Währung sind korrekt.</label>
-        <h3>2 · Bestand und Einstand</h3>
-        <label>Position<select id="rvHoldingSelect"><option value="new">Neue tatsächliche Position</option></select></label>
+        <label class="ss-check"><input id="hpConfirmed" type="checkbox" required> Wertpapier, Handelsplatz und Währung sind korrekt.</label></div>
+        <h3>Bestand und Einstand</h3>
         <p id="hpPositionHelp" class="compact-muted">Ein gespeicherter Analyseplan ist noch kein tatsächlicher Bestand.</p>
         <label id="hpAdditionalRow" class="ss-check" hidden><input id="hpAdditionalConfirmed" type="checkbox"> Zusätzliche, getrennte Position erfassen. Vorhandene Positionen bleiben bestehen.</label>
         <div class="iv-fields">
-          <label>Stückzahl<input id="rvHoldingQuantity" type="text" inputmode="decimal" autocomplete="off" required placeholder="z. B. 10 oder 10,5"></label>
+          <label>Stückzahl dieses Bestandspostens<input id="rvHoldingQuantity" type="text" inputmode="decimal" autocomplete="off" required placeholder="z. B. 10 oder 10,5"></label>
           <label>Durchschnittlicher Einstand je Stück<input id="rvHoldingEntry" type="text" inputmode="decimal" autocomplete="off" required placeholder="z. B. 95,50"></label>
           <label>Kauf-/Einstandsdatum · optional<input id="hpEntryDate" type="date" min="1900-01-01"></label>
         </div>
         <details id="hpTypeDetails"><summary>Wertpapierart und Richtung</summary><div class="iv-fields"><label>Bestandsrichtung<select id="rvHoldingDirection" required><option value="Long">Long / gehaltene Aktien</option><option value="Short">Short</option><option value="">Richtung bitte bestätigen</option></select></label><label>Wertpapierart<select id="rvHoldingType"><option>Aktie</option><option>ETF</option></select></label></div></details>
-        <p class="compact-muted">Einstand und Bewertungskurs jeweils in der angezeigten Notierungswährung eintragen. Beim Bearbeiten gilt die absolute Stückzahl dieser Position. Für mehrere Käufe kannst du den gewichteten Durchschnittseinstand eintragen oder getrennte Positionen führen. Angaben ohne Tausendertrennzeichen; Komma und Dezimalpunkt sind möglich.</p>
-        <details id="hpValuationDetails"><summary>3 · Bewertung und eigener Kurs · optional</summary>
+        <details><summary>Hinweise zur Eingabe</summary><p class="compact-muted">Einstand und Bewertungskurs jeweils in der angezeigten Notierungswährung eintragen. Beim Bearbeiten gilt die absolute Stückzahl dieser Position. Für mehrere Käufe kannst du den gewichteten Durchschnittseinstand eintragen oder getrennte Positionen führen. Angaben ohne Tausendertrennzeichen; Komma und Dezimalpunkt sind möglich.</p></details>
+        <details id="hpValuationDetails"><summary>Bewertung und eigener Kurs · optional</summary>
         <label>Bewertungskurs<select id="hpValuation"><option value="keep">Bisherige Bewertung beibehalten</option><option value="market">Gespeicherten Anbieter-Kurs verwenden</option><option value="manual">Eigenen Kurs mit Datum erfassen</option></select></label>
         <div id="hpManualFields" class="iv-fields" hidden>
           <label>Manueller Bewertungskurs je Stück<input id="hpManualPrice" type="text" inputmode="decimal" autocomplete="off" placeholder="optional"></label>
@@ -50,7 +67,7 @@
         </div>
         <p class="compact-muted">Ohne Kurs bleibt dein Einstand sichtbar; Marktwert und Gewinn/Verlust bleiben offen. Ein manueller Kurs wird als solcher gekennzeichnet und ersetzt keine Chartdaten. Short-Positionen werden separat geführt und nicht als Long-Depotwert addiert.</p>
         </details><div id="hpPreview" class="depot-preview" aria-live="polite"></div>
-        <div class="ss-actions"><button id="rvHoldingSave" class="btn primary" type="submit">Im Depot speichern</button><button id="hpReload" class="btn" type="button">Bestand neu laden</button></div>
+        <div class="ss-actions"><button id="rvHoldingSave" class="btn primary" type="submit">Im Depot speichern</button><button id="hpBookOut" class="btn danger" type="button" hidden>Ausbuchen</button><button id="hpReload" class="btn" type="button">Bestand neu laden</button></div>
       </fieldset>
     </form>
     <details id="hpClosePanel" class="compact-original" hidden><summary>Position schließen</summary>
@@ -60,6 +77,8 @@
     </details>
   </section>
   <p id="rvStatus" class="compact-status" role="status" aria-live="polite">WKN/ISIN suchen oder eine Depotposition öffnen. Kurse und KI werden nicht beim Öffnen abgerufen.</p>
+  <div id="rvAnalysisContent" role="tabpanel" aria-labelledby="rvTabAnalysis">
+  <div id="rvAssetActions" class="direct-asset-actions" hidden><button class="btn primary" id="rvAnalyze" type="button">Analyse aktualisieren</button><button class="btn" id="rvAsk" type="button">Gespräch</button><details id="rvMoreActions" class="asset-more"><summary>Mehr</summary><div><button class="btn" id="rvHolding" type="button">Bestand bearbeiten</button><button class="btn" id="rvPlan" type="button">Analyseplan</button><button class="btn" id="rvDeep" type="button">Deep, Szenarien &amp; Hebel</button><label class="iv-monitor"><input id="rvMonitor" type="checkbox"> Automatisch prüfen · ohne KI</label></div></details></div>
   <section id="rvResult" hidden><div id="rvResultBody"></div><div class="ss-actions"><button class="btn" id="rvExport" type="button">Bericht als JSON</button><button class="btn" id="rvCopyContext" type="button">Kontext für ChatGPT kopieren</button><button class="btn" id="rvLegacy" type="button">Alle Chartdetails</button></div></section>
   <details id="rvInputs" class="compact-original" open><summary>Wertpapier auswählen / Analyse vorbereiten</summary>
     <form id="rvForm">
@@ -99,5 +118,8 @@
     <p id="rvChatStatus" class="compact-status" role="status" aria-live="polite">Der Verlauf wird je Wertpapier gespeichert. KI verwendet den ausgewählten Bericht, deinen Plan und Auszüge der letzten 20 Nachrichten. Ein ChatGPT-Gespräch wird nicht automatisch verbunden.</p>
     </details>
   </section>
+  </div>
+  <div id="rvActivityContent" role="tabpanel" aria-labelledby="rvTabActivity"><section class="position-activity"><h3>Bestandsverlauf</h3><button id="rvLoadActivity" class="btn" type="button">Verlauf aktualisieren</button><div id="rvActivityList"></div></section>
   <details id="rvHistoryPanel" class="compact-original" hidden><summary>Frühere Berichte zu diesem Wertpapier</summary><button class="btn" id="rvLoadHistory" type="button">Historie laden</button><div id="rvHistory"></div></details>
+  </div>
 </section>

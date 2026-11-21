@@ -1,4 +1,20 @@
-# V39.5.0 — Puristische Übersicht und einheitliche Charts
+# V40.0.0 — Depot, direkte Bestandsverwaltung und nachvollziehbare Kursautomatik
+
+Stand: **21.11.2026**. Vollständiges Paket auf Basis V39.5.0. Installation: [INSTALLATION-V40.md](INSTALLATION-V40.md). Abnahme: [TESTPROTOKOLL-V40.md](TESTPROTOKOLL-V40.md). Abgleich: [ANFORDERUNGSABGLEICH-V40.md](ANFORDERUNGSABGLEICH-V40.md).
+
+**Depot → Wertpapier → Überblick / Analyse / Verlauf.** Die schwarze, reduzierte Oberfläche zeigt Kurs, Datum und Position zuerst. Bestand ändern, zusätzliche Position anlegen und Ausbuchen sind direkt erreichbar. Ein ganzer Wert kann mit Bestätigung archiviert werden; Analysen, Gespräch und Bestandsänderungen bleiben erhalten. Aus Beobachtung entfernen verändert keinen tatsächlichen Depotbestand.
+
+**Alte Kurse werden nicht als neu ausgegeben.** Gespeicherte Kurse und CSV aktualisieren sich nicht selbst. Eine automatische Quelle wird je Wert ausdrücklich konfiguriert. Veraltete innere Anbieter-Caches werden neu geprüft; Abrufversuch, tatsächlicher Tageskurs, Analyse und eigener Hintergrundlauf haben getrennte Zeitangaben. Anbieterfehler halten eine sichtbare Pause ein und behalten den letzten gültigen Kurs. Kein stiller Anbieterwechsel, kein automatischer Gemini-Aufruf und keine Billing-Aktivierung.
+
+**Ein gemeinsamer Update-Workflow:** Alle Dateien einschließlich Unterordnern ins bisherige Repository übernehmen und pushen. Bei GitHub Pages einmalig **Settings → Pages → Source: GitHub Actions** setzen. Dann **Actions → V40 Produktivstand veröffentlichen → Run workflow**. Die Action prüft Anwendung/SQL, ergänzt die Datenbank, deployt beide Functions, richtet optional den vorhandenen Vault-gestützten Monitor ein und veröffentlicht optional die Website. Bestehendes `SUPABASE_ACCESS_TOKEN` erforderlich. Der Monitor bleibt begrenzt und arbeitet Tageskurse ab; ein Zeitplan ist keine Echtzeitkursgarantie. Einzelheiten und manuelle SQL-Alternative stehen in der Anleitung.
+
+**Prüfung:** 614 Anwendungstests und 199 SQL-Prüfungen bestanden. Gerenderte Browserabläufe mit synthetischen Daten einschließlich Mengenänderung, mehreren Käufen, Ausbuchen, Archiv, Analyse, Quellenkonfiguration, Anbieterpause und Breiten 320/375/430 px geprüft. Alle 241 Basisdateien sind enthalten; sieben zentrale alte Module und alle 30 historischen SQL-Dateien bleiben unverändert.
+
+Das Paket ist für die Aktivierung vorbereitet. Produktiver Supabase-/GitHub-Betrieb, eigene Anbieterabdeckung und ein physisches iPhone wurden hier nicht geprüft. Die Anmeldung und Serverprüfung müssen nach dem Update **40.0.0** zeigen.
+
+---
+
+# Historischer Stand V39.5.0 — Puristische Übersicht und einheitliche Charts
 
 Aktuelle Anleitung: [INSTALLATION-V39.5.md](INSTALLATION-V39.5.md). Prüfnachweise: [TESTPROTOKOLL-V39.5.md](TESTPROTOKOLL-V39.5.md).
 

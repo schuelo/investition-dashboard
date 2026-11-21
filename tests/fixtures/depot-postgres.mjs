@@ -2,7 +2,7 @@ import {PGlite} from '@electric-sql/pglite';
 import {readFileSync} from 'node:fs';
 import {createInvestmentHandler} from '../../supabase/functions/_shared/investment-endpoint.mjs';
 import {alice,bob} from './investment-api.mjs';import {now} from './independent-market.mjs';
-export async function createDepotDatabase({withV392=true}={}){
+export async function createDepotDatabase({withV392=true,withV40=true}={}){
  const db=new PGlite();
  try{
   await db.exec(`create role anon;create role authenticated;create role service_role bypassrls;create schema auth;create table auth.users(id uuid primary key);
@@ -11,7 +11,7 @@ export async function createDepotDatabase({withV392=true}={}){
    create table trade_plans(id uuid primary key,user_id uuid not null references auth.users(id),name text not null,symbol text not null,market_symbol text,currency text,instrument_type text,direction text,status text,quantity numeric,monitoring_enabled boolean not null default false,stop_price numeric,target1 numeric,wkn text,isin text,unique(id,user_id));
    create table depot_positions(id uuid primary key,user_id uuid not null references auth.users(id),trade_id uuid,name text,symbol text,currency text,is_open boolean,foreign key(trade_id,user_id) references trade_plans(id,user_id));
    grant all on trade_plans,depot_positions to service_role;`);
-  for(const file of ['setup-v38-investment-review.sql','setup-v39-direct.sql','setup-v39-1-depotfix.sql',...(withV392?['setup-v39-2-depot.sql']:[])]){
+  for(const file of ['setup-v38-investment-review.sql','setup-v39-direct.sql','setup-v39-1-depotfix.sql',...(withV392?['setup-v39-2-depot.sql',...(withV40?['setup-v40-production.sql']:[])]:[])]){
    try{await db.exec(readFileSync(new URL('../../'+file,import.meta.url),'utf8'));}catch(e){throw Error(file+': '+e.message);}
   }
   return db;
@@ -56,8 +56,8 @@ export async function postgresDepotApi(options={}){
   try{const keys=Object.keys(p),result=await db.query('select '+identifier(name)+'('+keys.map((k,i)=>identifier(k)+'=> $'+(i+1)).join(',')+') as result',keys.map(k=>encode(k,p[k])));return {data:normalize(result.rows[0].result),error:null};}
   catch(error){return {data:null,error:{message:error.message,code:error.code}};}
  }};
- const env={SUPABASE_URL:'https://project.test',SUPABASE_ANON_KEY:'anon',SUPABASE_SERVICE_ROLE_KEY:'service',CRON_SECRET:'private-cron-secret'};
- const handler=createInvestmentHandler({createClient:(u,k)=>k==='service'?admin:{auth:{getUser:async()=>({data:{user:owner?{id:owner}:null}})}},getEnv:k=>env[k]||'',now:()=>now,parseRss:()=>[],getPage:async()=>{throw Error('Unexpected article request');},fetchImpl:async(...args)=>{requests.push(args);throw Error('Unexpected market-provider request');}});
+ const env={SUPABASE_URL:'https://project.test',SUPABASE_ANON_KEY:'anon',SUPABASE_SERVICE_ROLE_KEY:'service',CRON_SECRET:'private-cron-secret',...options.env};
+ const handler=createInvestmentHandler({createClient:(u,k)=>k==='service'?admin:{auth:{getUser:async()=>({data:{user:owner?{id:owner}:null}})}},getEnv:k=>env[k]||'',now:options.nowImpl||(()=>now),parseRss:()=>[],getPage:async()=>{throw Error('Unexpected article request');},fetchImpl:async(...args)=>{requests.push(args);if(options.fetchImpl)return options.fetchImpl(...args);throw Error('Unexpected market-provider request');}});
  const post=async(body,{auth=true}={})=>{const r=await handler(new Request('https://test/review-investments',{method:'POST',headers:{'Content-Type':'application/json',...(auth?{Authorization:'Bearer user'}:{})},body:JSON.stringify(body)}));return {status:r.status,body:await r.json()};};
  return {db,admin,post,handler,calls,rpcs,requests,setOwner:value=>owner=value,close:()=>db.close()};
 }

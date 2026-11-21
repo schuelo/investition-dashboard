@@ -1,4 +1,4 @@
-import {escapeHtml,formatNumber,reportView,reportHtml,modelChart,previousReport} from './compact-analysis.mjs?v=39.5.0';
+import {escapeHtml,formatNumber,reportView,reportHtml,modelChart,previousReport} from './compact-analysis.mjs?v=40.0.0';
 
 export function createCompactUI({window,document,now=()=>new Date()}) {
   const $=id=>document.getElementById(id),e=escapeHtml;

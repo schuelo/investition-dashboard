@@ -1,29 +1,32 @@
 import {validateDepotInput,depotNumber,depotDay} from './supabase/functions/_shared/depot-input.mjs';
 import {e} from './investment-view.mjs';
+import {decimalInput,shareNumber} from './quantity-format.mjs';
 const money=v=>Number(v).toLocaleString('de-DE',{maximumFractionDigits:2,minimumFractionDigits:2});
 export function createHoldingEditor({document,window,getAssets=()=>[],getAsset=()=>null,invoke,onSaved,onBusy,isRunning,onOpen=()=>{},onCancel=()=>{},now=()=>new Date()}){
  const $=id=>document.getElementById(id);
- let rows=[],asset=null,active=false,token=0,operation=0,busy=false,fetching=false,ready=false,request=null,lastIdentity='',boundIdentity='';
+ let rows=[],asset=null,active=false,token=0,operation=0,busy=false,fetching=false,ready=false,request=null,lastIdentity='',boundIdentity='',intent='edit';
  const identity=()=>[$('hpSymbol').value.trim().toUpperCase().replace(/^XETR:([A-Z0-9_^+\-]+)$/,'$1.XETRA'),$('hpCurrency').value].join('|');
  const status=(message,bad=false)=>{$('rvHoldingStatus').textContent=message;$('rvHoldingStatus').setAttribute('role',bad?'alert':'status');};
  const chosen=()=>rows.find(p=>(p.position_origin==='legacy_plan'?'legacy:':'')+p.id===$('rvHoldingSelect').value);
  function pickerReset(){window?.dispatchEvent(new CustomEvent('investition:reset-security-picker',{detail:{scope:'holding'}}));}
  function preview(){
   $('hpManualFields').hidden=$('hpValuation').value!=='manual';$('hpManualPrice').required=$('hpValuation').value==='manual';$('hpManualDate').required=$('hpValuation').value==='manual';
-  try{const q=depotNumber($('rvHoldingQuantity').value,'Stückzahl'),p=depotNumber($('rvHoldingEntry').value,'Einstand');$('hpPreview').innerHTML='<strong>Vorschau · Einstand gesamt</strong><p>'+e(money(q*p))+' '+e($('hpCurrency').value)+' · '+e(String(q))+' Stück × '+e(money(p))+'</p><small>Ohne Kursabruf. Keine Order.</small>';}
+  try{const q=depotNumber($('rvHoldingQuantity').value,'Stückzahl'),p=depotNumber($('rvHoldingEntry').value,'Einstand');$('hpPreview').innerHTML='<strong>Vorschau · Einstand gesamt</strong><p>'+e(money(q*p))+' '+e($('hpCurrency').value)+' · '+e(shareNumber(q))+' Stück × '+e(money(p))+'</p><small>Ohne Kursabruf. Keine Order.</small>';}
   catch{$('hpPreview').innerHTML='<p class="compact-muted">Stückzahl und Einstand ergeben deinen investierten Betrag. Ein Bewertungskurs ist optional.</p>';}
  }
  function fill(){
-  const p=chosen();request=null;$('rvHoldingQuantity').value=p?.quantity??'';$('rvHoldingEntry').value=p?.average_entry_price??'';$('hpEntryDate').value=p?.entry_date||'';
+  const p=chosen();request=null;$('rvHoldingQuantity').value=decimalInput(p?.quantity);$('rvHoldingEntry').value=decimalInput(p?.average_entry_price);$('hpEntryDate').value=p?.entry_date||'';
   $('rvHoldingDirection').value=p?(['Long','Short'].find(d=>d.toLowerCase()===String(p.direction).toLowerCase())||''):'Long';$('rvHoldingType').value=p?.instrument_type==='ETF'?'ETF':'Aktie';
   $('hpTypeDetails').open=$('rvHoldingDirection').value==='';
-  $('hpAdditionalRow').hidden=!!p||!rows.length;$('hpAdditionalConfirmed').checked=false;$('hpAdditionalConfirmed').required=!p&&rows.length>0;
-  $('hpClosePanel').hidden=!p;$('hpClosePanel').open=false;$('hpCloseConfirmed').checked=false;$('rvHoldingClose').disabled=true;
-  $('hpPositionHelp').textContent=p?'Du bearbeitest diese Position. Die gespeicherte Stückzahl wird ersetzt.':rows.length?'Eine zusätzliche Position wird getrennt angelegt. Den zusätzlichen Bestand ausdrücklich bestätigen.':'Neue tatsächliche Position. Eine Analyse ist dafür nicht erforderlich.';
-  $('rvHoldingTitle').textContent=p?'Depotposition bearbeiten':'Position hinzufügen';preview();
+  $('hpAdditionalRow').hidden=!!p||!rows.length;$('hpAdditionalConfirmed').checked=intent==='add'&&!p&&rows.length>0;$('hpAdditionalConfirmed').required=!p&&rows.length>0;
+  $('hpClosePanel').hidden=!p;$('hpClosePanel').open=intent==='close';$('hpCloseConfirmed').checked=false;$('rvHoldingClose').disabled=true;
+  $('hpPositionHelp').textContent=p?'Du bearbeitest diesen Bestandsposten: '+shareNumber(p.quantity)+' von insgesamt '+shareNumber(rows.reduce((n,v)=>n+Number(v.quantity||0),0))+' Anteilen. Die absolute Stückzahl dieses Postens wird ersetzt.':rows.length?'Eine zusätzliche Position wird getrennt angelegt. Den zusätzlichen Bestand ausdrücklich bestätigen.':'Neue tatsächliche Position. Eine Analyse ist dafür nicht erforderlich.';
+  $('hpSecurityInputs').hidden=!!asset?.id&&intent!=='add';$('hpBookOut').hidden=!p||intent==='close';$('rvHoldingIntro').textContent=intent==='close'?'Den ausgewählten Bestandsposten aus dem Depot ausbuchen.':p?'Stückzahl und Einstand dieses Bestandspostens anpassen.':'Wertpapier, Stückzahl und Einstand erfassen.';
+  $('rvHoldingPanel').setAttribute('data-position-intent',intent);$('hpPositionSelector').hidden=rows.length<2;
+  $('rvHoldingTitle').textContent=intent==='close'?'Position ausbuchen':p?'Bestand ändern':'Position hinzufügen';$('rvHoldingSave').textContent=p?'Bestand speichern':'Position anlegen';$('hpClosePanel').open=intent==='close'&&!!p;preview();
  }
  function clear(){
-  token++;operation++;active=false;busy=false;fetching=false;ready=false;rows=[];asset=null;request=null;boundIdentity='';
+  token++;operation++;active=false;busy=false;fetching=false;ready=false;intent='edit';rows=[];asset=null;request=null;boundIdentity='';
   for(const id of ['hpSymbol','hpCompany','hpWkn','hpIsin','rvHoldingQuantity','rvHoldingEntry','hpEntryDate','hpManualPrice','hpManualDate'])$(id).value='';
   $('hpCurrency').value='EUR';$('hpValuation').value='keep';$('hpSavedAsset').innerHTML='<option value="">Neues Wertpapier / manuelle Eingabe</option>';$('hpSavedAsset').value='';
   $('hpConfirmed').checked=false;$('hpAdditionalConfirmed').checked=false;$('hpCloseConfirmed').checked=false;$('rvHoldingSelect').innerHTML='<option value="new">Neue tatsächliche Position</option>';$('rvHoldingSelect').value='new';
@@ -38,8 +41,8 @@ export function createHoldingEditor({document,window,getAssets=()=>[],getAsset=(
   $('hpSecurityLabel').textContent=[a.company||a.symbol,a.symbol,a.currency].join(' · ');$('hpWknDetails').open=false;boundIdentity=identity();
  }
  function options(){
-  $('rvHoldingSelect').innerHTML='<option value="new">'+(rows.length?'Zusätzliche getrennte Position':'Neue tatsächliche Position')+'</option>'+rows.map((p,i)=>'<option value="'+(p.position_origin==='legacy_plan'?'legacy:':'')+e(p.id)+'">'+e((p.position_origin==='legacy_plan'?'Älterer offener Bestand':'Position '+(i+1))+' · '+(p.quantity??'?')+' Stück · Einstand '+(p.average_entry_price??'offen')+' · '+(p.entry_date||'Datum offen'))+'</option>').join('');
-  $('rvHoldingSelect').value=rows.length?(rows[0].position_origin==='legacy_plan'?'legacy:':'')+rows[0].id:'new';fill();
+  $('rvHoldingSelect').innerHTML=(intent==='close'?'':'<option value="new">'+(rows.length?'Zusätzliche getrennte Position':'Neue tatsächliche Position')+'</option>')+rows.map((p,i)=>'<option value="'+(p.position_origin==='legacy_plan'?'legacy:':'')+e(p.id)+'">'+e((p.position_origin==='legacy_plan'?'Älterer offener Bestand':'Position '+(i+1))+' · '+(p.quantity==null?'?':shareNumber(p.quantity))+' Stück · Einstand '+(p.average_entry_price==null?'offen':money(p.average_entry_price))+' · '+(p.entry_date||'Datum offen'))+'</option>').join('');
+  $('rvHoldingSelect').value=rows.length&&intent!=='add'?(rows[0].position_origin==='legacy_plan'?'legacy:':'')+rows[0].id:'new';fill();
  }
  async function load(a,{preserveIdentity=false}={}){
   const captured=++token;fetching=true;ready=false;$('rvHoldingSave').disabled=true;$('rvHoldingSelect').disabled=true;status('Vorhandene Positionen laden. Kein Kursabruf.');
@@ -53,11 +56,11 @@ export function createHoldingEditor({document,window,getAssets=()=>[],getAsset=(
   }catch(error){if(captured===token)status(error.message,true);}
   finally{if(captured===token){fetching=false;$('rvHoldingSave').disabled=!ready;$('rvHoldingSelect').disabled=!ready;}}
  }
- async function open(value=undefined){
-  if(isRunning())return;const a=value===undefined?getAsset():value;clear();active=true;ready=!a?.id;
+ async function open(value=undefined,{mode='edit'}={}){
+  if(isRunning())return;const a=value===undefined?getAsset():value;clear();intent=a?mode:'add';active=true;ready=!a?.id;
   $('rvHoldingPanel').hidden=false;$('hpIdentityDetails').open=!a;$('hpWknDetails').open=!a;$('rvHoldingFields').disabled=false;$('hpEntryDate').max=depotDay(now());$('hpManualDate').max=depotDay(now());
   $('hpSavedAsset').innerHTML='<option value="">Neues Wertpapier / manuelle Eingabe</option>'+getAssets().map(a=>'<option value="'+e(a.id)+'">'+e((a.company||a.symbol)+' · '+a.symbol+' · '+a.currency)+'</option>').join('');
-  onOpen();if(a){setIdentity(a);await load(a);}else{rows=[];options();status('Wert aus gespeicherten Daten oder per WKN/ISIN auswählen. Eine genaue Kennung kannst du auch direkt eingeben.');}
+  onOpen();if(a){setIdentity(a);await load(a);if(mode==='add'&&rows.length){$('rvHoldingSelect').value='new';fill();$('hpAdditionalConfirmed').checked=true;}if(mode==='close'&&rows.length){$('hpClosePanel').open=true;$('hpClosePanel').scrollIntoView?.({behavior:'smooth',block:'center'});$('hpCloseConfirmed').focus?.();}}else{rows=[];options();status('Wert aus gespeicherten Daten oder per WKN/ISIN auswählen. Eine genaue Kennung kannst du auch direkt eingeben.');}
   $('rvHoldingPanel').scrollIntoView?.({behavior:'smooth',block:'start'});
  }
  function identityChanged(event){
@@ -73,14 +76,14 @@ export function createHoldingEditor({document,window,getAssets=()=>[],getAsset=(
     valuation_mode:$('hpValuation').value,manual_price:$('hpManualPrice').value,manual_price_date:$('hpManualDate').value,additional_position_confirmed:$('hpAdditionalConfirmed').checked,close:closePosition},now());
    if(!p&&rows.length&&!input.additional_position_confirmed)throw Error('Eine zusätzliche getrennte Position ausdrücklich bestätigen oder die bestehende Position auswählen.');
   }catch(error){status(error.message,true);return;}
-  const captured=token,op=++operation;busy=true;onBusy(true);$('rvHoldingFields').disabled=true;$('rvHoldingSave').disabled=true;$('rvHoldingCancel').disabled=true;$('rvHoldingClose').disabled=true;status(closePosition?'Position schließen und Depot aktualisieren.':'Depotposition speichern. Kein Kurs- oder KI-Aufruf.');
+  const captured=token,op=++operation;busy=true;onBusy(true);$('rvHoldingFields').disabled=true;$('rvHoldingSave').disabled=true;$('rvHoldingSelect').disabled=true;$('rvHoldingCancel').disabled=true;$('rvHoldingClose').disabled=true;status(closePosition?'Position schließen und Depot aktualisieren.':'Depotposition speichern. Kein Kurs- oder KI-Aufruf.');
   try{
    const cap=await invoke({action:'capabilities'});if(captured!==token)return;
-   if(!cap.features?.includes('depot_editor_v392'))throw Error('Serverfunktion noch nicht auf V39.2. Website und Function passen nicht zusammen. Action „V39.2 Depotverwaltung deployen“ ausführen.');
-   if(cap.depot_ready!==true)throw Error('Die V39.2-Datenbankerweiterung fehlt. setup-v39-2-depot.sql im Supabase SQL Editor ausführen.');
+   if(!cap.features?.includes('depot_editor_v392'))throw Error('Bestandsverwaltung auf dem Server fehlt. Das V40-Update einschließlich der Function bereitstellen.');
+   if(cap.depot_ready!==true)throw Error('Die Datenbankerweiterung fehlt. Das V40-Update gemäß Installationsanleitung ausführen.');
    if(!asset?.id){
     const own=await invoke({action:'get_holdings',symbol:input.symbol,currency:input.currency});if(captured!==token||!active)return;
-    if(own.asset&&own.positions?.length){setIdentity(own.asset);rows=own.positions;ready=true;options();status('Für diesen Wert ist bereits Bestand gespeichert. Vorhandene Position bearbeiten oder eine zusätzliche Position ausdrücklich wählen.');return;}
+    if(own.asset&&own.positions?.length){intent='edit';setIdentity(own.asset);rows=own.positions;ready=true;options();status('Für diesen Wert ist bereits Bestand gespeichert. Vorhandene Position bearbeiten oder eine zusätzliche Position ausdrücklich wählen.');return;}
     if(own.asset){asset=own.asset;input.asset_id=asset.id;}
    }
    const r=await invoke({action:'save_position',...input,identity_confirmed:true});if(captured!==token||!active)return;
@@ -91,6 +94,7 @@ export function createHoldingEditor({document,window,getAssets=()=>[],getAsset=(
  }
  $('rvHoldingSelect').addEventListener('change',fill);
  $('rvHoldingCancel').addEventListener('click',()=>{if(!busy){clear();onCancel();}});
+ $('hpBookOut').addEventListener('click',()=>{if(!busy&&!fetching&&chosen()){intent='close';fill();$('hpCloseConfirmed').focus?.();}});
  $('rvHoldingClose').addEventListener('click',()=>save(true));$('hpCloseConfirmed').addEventListener('change',()=>{$('rvHoldingClose').disabled=!chosen()||!$('hpCloseConfirmed').checked;});
  $('rvHoldingForm').addEventListener('submit',event=>{event.preventDefault();return save();});
  $('rvHoldingForm').addEventListener('invalid',()=>{for(const id of ['hpIdentityDetails','hpTypeDetails','hpValuationDetails'])$(id).open=true;status('Die markierte Eingabe prüfen. WKN-Suche abschließen oder eine genaue Notierung eingeben.',true);},true);

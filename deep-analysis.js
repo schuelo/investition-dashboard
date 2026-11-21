@@ -1,6 +1,6 @@
-import { buildDeepAnalysis, validateDeepInput, comparePrior } from './supabase/functions/_shared/deep-engine.mjs?v=39.5.0';
+import { buildDeepAnalysis, validateDeepInput, comparePrior } from './supabase/functions/_shared/deep-engine.mjs?v=40.0.0';
 import { parseOhlcvCsv } from './supabase/functions/_shared/signal-engine.mjs?v=31.2';
-import { canonicalUrl } from './supabase/functions/_shared/deep-sources.mjs?v=39.5.0';
+import { canonicalUrl } from './supabase/functions/_shared/deep-sources.mjs?v=40.0.0';
 
 const $=id=>document.getElementById(id);
 const root=$('deepAnalysisModule');
@@ -342,5 +342,5 @@ if(root){
     status('Anmeldung geändert. Analyse und Kontextauswahl zurückgesetzt.');
   });
   // Deliberately no invoke on auth, news, visibility, link opening, history or context selection.
-  status('V39.5.0 bereit. Deep-Analyse über den Startknopf manuell starten.');
+  status('V40.0.0 bereit. Deep-Analyse über den Startknopf manuell starten.');
 }

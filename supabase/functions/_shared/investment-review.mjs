@@ -24,6 +24,7 @@ export function validateReviewInput(body={}){
   return {symbol,currency,source,days,lookback,quote_symbol,quote_confirmed:body.quote_confirmed===true,
     company:String(body.company||'').trim().slice(0,160),wkn:String(body.wkn||'').trim().toUpperCase().slice(0,6),isin:String(body.isin||'').trim().toUpperCase().slice(0,12),
     context:String(body.context||'').trim().slice(0,2000),news_days:14,policy,
+    refresh_minutes:[30,60,120,360,1440].includes(Number(body.refresh_minutes))?Number(body.refresh_minutes):60,
     bars:source==='csv'?body.bars:undefined,manual_urls:validateManualUrls(body.manual_urls||[]),research:body.research===true};
 }
 // EOD policy: compare with the last weekday BEFORE today. No real-time or exchange-holiday claim.
@@ -68,7 +69,7 @@ export function buildInvestmentReview(input,{market=null,news=[],previous=null,p
   decision.levels={entry:long?.entry||null,stop:input.policy.stop||long?.stop||null,target:input.policy.target||long?.target1||null,stop_source:input.policy.stop?'Eigene Planvorgabe':'Technisches Modell',target_source:input.policy.target?'Eigene Planvorgabe':'Technisches Szenario'};
   const scenarios=(analysis?.scenarios||[]).map(s=>({id:s.id,name:s.name,endpoint:s.endpoint,change_pct:(s.endpoint/analysis.chart.price-1)*100,assumption:s.assumption}));
   const previousDecision=previous?.decision||null;
-  return {version:'39.5.0',symbol:input.symbol,currency:input.currency,company:input.company,created_at:now.toISOString(),
+  return {version:'40.0.0',symbol:input.symbol,currency:input.currency,company:input.company,created_at:now.toISOString(),
     request:{days:input.days,lookback:input.lookback,source:input.source,quote_symbol:input.quote_symbol,context:input.context,manual_urls:input.manual_urls},
     price_date:analysis?.price_date||null,price:analysis?.chart?.price||null,provider:market?.provider||null,
     quote:quoteStatus(analysis?.price_date,now),attempt:market?.attempt||null,analysis,decision,scenarios,sources,

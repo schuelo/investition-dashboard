@@ -1,4 +1,5 @@
 import {normalizeBars} from './signal-engine.mjs';
+import {expectedEodDate} from './investment-review.mjs';
 
 export class MarketDataError extends Error {constructor(message,status=422){super(message);this.status=status;}}
 export const PUBLIC_VENUES={
@@ -92,8 +93,8 @@ export async function loadPublicMarket(input,deps,now=new Date()) {
   }
   const key=choice.quote_symbol+':'+input.currency,cached=await deps.readCache(key);
   let result;
-  if(cached&&Date.parse(cached.fetched_at)<=now.getTime()&&Date.parse(cached.fetched_at)>now.getTime()-12*3600000) {
-    try{const q=normalizeBars(cached.bars,now);if(q.ageDays<=4)result={bars:cached.bars,meta:cached.meta,warnings:cached.warnings||[],cached:true};}catch{}
+  if(!deps.force&&cached&&Date.parse(cached.fetched_at)<=now.getTime()&&Date.parse(cached.fetched_at)>now.getTime()-12*3600000) {
+    try{const q=normalizeBars(cached.bars,now);if(q.bars.at(-1)?.date>=expectedEodDate(now))result={bars:cached.bars,meta:cached.meta,warnings:cached.warnings||[],cached:true};}catch{}
   }
   if(!result) {
     if(!await deps.reserve())throw new MarketDataError('Eigenes Tageslimit für öffentliche Kursabfragen erreicht. Vorhandene CSV verwenden; das EODHD-Kontingent ist davon unabhängig.',429);

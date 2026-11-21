@@ -1,6 +1,6 @@
 // Generated from release.json by scripts/set-version.mjs.
 (function(scope){
-  const release=Object.freeze({"version":"39.5.0","name":"Puristische Übersicht, einheitliche Charts und nachvollziehbare Zeiträume","date":"2026-11-20"});
+  const release=Object.freeze({"version":"40.0.0","name":"Depot, direkte Bestandsverwaltung und nachvollziehbare Kursautomatik","date":"2026-11-21"});
   scope.InvestitionRelease=release;
   if(typeof document!=="undefined"){
     const bind=()=>{document.documentElement.dataset.appVersion=release.version;document.querySelectorAll("[data-release-version]").forEach(el=>{el.textContent=release.version;});document.querySelectorAll("[data-release-label]").forEach(el=>el.setAttribute("data-release-label","V"+release.version+" · INVESTITION DASHBOARD"));};
