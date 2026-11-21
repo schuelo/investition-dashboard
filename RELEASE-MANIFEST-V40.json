@@ -37,8 +37,8 @@
   "files": [
     {
       "path": ".github/workflows/check-v37-ui.yml",
-      "bytes": 841,
-      "sha256": "865f6fccf8b9fa5041874d6a653779933316a5d0a32c941a495c6c7c235813bb"
+      "bytes": 1025,
+      "sha256": "274a7e8a9b9e5da7e42dfed0d2525f506e799e02e43a52b245a185e9d48198bc"
     },
     {
       "path": ".github/workflows/deploy-deep-analysis.yml",
@@ -237,8 +237,8 @@
     },
     {
       "path": "INSTALLATION-V40.md",
-      "bytes": 11869,
-      "sha256": "c5d9c220219135455e43c929f623238c063c6a083480a7a5ed5fb8c063b92bbb"
+      "bytes": 13675,
+      "sha256": "3c03e901c2c2ba881e64cef02722b9fcba02dbd09b3da45e2f29f3de00bcdf4c"
     },
     {
       "path": "PRUEFPROTOKOLL-V33.md",
@@ -247,8 +247,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 27255,
-      "sha256": "22d547038a7d81a1ff25819ee4c05b8248bf39454ad3c01bea327993011445bd"
+      "bytes": 27818,
+      "sha256": "d01c7866c4ec1882c7b43c1a608eb4b14c8b7e86b036aadce965eba85eda6025"
     },
     {
       "path": "RELEASE-MANIFEST-V32.json",
@@ -387,8 +387,8 @@
     },
     {
       "path": "TESTPROTOKOLL-V40.md",
-      "bytes": 8922,
-      "sha256": "9cd6ddb66cf29f88c6ae3b8cab49d37196c9ec0d309b304725e4c5266deeb837"
+      "bytes": 10116,
+      "sha256": "d52a23d85514f0989d6551c340f4d1254fa3e49979fd8074b57cd112218b9e2f"
     },
     {
       "path": "VALIDATION-V29.4.md",
@@ -1340,5 +1340,15 @@
       "bytes": 8890,
       "sha256": "bde81d3a605e30c9cc3df36a30471eac46018a135a529c347a66d5bfb13978c8"
     }
-  ]
+  ],
+  "revision": "ci-fix-2026-11-21",
+  "previous_archive_sha256": "de41fb6d00b89e9793f533e6d654915ed04f8df14f21717ddbae330db5f1e18d",
+  "ci_clean_run": {
+    "node": "24.22.3",
+    "dependency_install": "npm ci --ignore-scripts --no-audit --no-fund",
+    "tests_passed": 614,
+    "sql_checks_passed": 199,
+    "workflow_name": "Dashboard prüfen",
+    "app_runtime_unchanged": true
+  }
 }

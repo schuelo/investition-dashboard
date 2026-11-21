@@ -28,6 +28,24 @@ Der Workflow führt zuerst alle Anwendungstests und SQL-Prüfungen aus. Danach a
 
 Falls die Action nicht erscheint: Prüfen, ob `.github/workflows/deploy-v40-production.yml` tatsächlich im Standardbranch liegt und gepusht wurde. Die alten Actions bleiben als historische Dateien enthalten; für dieses Update die **V40**-Action verwenden.
 
+## Fehler im automatischen V37-Prüflauf
+
+Die Meldung **V37 kompakte Ansicht prüfen / check (push)** bezeichnet den bisherigen automatischen Prüfworkflow, nicht die installierte Dashboard-Version. Er wird bei jedem Push nach `main` gestartet. In der ursprünglichen Workflow-Datei fehlte die Installation der inzwischen hinzugekommenen Testabhängigkeiten. In einer frischen Kopie des vollständigen V40-Pakets lässt sich dadurch `ERR_MODULE_NOT_FOUND: Cannot find package '@electric-sql/pglite'` reproduzieren. Der tatsächliche GitHub-Fehlertext muss bei abweichendem Verhalten im fehlgeschlagenen Schritt geprüft werden.
+
+**Korrektur für ein bereits hochgeladenes V40-Paket:**
+
+1. In GitHub unter **Code** die Datei `.github/workflows/check-v37-ui.yml` öffnen und bearbeiten.
+2. Direkt nach dem Schritt **Node einrichten**, vor den Prüfungen, diesen Schritt ergänzen. Beide neuen Zeilen gehören zu `steps`; `- name` steht auf derselben Einrückung wie die anderen Schritte:
+
+```yaml
+      - name: Prüfwerkzeuge installieren
+        run: npm ci --ignore-scripts --no-audit --no-fund
+```
+
+3. Änderung auf dem Standardbranch committen. Den Prüflauf dieses **neuen Commits** ansehen. Ein erneuter Lauf des alten fehlgeschlagenen Commits verwendet weiterhin die alte Datei.
+
+Alternativ die Workflow-Datei aus dem korrigierten vollständigen V40-Paket übernehmen und pushen. Diese Fassung heißt in Actions **Dashboard prüfen**, verwendet zusätzlich den npm-Cache und prüft SQL. Das Paket bleibt **V40.0.0**, da sich nur Prüfworkflow und Dokumentation ändern. Es sind dafür weder neue Datenbankänderungen noch neue Schlüssel oder ein neues Function-Deployment nötig. Anschließend kann die eigentliche Veröffentlichung über **V40 Produktivstand veröffentlichen** fortgesetzt werden.
+
 ## 3. SQL-Alternative bei eingeschränktem Access Token
 
 Wenn der Management-API-Zugriff für Datenbankabfragen nicht erlaubt ist, das passende SQL im **Supabase SQL Editor** ausführen und anschließend den Workflow mit **Datenbankupdate deaktiviert** starten:

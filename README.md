@@ -1,5 +1,7 @@
 # V40.0.0 — Depot, direkte Bestandsverwaltung und nachvollziehbare Kursautomatik
 
+**CI-Korrektur vom 21.11.2026:** Der alte automatische Workflow `check-v37-ui.yml` installiert jetzt zuerst die in `package-lock.json` festgelegten Prüfwerkzeuge. Ohne diesen Schritt fehlen auf einem frischen GitHub-Runner die PostgreSQL-Testabhängigkeiten. Der Workflow heißt nun **Dashboard prüfen** und prüft zusätzlich SQL. Ein vorhandenes V40-Repository benötigt dafür nur die korrigierte Workflow-Datei; kein neues SQL oder Function-Deployment. Anleitung siehe unten in `INSTALLATION-V40.md`, Abschnitt „Fehler im automatischen V37-Prüflauf“.
+
 Stand: **21.11.2026**. Vollständiges Paket auf Basis V39.5.0. Installation: [INSTALLATION-V40.md](INSTALLATION-V40.md). Abnahme: [TESTPROTOKOLL-V40.md](TESTPROTOKOLL-V40.md). Abgleich: [ANFORDERUNGSABGLEICH-V40.md](ANFORDERUNGSABGLEICH-V40.md).
 
 **Depot → Wertpapier → Überblick / Analyse / Verlauf.** Die schwarze, reduzierte Oberfläche zeigt Kurs, Datum und Position zuerst. Bestand ändern, zusätzliche Position anlegen und Ausbuchen sind direkt erreichbar. Ein ganzer Wert kann mit Bestätigung archiviert werden; Analysen, Gespräch und Bestandsänderungen bleiben erhalten. Aus Beobachtung entfernen verändert keinen tatsächlichen Depotbestand.

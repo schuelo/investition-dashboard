@@ -1,4 +1,4 @@
-name: V37 kompakte Ansicht prüfen
+name: Dashboard prüfen
 on:
   workflow_dispatch:
   push:
@@ -17,12 +17,17 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: '24'
+          cache: npm
+      - name: Prüfwerkzeuge installieren
+        run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Version und eingebettete Ansichten prüfen
         run: node scripts/set-version.mjs --check
       - name: Enthaltenes Basis-SQL prüfen
         run: node scripts/build-update-sql.mjs --check
       - name: Oberfläche und bisherige Funktionen prüfen
         run: node --test tests/*.test.mjs
+      - name: Datenbankmigrationen prüfen
+        run: npm run check:sql
       - name: Neue Browsermodule auf Syntax prüfen
         run: |
           node --check compact-analysis.mjs

@@ -4,6 +4,12 @@ Abschluss der lokalen Abnahme: **21.11.2026**. Basis: vollständiges V39.5.0-Pak
 
 ## Automatisierte Gesamtläufe
 
+### Ergänzung: frischer Actions-Prüflauf am 21.11.2026
+
+Der gemeldete automatische Workflow **V37 kompakte Ansicht prüfen / check (push)** enthielt keinen Installationsschritt für die Testabhängigkeiten. Zur Prüfung wurde das veröffentlichte vollständige V40-Archiv in ein neues Verzeichnis ohne `node_modules` entpackt. Unter Node **24.22.3** bestanden Versions- und SQL-Generierungsprüfung; der ursprüngliche Testbefehl scheiterte in drei PostgreSQL-Testsuiten mit `ERR_MODULE_NOT_FOUND: Cannot find package '@electric-sql/pglite'`.
+
+Die korrigierte Workflow-Datei installiert zuerst mit `npm ci --ignore-scripts --no-audit --no-fund` die in der Lockdatei festgelegten Prüfwerkzeuge. Danach wurden in derselben frischen Kopie alle Workflow-Befehle erfolgreich ausgeführt: **614/614 Anwendungstests**, **199 SQL-Prüfungen**, Versions-/Migrationsprüfung sowie beide Syntaxprüfungen. Der automatische Prüflauf heißt nun **Dashboard prüfen**. Die Anwendungsdateien, Datenbankschemata und Version **40.0.0** sind durch diese CI-Korrektur unverändert. Der konkrete GitHub-Log des Benutzers war nicht zugänglich; die Ursache wurde am mitgelieferten Workflow lokal reproduziert.
+
 | Prüfung | Ergebnis |
 | --- | --- |
 | `npm test` | **614 von 614 bestanden**, keine übersprungenen Tests, keine Fehler |
